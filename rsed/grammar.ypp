@@ -1,0 +1,129 @@
+%{
+#include <string>
+#include <iostream> 
+#include "AST.h"
+#include "Scanner.h"
+#include "RegEx.h"
+
+int yylex(Scanner *);
+void yyerror(Statement ** result, Scanner * scanner, const char * msg) {
+  *result = nullptr;
+  std::cerr << scanner->lineno() << ": " << msg << '\n';
+}
+
+void set_style(std::string *name,Scanner *scanner) {
+   int err = RegEx::regEx->setStyle(*name);
+   if(err) {
+      std::cerr << scanner->lineno() << ": invalid regular expression style: " << *name << '\n'; 
+   }
+   delete name;
+}
+
+%}
+
+
+%error-verbose
+
+%union ParseResult {
+  Statement * stmt;
+  Expression * expr;
+  int token;
+  std::string * name;
+  int integer;
+}
+
+%token <name>  STRING VARIABLE IDENTIFIER
+%token <token> FOREACH COPY SKIP TO PAST END NEWLINE REPLACE
+%token <token> THEN ELSE IF NOT SET PRINT MATCH STYLE
+%token <integer> NUMBER INPUT OUTPUT ERROR ALL
+%type <stmt> stmtlist stmt foreach copy skip replace print
+%type <expr> control toPast stringExpr pattern
+%type <stmt> ifstmt elsestmt set input output errorStmt 
+%type <expr> stringTerm string variable optControl
+%type <expr>  predicate buffer optBuffer stringPattern
+%start script
+
+%parse-param {Statement ** parseTree}
+%parse-param {Scanner * scanner}
+%lex-param {Scanner * scanner}
+
+%%
+
+script: optNewline optStyle stmtlist { *parseTree = $3 } ;
+
+optNewline: /* empty*/ | NEWLINE ;
+
+stmtlist: { $$ = AST::emptyStmt(); } | stmt stmtlist { $$ = AST::list($1, $2); } ;
+
+stmt: foreach | copy | skip | replace | ifstmt 
+    | set | print | input | output | errorStmt 
+    ;
+
+
+optStyle: /* empty */ | STYLE IDENTIFIER NEWLINE { set_style($2, scanner); } ;
+
+foreach : FOREACH optControl NEWLINE stmtlist END NEWLINE  { $$ = AST::foreach($2, $4) ; }
+optControl: /*empty*/ { $$ =AST::emptyExpr(); } | control ;
+
+set: SET VARIABLE optEquals stringExpr NEWLINE { $$ = AST::set($2, $4); };
+optEquals: /* empty */ | '=';
+
+copy: COPY control NEWLINE { $$ = AST::copy($2); } ;
+
+skip: SKIP control NEWLINE { $$ = AST::skip($2); } 
+    | SKIP IF pattern NEWLINE  { $$ = AST::skipOne($3); } ;   // to end of foreach 
+
+control: NUMBER toPast  { $$ = AST::limit($1,$2); }
+       | toPast  
+       | NUMBER	{ $$ = AST::limit($1); }
+       | ALL { $$ = AST::all(); }
+       ;
+
+toPast: TO pattern  { $$ = AST::control(AST::StopAt, $2); }
+      | PAST pattern { $$ = AST::control(AST::StopAfter, $2); } ;
+
+replace: REPLACE control pattern stringExpr NEWLINE { $$ = AST::replace($2,$3,$4); }
+       | REPLACE pattern stringExpr NEWLINE { $$ = AST::replaceOne($2,$3); } ;	// within a foreach 
+
+// for use insode of foreach loops
+ifstmt: IF predicate optThen NEWLINE stmtlist elsestmt END NEWLINE 
+	{ $$ = AST::ifStmt($2, $5, $6);} 
+	| IF stringExpr stmt { $$ = AST::ifGuard($2,$3); }
+	;
+optThen: /* empty */ | THEN  ;
+
+elsestmt: /* empty */ { $$ = AST::emptyStmt() ; }
+	| ELSE IF NEWLINE predicate optThen NEWLINE stmtlist elsestmt 
+	  { $$ = AST::ifStmt($4, $7, $8); } 
+	| ELSE NEWLINE stmtlist
+	  { $$ = $3; } ;
+
+predicate: stringExpr | stringExpr MATCH stringExpr { $$ = AST::match($1,$3); } ;
+
+print: PRINT stringExpr optBuffer NEWLINE { $$ = AST::print($2,$3); };
+errorStmt: ERROR stringExpr NEWLINE { $$ = AST::error($2); };
+optBuffer: /* empty */ { $$ = AST::emptyExpr(); } | TO buffer { $$ = $2; };
+
+pattern: stringPattern | NOT stringPattern { $$ = AST::notExpr($2); }
+
+stringPattern: string
+       | variable
+       | '(' stringExpr ')' { $$ = $2; }
+       ; 
+
+variable: VARIABLE { $$ = AST::variable($1); };
+string:	  STRING   { $$ = AST::stringConst($1); };
+
+stringExpr: stringTerm | stringTerm stringExpr { $$ = AST::list($1, $2); }
+stringTerm: string
+	  | variable
+	  | NUMBER { $$ = AST::integer($1); }
+	  ;
+
+input: INPUT buffer NEWLINE { $$ = AST::input($2); } ;
+output: OUTPUT buffer NEWLINE { $$ = AST::output($2); } ;
+buffer: stringExpr { $$ = AST::fileBuffer($1); } 
+      | IDENTIFIER { $$ = AST::memoryBuffer($1); } ;
+
+
+%%
