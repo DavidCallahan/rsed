@@ -17,6 +17,7 @@
 		BA902DE51B3BD305005F4774 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BA902DE41B3BD305005F4774 /* main.cpp */; };
 		BA902DEF1B3C3372005F4774 /* Parser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BA902DEE1B3C3372005F4774 /* Parser.cpp */; };
 		BA902DF21B3C338C005F4774 /* AST.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BA902DF01B3C338C005F4774 /* AST.cpp */; };
+		BAC9BE4E1C1CC63B00463501 /* BuiltinCalls.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BAC9BE4C1C1CC63B00463501 /* BuiltinCalls.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -69,6 +70,8 @@
 		BA902DF01B3C338C005F4774 /* AST.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AST.cpp; sourceTree = "<group>"; };
 		BA902DF11B3C338C005F4774 /* AST.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AST.h; sourceTree = "<group>"; };
 		BA902DF31B3C33FB005F4774 /* rsed.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = rsed.h; sourceTree = "<group>"; };
+		BAC9BE4C1C1CC63B00463501 /* BuiltinCalls.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BuiltinCalls.cpp; sourceTree = "<group>"; };
+		BAC9BE4D1C1CC63B00463501 /* BuiltinCalls.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = BuiltinCalls.hpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -123,6 +126,8 @@
 				BA1432DA1B40A1D800F3FD62 /* StringRef.h */,
 				BA1432CD1B3F8B7F00F3FD62 /* Symbol.cpp */,
 				BA1432CE1B3F8B7F00F3FD62 /* Symbol.h */,
+				BAC9BE4C1C1CC63B00463501 /* BuiltinCalls.cpp */,
+				BAC9BE4D1C1CC63B00463501 /* BuiltinCalls.hpp */,
 			);
 			path = rsed;
 			sourceTree = "<group>";
@@ -154,7 +159,7 @@
 		BA902DD91B3BD305005F4774 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0630;
+				LastUpgradeCheck = 0710;
 				ORGANIZATIONNAME = "David Callahan";
 				TargetAttributes = {
 					BA902DE01B3BD305005F4774 = {
@@ -187,6 +192,7 @@
 				BA002E711B3C7E7200062D04 /* grammar.tab.cpp in Sources */,
 				BA902DF21B3C338C005F4774 /* AST.cpp in Sources */,
 				BA1432DE1B4187AE00F3FD62 /* StringRef.cpp in Sources */,
+				BAC9BE4E1C1CC63B00463501 /* BuiltinCalls.cpp in Sources */,
 				BA902DEF1B3C3372005F4774 /* Parser.cpp in Sources */,
 				BA902DE51B3BD305005F4774 /* main.cpp in Sources */,
 				BA002E741B3C7E8500062D04 /* scanner.cpp in Sources */,
@@ -220,6 +226,7 @@
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;

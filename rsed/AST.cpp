@@ -10,6 +10,7 @@
 #include <iomanip>
 #include "RegEx.h"
 #include "AST.h"
+#include "BuiltinCalls.hpp"
 
 namespace {
 class Dumper {
@@ -17,6 +18,7 @@ class Dumper {
   void indent(int depth);
   void ifstmt(int depth, const IfStatement *i);
   void end(int depth, int id);
+
 public:
   Dumper(std::ostream &OS) : OS(OS){};
   void dump(int depth, const Statement *node);
@@ -117,6 +119,14 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     OS << '\n';
     break;
   }
+  case AST::ColumnsN: {
+    auto c = static_cast<const Columns *>(node);
+    indent(depth);
+    OS << "columns ";
+    dumpExpr(c->getColumns());
+    OS << '\n';
+    break;
+  }
   case AST::InputN:
   case AST::OutputN: {
     auto i = static_cast<const Input *>(node);
@@ -198,6 +208,10 @@ void Dumper::dumpExpr(const Expression *node) {
       OS << '$' << static_cast<const Variable *>(node)->getName();
       break;
     }
+    case AST::IdentifierN: {
+      OS << static_cast<const Identifier *>(node)->getName();
+      break;
+    }
     case AST::MatchN: {
       auto m = static_cast<const Match *>(node);
       dumpExpr(m->getPattern());
@@ -214,9 +228,24 @@ void Dumper::dumpExpr(const Expression *node) {
       }
       break;
     }
-    default:
-      OS << "bad-expr-kind=" << int(node->kind());
-      return;
+    case AST::CallN: {
+      auto c = static_cast<const Call *>(node);
+      OS << c->getName() << '(';
+      dumpExpr(c->getArgs());
+      OS << ')';
+      break;
+    }
+    case AST::ArgN: {
+      auto a = static_cast<const Arg *>(node);
+      dumpExpr(a->getValue());
+      if (a->getNext()) {
+        OS << "," ;
+      }
+      break;
+    }
+      //    default:
+      //      OS << "bad-expr-kind=" << int(node->kind());
+      //      return;
     }
     node = node->getNext();
     if (!node) {
@@ -231,7 +260,7 @@ void Dumper::dumpExpr(const Expression *node) {
 
 void Dumper::ifstmt(int depth, const IfStatement *i) {
   auto id = i->getId();
-  for(;;) {
+  for (;;) {
     dump(depth + 1, i->getThenStmts());
     auto e = static_cast<const Statement *>(i->getElseStmts());
     if (!e) {
@@ -243,7 +272,7 @@ void Dumper::ifstmt(int depth, const IfStatement *i) {
     }
     i = static_cast<const IfStatement *>(e);
     id = i->getId();
-    dumpOneStmt(depth, i, /*elseIf*/true);
+    dumpOneStmt(depth, i, /*elseIf*/ true);
   }
   end(depth, id);
 }

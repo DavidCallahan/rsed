@@ -23,7 +23,7 @@ struct StringRef {
 
 public:
   StringRef() : flags(0) {}
-
+  StringRef(std::string text, unsigned flags) : text(text), flags(flags) {} 
   unsigned getFlags() const { return flags; }
   const std::string &getText() const { return text; }
   StringRef(std::string *asScanned);

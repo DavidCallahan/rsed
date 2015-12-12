@@ -69,12 +69,12 @@ template <typename Stream> class StreamOutBuffer : public LineBuffer {
 public:
   StreamOutBuffer(Stream *stream) : stream(stream) {}
   bool eof() override { return false; }
-  bool getLine(std::string &line) {
+  bool getLine(std::string &line) override {
     assert(!"invalid append to output buffer");
     return false;
   }
   void append(const std::string &line) override { *stream << line << '\n'; }
-  void close();
+  void close() override;
 };
 template class StreamOutBuffer<std::ostream>;
 template <> inline void StreamOutBuffer<std::ostream>::close() {}
@@ -91,7 +91,7 @@ class MemoryLineBuffer : public LineBuffer {
 public:
   MemoryLineBuffer();
   int open(const std::string &);
-  bool getLine(std::string &);
+  bool getLine(std::string &) override;
   void append(const std::string &line) override;
   void close() override;
 };

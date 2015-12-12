@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "0630"
+   LastUpgradeVersion = "0710"
    version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -73,19 +73,27 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-f /Users/dcallahan/projects/rsed-test/test1.in"
-            isEnabled = "NO">
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/dcallahan/projects/rsed-test/test1.rsed"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-f /Users/dcallahan/projects/rsed-test/folloy.in"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-f /Users/dcallahan/projects/rsed-test/test3.in"
-            isEnabled = "YES">
+            argument = "/Users/dcallahan/projects/rsed-test/folloy.rsed"
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/dcallahan/projects/rsed-test/test3.rsed"
-            isEnabled = "YES">
+            argument = "-f /Users/dcallahan/projects/rsed-test/B"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/dcallahan/projects/rsed-test/bench.rsed"
+            isEnabled = "NO">
          </CommandLineArgument>
       </CommandLineArguments>
       <AdditionalOptions>

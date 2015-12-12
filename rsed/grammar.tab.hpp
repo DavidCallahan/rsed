@@ -58,11 +58,12 @@
      PRINT = 274,
      MATCH = 275,
      STYLE = 276,
-     NUMBER = 277,
-     INPUT = 278,
-     OUTPUT = 279,
-     ERROR = 280,
-     ALL = 281
+     COLUMNS = 277,
+     NUMBER = 278,
+     INPUT = 279,
+     OUTPUT = 280,
+     ERROR = 281,
+     ALL = 282
    };
 #endif
 /* Tokens.  */
@@ -85,18 +86,19 @@
 #define PRINT 274
 #define MATCH 275
 #define STYLE 276
-#define NUMBER 277
-#define INPUT 278
-#define OUTPUT 279
-#define ERROR 280
-#define ALL 281
+#define COLUMNS 277
+#define NUMBER 278
+#define INPUT 279
+#define OUTPUT 280
+#define ERROR 281
+#define ALL 282
 
 
 
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union
-#line 27 "grammar.ypp"
+#line 39 "grammar.ypp"
 ParseResult {
   Statement * stmt;
   Expression * expr;
@@ -105,7 +107,7 @@ ParseResult {
   int integer;
 }
 /* Line 1529 of yacc.c.  */
-#line 109 "grammar.tab.hpp"
+#line 111 "grammar.tab.hpp"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

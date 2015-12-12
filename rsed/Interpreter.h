@@ -12,14 +12,13 @@
 class State;
 
 class Interpreter {
-  State * state;
-  int returnCode;
+  State * state = nullptr;
 public:
-  Interpreter() : state(nullptr), returnCode(0) { }
+  Interpreter() {  }
   void initialize();
   bool setInput(const std::string & fileName);
   void interpret(class Statement *);
-  int getReturnCode() const { return returnCode; }
+  int getReturnCode() const ;
 };
 
 

@@ -21,6 +21,7 @@ protected:
   AST *next;
   int id;
   static int next_id;
+
 public:
   void dump() const;
   void processStrings();
@@ -43,6 +44,7 @@ public:
   static Statement *foreach (Expression *control, Statement * body);
   static Statement *copy(Expression *control);
   static Statement *skip(Expression *control);
+  static Statement *skip();
   static Statement *skipOne(Expression *pattern);
   static Statement *replace(Expression *control, Expression *pattern,
                             Expression *replacement);
@@ -54,6 +56,7 @@ public:
   static Statement *error(Expression *text);
   static Statement *input(Expression *buffer);
   static Statement *output(Expression *buffer);
+  static Statement *columns(Expression *cols);
 
   static Expression *limit(int number, Expression *control);
   static Expression *limit(int number);
@@ -65,6 +68,9 @@ public:
   static Expression *variable(std::string *var);
   static Expression *stringConst(std::string *constant);
   static Expression *match(Expression *pattern, Expression *target);
+  static Expression *identifier(std::string *name);
+  static Expression *arg(Expression *value);
+  static Expression *call(std::string *name, Expression *args, unsigned callId);
 
   static Expression *fileBuffer(Expression *name);
   static Expression *memoryBuffer(std::string *name);
@@ -79,6 +85,7 @@ public:
     ReplaceN,
     IfStmtN,
     SetN,
+    ColumnsN,
     PrintN,
     ErrorN,
     InputN,
@@ -92,7 +99,10 @@ public:
     IntegerN,
     BufferN,
     MatchN,
-    StringConstN
+    StringConstN,
+    IdentifierN,
+    CallN,
+    ArgN,
   };
 
   enum WalkResult { StopW, ContinueW, SkipChildrenW, SkipExpressionsW };
@@ -105,7 +115,7 @@ public:
   Statement() {}
   Statement *getNext() const { return (Statement *)next; }
   void dumpOne();
-  
+
   template <typename ACTION> WalkResult walk(const ACTION &a);
   template <typename ACTION> WalkResult walkExprs(const ACTION &a);
 };
@@ -228,6 +238,17 @@ inline Statement *AST::ifGuard(Expression *pattern, Statement *stmt) {
 inline Statement *AST::skipOne(Expression *pattern) {
   return new IfStatement(pattern, new Skip(), nullptr);
 }
+inline Statement *AST::skip() { return new Skip(); }
+
+class Columns : public Statement {
+  Expression *columns;
+
+public:
+  Columns(Expression *columns) : columns(columns) {}
+  StmtKind kind() const override { return ColumnsN; }
+  Expression *getColumns() const { return columns; }
+};
+inline Statement *AST::columns(Expression *cols) { return new Columns(cols); }
 
 class Pattern : public Expression {
   StringRef pattern;
@@ -266,6 +287,20 @@ inline Expression *AST::variable(std::string *var) {
   auto v = new Variable(*Symbol::findSymbol(*var));
   delete var;
   return v;
+}
+
+class Identifier : public Expression {
+  std::string name;
+
+public:
+  Identifier(std::string name) : name(name) {}
+  ExprKind kind() const override { return IdentifierN; }
+  const std::string &getName() const { return name; }
+};
+inline Expression *AST::identifier(std::string *var) {
+  auto ident = new Identifier(*var);
+  delete var;
+  return ident;
 }
 
 class StringConst : public Expression {
@@ -385,6 +420,37 @@ inline Expression *AST::match(Expression *pattern, Expression *target) {
   return new Match(pattern, target);
 }
 
+class Arg : public Expression {
+  Expression *value;
+
+public:
+  Arg(Expression *value) : value(value) {}
+  ExprKind kind() const override { return ArgN; }
+  Expression *getValue() const { return value; }
+};
+inline Expression *AST::arg(Expression *value) { return new Arg(value); }
+
+class Call : public Expression {
+  std::string name;
+  Expression *args;
+  unsigned callId;
+
+public:
+  Call(std::string name, Expression *args, unsigned callId)
+      : name(name), args(args), callId(callId) {}
+  ExprKind kind() const override { return CallN; }
+  Expression *getArgs() const { return args; }
+  unsigned getCallId() const { return callId; }
+  const std::string & getName() const  { return name; }
+  void setCallId(unsigned callId) { this->callId = callId; }
+};
+inline Expression *AST::call(std::string *name, Expression *args,
+                             unsigned callId) {
+  auto c = new Call(*name, args, callId);
+  delete name;
+  return c;
+}
+
 template <typename ACTION> AST::WalkResult Statement::walk(const ACTION &a) {
   Statement *s = this;
   for (; s; s = s->getNext()) {
@@ -457,6 +523,9 @@ AST::WalkResult Statement::walkExprs(const ACTION &a) {
     break;
   case ErrorN:
     rc = ((Error *)this)->getText()->walkDown(a);
+    break;
+  case ColumnsN:
+    rc = ((Columns *)this)->getColumns()->walkDown(a);
     break;
   }
 
