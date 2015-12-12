@@ -1,0 +1,3 @@
+[submodule "rsed/gflags"]
+	path = rsed/gflags
+	url = https://github.com/gflags/gflags.git

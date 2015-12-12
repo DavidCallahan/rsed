@@ -1,0 +1,80 @@
+%{
+#include <string>
+#include <fstream>
+#include "AST.h"
+#include "grammar.tab.hpp"
+#include "Scanner.h" 
+
+int Scanner::init(const char * source) {
+    auto in = new std::ifstream;
+    in->open(source);
+    yyin = in ; 
+    return in->is_open();
+}
+
+std::string * Scanner::getString() {
+    int len = YYLeng();
+    const char * text = YYText(); 
+    auto s = new std::string(text+1, len-2);
+    std::cout << "string: " << *s << "\n";
+    return s;
+}
+
+
+// invoked in grammar.tab.cpp
+int yylex(Scanner *scanner) { return scanner->yylex(); }
+
+#define register 
+
+%}
+
+%option yylineno
+%option noyywrap
+
+DIGIT    [0-9]
+ID       [a-zA-Z][a-zA-Z0-9]*
+
+%%
+
+foreach     return FOREACH;
+copy        return COPY;
+skip        return SKIP;
+replace     return REPLACE;
+end         return END;
+if	    return IF;
+else	    return ELSE;
+then	    return THEN;
+to	    return TO;
+past	    return PAST;
+not	    return NOT;
+set	    return SET;
+print	    return PRINT;
+error	    return ERROR;
+input	    return INPUT;
+output	    return OUTPUT;
+style	    return STYLE;
+all	    return ALL;
+columns	    return COLUMNS;
+
+{ID}	    yylval.name = new std::string(yytext);   return IDENTIFIER;
+\${ID}	    yylval.name = new std::string(yytext+1); return VARIABLE;
+\${DIGIT}+  yylval.name = new std::string(yytext+1); return VARIABLE;
+{DIGIT}+    yylval.integer = atoi(yytext) ; return NUMBER;
+
+=~	    return MATCH;
+=	    return '=';
+\(	    return '(';
+\)	    return ')';
+,	    /* ignore commas */
+;	    return NEWLINE;
+	    	   
+#.*         /* comment */
+[ \t]+          /* eat up whitespace */
+
+\n([ \t]*(#.*)?\n)* return NEWLINE;
+
+\"([^"]|\\.)*\"[rig]*  yylval.name = new std::string(yytext); return STRING;
+
+.           printf( "Unrecognized character: %s\n", yytext );
+
+%%
