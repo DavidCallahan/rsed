@@ -1,0 +1,4 @@
+#!./rsed
+print "Test 1"
+skip to "more"
+copy all

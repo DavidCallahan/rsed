@@ -1,0 +1,3 @@
+print "ENV1=" $ENV1
+print "ENV2=" $ENV2
+print "ENVMISSING=" $ENVMISSING

@@ -1,0 +1,3 @@
+ENV1=1
+ENV2=ENV2 value
+ENVMISSING=

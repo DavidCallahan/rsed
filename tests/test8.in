@@ -1,0 +1,16 @@
+I1212 10:34:50.753343 706143 BigGrepIndexBenchmark.cpp:135] Creating test data...
+I1212 10:34:50.793745 706143 BigGrepIndexBenchmark.cpp:49] Binary size: 9210024
+I1212 10:34:50.809341 706143 BigGrepIndexBenchmark.cpp:52] Compact size: 3230289
+I1212 10:34:51.232713 706143 BigGrepIndexBenchmark.cpp:60] Compressed size: 8134710
+I1212 10:34:51.236877 706143 BigGrepIndexBenchmark.cpp:137] Benchmarking...
+============================================================================
+biggrep/tests/BigGrepIndexBenchmark.cpp         relative  time/iter  iters/s
+============================================================================
+binaryReader                                                10.38ms    96.31
+binaryReaderStream                                          14.92ms    67.01
+compactReader                                               13.31ms    75.16
+compactReaderStream                                         18.54ms    53.94
+----------------------------------------------------------------------------
+decompress                                                  77.75ms    12.86
+decompressStream                                            93.49ms    10.70
+============================================================================

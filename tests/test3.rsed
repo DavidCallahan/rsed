@@ -1,0 +1,7 @@
+print "variable test 1"
+set $me = "foo"
+print $me
+print "line=" $LINE
+copy 1
+print "line=" $LINE
+

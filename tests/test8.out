@@ -1,0 +1,19 @@
+name biggrep/tests/BigGrepIndexBenchmark.cpp
+binaryReader
+  10.38ms  
+  96.31
+binaryReaderStream
+  14.92ms  
+  67.01
+compactReader
+  13.31ms  
+  75.16
+compactReaderStream
+  18.54ms  
+  53.94
+decompress
+  77.75ms  
+  12.86
+decompressStream
+  93.49ms  
+  10.70

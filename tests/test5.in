@@ -1,0 +1,20 @@
+admarket/adsearch2/query/TARGETS:cpp_benchmark(
+admarket/adsearch2/query/TARGETS-  name = 'queryengine_benchmark',
+admarket/adsearch2/query/TARGETS-  srcs = [
+--
+admarket/adsearch2/query/TARGETS:cpp_benchmark(
+admarket/adsearch2/query/TARGETS-  name = 'queryengine_benchmark_custom',
+admarket/adsearch2/query/TARGETS-  srcs = [
+--
+admarket/asx/common/test/TARGETS:cpp_benchmark(
+admarket/asx/common/test/TARGETS-    name='ngram_bench',
+admarket/asx/common/test/TARGETS-    srcs=[
+--
+admarket/cpe/common/tests/TARGETS:cpp_benchmark(
+admarket/cpe/common/tests/TARGETS-    name='cpe_laser_client_benchmark_test',
+admarket/cpe/common/tests/TARGETS-    srcs=[
+admarket/lib/cache/TARGETS:cpp_benchmark(
+admarket/lib/cache/TARGETS-  name = "generic_lru_cache_benchmark",
+admarket/lib/cache/TARGETS-  srcs = [ "GenericLruCacheBenchmark.cpp" ],
+--
+admarket/lib/data/TARGETS:cpp_benchmark (
