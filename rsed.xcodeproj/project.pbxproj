@@ -18,6 +18,7 @@
 		BA902DEF1B3C3372005F4774 /* Parser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BA902DEE1B3C3372005F4774 /* Parser.cpp */; };
 		BA902DF21B3C338C005F4774 /* AST.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BA902DF01B3C338C005F4774 /* AST.cpp */; };
 		BAC9BE4E1C1CC63B00463501 /* BuiltinCalls.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BAC9BE4C1C1CC63B00463501 /* BuiltinCalls.cpp */; };
+		BAC9BE551C1CE2E700463501 /* libgflags_nothreads.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BAC9BE541C1CE2E700463501 /* libgflags_nothreads.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -72,6 +73,9 @@
 		BA902DF31B3C33FB005F4774 /* rsed.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = rsed.h; sourceTree = "<group>"; };
 		BAC9BE4C1C1CC63B00463501 /* BuiltinCalls.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BuiltinCalls.cpp; sourceTree = "<group>"; };
 		BAC9BE4D1C1CC63B00463501 /* BuiltinCalls.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = BuiltinCalls.hpp; sourceTree = "<group>"; };
+		BAC9BE4F1C1CE28400463501 /* rsed */ = {isa = PBXFileReference; lastKnownFileType = folder; path = rsed; sourceTree = "<group>"; };
+		BAC9BE511C1CE2B400463501 /* gflags */ = {isa = PBXFileReference; lastKnownFileType = folder; name = gflags; path = rsed/gflags; sourceTree = "<group>"; };
+		BAC9BE541C1CE2E700463501 /* libgflags_nothreads.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libgflags_nothreads.a; path = rsed/gflags/build/lib/libgflags_nothreads.a; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,6 +83,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BAC9BE551C1CE2E700463501 /* libgflags_nothreads.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -88,6 +93,9 @@
 		BA902DD81B3BD305005F4774 = {
 			isa = PBXGroup;
 			children = (
+				BAC9BE541C1CE2E700463501 /* libgflags_nothreads.a */,
+				BAC9BE511C1CE2B400463501 /* gflags */,
+				BAC9BE4F1C1CE28400463501 /* rsed */,
 				BA902DEC1B3BD54D005F4774 /* cxxopts.hpp */,
 				BA902DE31B3BD305005F4774 /* rsed */,
 				BA902DE21B3BD305005F4774 /* Products */,
@@ -287,6 +295,11 @@
 		BA902DE91B3BD305005F4774 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				HEADER_SEARCH_PATHS = /Users/dcallahan/projects/rsed/rsed/rsed/gflags/build/include;
+				LIBRARY_SEARCH_PATHS = (
+					/Users/dcallahan/projects/rsed/rsed/rsed/gflags/build/lib,
+					"$(PROJECT_DIR)/rsed/gflags/build/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -294,6 +307,11 @@
 		BA902DEA1B3BD305005F4774 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				HEADER_SEARCH_PATHS = /Users/dcallahan/projects/rsed/rsed/rsed/gflags/build/include;
+				LIBRARY_SEARCH_PATHS = (
+					/Users/dcallahan/projects/rsed/rsed/rsed/gflags/build/lib,
+					"$(PROJECT_DIR)/rsed/gflags/build/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

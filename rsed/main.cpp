@@ -7,50 +7,38 @@
 //
 
 #include <iostream>
-#include "cxxopts.hpp"
+#include <assert.h>
 #include "AST.h"
 #include "Parser.h"
 #include "Scanner.h"
 #include "RegEx.h"
 #include "Interpreter.h"
+#include "gflags/gflags.h"
 
 int debug;
 extern int yydebug ;
 static int dump = 0;
 std::string input("");
 
+DEFINE_bool(debug, false, "enable debugging");
+DEFINE_bool(yydebug, false, "enable parser debugging");
+DEFINE_bool(dump, false, "dump parsed script");
+DEFINE_string(input, "", "input file to be processed");
+
 std::string parseOptions(int argc, char *argv[]) {
+
   
-  cxxopts::Options options(argv[0], "readable sed");
-  options.add_options()
-    ("y,yydebug", "enable parser debugging")
-    ("debug", "enable debugging")
-    ("d,dump", "dump ast")
-    ("h,help", "print usage information")
-    ("f,file", "input file", cxxopts::value<std::string>())
-    ("input", "script file", cxxopts::value<std::string>())
-    ;
-  options.parse_positional("input");
-  try {
-    options.parse(argc, argv);
-  }
-  catch (cxxopts::OptionException e){
-    std::cerr << e.what() << "\n";
-    exit(1);
-  }
-  if (options.count("help") || !options.count("input")) {
-    std::cout << options.help() << std::endl;
-    exit(0);
-  }
-  if (options.count("yydebug")) {
-    yydebug = 1;
-  }
-  debug = options.count("debug");
-  if(options.count("file")) {
-    input = options["file"].as<std::string>();
-  }
-  dump = options.count("dump");
-  return options["input"].as<std::string>();
+  gflags::ParseCommandLineFlags(&(argc), &(argv), true);
+  
+  // only command line arguments are preserved by gflags, so the 0th one is
+  // the tool name and 1st is the input.
+  assert(argc == 2 && "Input is required");
+  debug = FLAGS_debug;
+  yydebug = FLAGS_yydebug;
+  dump = FLAGS_dump;
+  input = FLAGS_input;
+  return argv[1];
+  
 }
 
 int main(int argc, char *argv[]) {
