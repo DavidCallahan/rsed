@@ -33,8 +33,12 @@ public:
   // < 0 for error, > 0 for match
   virtual int match(const StringRef & pattern,
                      const std::string & target) = 0;
-  
+
   virtual std::string escape(const std::string &text) = 0;
+  
+  // return a group by nnumber
+  virtual std::string getSubMatch(unsigned i) = 0;
+  
   static RegEx *regEx;
   static void setDefaultRegEx();
   static const std::string &getStyleName() { return styleName; }

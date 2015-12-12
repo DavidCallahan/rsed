@@ -19,14 +19,15 @@ class Expression;
 class AST {
 protected:
   AST *next;
-
+  int id;
+  static int next_id;
 public:
   void dump() const;
   void processStrings();
-
+  int getId() const { return id; }
   enum StopKind { StopAfter, StopAt };
 
-  AST(AST *next = nullptr) : next(next) {}
+  AST(AST *next = nullptr) : next(next), id(++next_id) {}
 
   template <typename T> static T *list(T *car, T *cdr) {
     if (!car)
@@ -103,7 +104,8 @@ public:
   virtual StmtKind kind() const = 0;
   Statement() {}
   Statement *getNext() const { return (Statement *)next; }
-
+  void dumpOne();
+  
   template <typename ACTION> WalkResult walk(const ACTION &a);
   template <typename ACTION> WalkResult walkExprs(const ACTION &a);
 };

@@ -7,6 +7,7 @@
 //
 
 #include <iostream>
+#include <iomanip>
 #include "RegEx.h"
 #include "AST.h"
 
@@ -15,13 +16,16 @@ class Dumper {
   std::ostream &OS;
   void indent(int depth);
   void ifstmt(int depth, const IfStatement *i);
-
+  void end(int depth, int id);
 public:
   Dumper(std::ostream &OS) : OS(OS){};
   void dump(int depth, const Statement *node);
   void dumpExpr(const Expression *node);
+  void dumpOneStmt(int depth, const Statement *node, bool elseIf = false);
 };
 }
+
+int AST::next_id = 0;
 
 void AST::dump() const {
   Dumper d(std::cout);
@@ -33,40 +37,106 @@ void AST::dump() const {
   }
 }
 
+void Statement::dumpOne() {
+  Dumper d(std::cout);
+  d.dumpOneStmt(0, this);
+}
+
+void Dumper::end(int depth, int id) {
+  OS << std::setw(3) << id << ' ';
+  indent(depth);
+  OS << "end\n";
+}
+
+void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
+  OS << std::setw(3) << node->getId() << ' ';
+  switch (node->kind()) {
+  case AST::ForeachN: {
+    auto f = static_cast<const Foreach *>(node);
+    indent(depth);
+    OS << "foreach ";
+    if (auto c = f->getControl()) {
+      dumpExpr(c);
+    }
+    OS << '\n';
+    break;
+  }
+  case AST::CopyN: {
+    indent(depth);
+    OS << "copy\n";
+    break;
+  }
+  case AST::SkipN: {
+    indent(depth);
+    OS << "skip\n";
+    break;
+  }
+  case AST::ReplaceN: {
+    auto r = static_cast<const Replace *>(node);
+    indent(depth);
+    OS << "replace ";
+    dumpExpr(r->getPattern());
+    OS << ' ';
+    dumpExpr(r->getReplacement());
+    OS << '\n';
+    break;
+  }
+  case AST::IfStmtN: {
+    auto i = static_cast<const IfStatement *>(node);
+    indent(depth);
+    OS << (elseIf ? "else if " : "if ");
+    dumpExpr(i->getPattern());
+    OS << " then\n";
+    break;
+  }
+  case AST::SetN: {
+    auto s = static_cast<const Set *>(node);
+    indent(depth);
+    OS << "set $" << s->getName() << " = ";
+    dumpExpr(s->getRhs());
+    OS << '\n';
+    break;
+  }
+  case AST::PrintN: {
+    auto p = static_cast<const Print *>(node);
+    indent(depth);
+    OS << "print ";
+    dumpExpr(p->getText());
+    if (auto b = p->getBuffer()) {
+      OS << " to ";
+      dumpExpr(b);
+    }
+    OS << '\n';
+    break;
+  }
+  case AST::ErrorN: {
+    auto e = static_cast<const Error *>(node);
+    indent(depth);
+    OS << "error ";
+    dumpExpr(e->getText());
+    OS << '\n';
+    break;
+  }
+  case AST::InputN:
+  case AST::OutputN: {
+    auto i = static_cast<const Input *>(node);
+    indent(depth);
+    OS << (node->kind() == AST::InputN ? "input " : "output ");
+    dumpExpr(i->getBuffer());
+    OS << '\n';
+    break;
+  }
+  }
+}
+
 void Dumper::dump(int depth, const Statement *node) {
   do {
+    dumpOneStmt(depth, node);
     switch (node->kind()) {
     case AST::ForeachN: {
       auto f = static_cast<const Foreach *>(node);
-      indent(depth);
-      OS << "foreach ";
-      if (auto c = f->getControl()) {
-        dumpExpr(c);
-      }
-      OS << '\n';
       dump(depth + 1, f->getBody());
-      indent(depth);
-      OS << "end\n";
-      break;
-    }
-    case AST::CopyN: {
-      indent(depth);
-      OS << "copy\n";
-      break;
-    }
-    case AST::SkipN: {
-      indent(depth);
-      OS << "skip\n";
-      break;
-    }
-    case AST::ReplaceN: {
-      auto r = static_cast<const Replace *>(node);
-      indent(depth);
-      OS << "replace ";
-      dumpExpr(r->getPattern());
-      OS << ' ';
-      dumpExpr(r->getReplacement());
-      OS << '\n';
+      end(depth, node->getId());
       break;
     }
     case AST::IfStmtN: {
@@ -74,43 +144,8 @@ void Dumper::dump(int depth, const Statement *node) {
       ifstmt(depth, i);
       break;
     }
-    case AST::SetN: {
-      auto s = static_cast<const Set *>(node);
-      indent(depth);
-      OS << "set $" << s->getName() << " = ";
-      dumpExpr(s->getRhs());
-      OS << '\n';
+    default:
       break;
-    }
-    case AST::PrintN: {
-      auto p = static_cast<const Print *>(node);
-      indent(depth);
-      OS << "print ";
-      dumpExpr(p->getText());
-      if (auto b = p->getBuffer()) {
-        OS << " to ";
-        dumpExpr(b);
-      }
-      OS << '\n';
-      break;
-    }
-    case AST::ErrorN: {
-      auto e = static_cast<const Error *>(node);
-      indent(depth);
-      OS << "error ";
-      dumpExpr(e->getText());
-      OS << '\n';
-      break;
-    }
-    case AST::InputN:
-    case AST::OutputN: {
-      auto i = static_cast<const Input *>(node);
-      indent(depth);
-      OS << (node->kind() == AST::InputN ? "input " : "output ");
-      dumpExpr(i->getBuffer());
-      OS << '\n';
-      break;
-    }
     }
     node = static_cast<const Statement *>(node)->getNext();
   } while (node);
@@ -195,12 +230,8 @@ void Dumper::dumpExpr(const Expression *node) {
 }
 
 void Dumper::ifstmt(int depth, const IfStatement *i) {
-  const char *keywords = "if ";
-  for (;;) {
-    indent(depth);
-    OS << keywords;
-    dumpExpr(i->getPattern());
-    OS << " then\n";
+  auto id = i->getId();
+  for(;;) {
     dump(depth + 1, i->getThenStmts());
     auto e = static_cast<const Statement *>(i->getElseStmts());
     if (!e) {
@@ -211,10 +242,10 @@ void Dumper::ifstmt(int depth, const IfStatement *i) {
       break;
     }
     i = static_cast<const IfStatement *>(e);
-    keywords = "else if ";
+    id = i->getId();
+    dumpOneStmt(depth, i, /*elseIf*/true);
   }
-  indent(depth);
-  OS << "end\n";
+  end(depth, id);
 }
 
 void Dumper::indent(int depth) {

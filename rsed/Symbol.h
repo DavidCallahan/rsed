@@ -36,11 +36,11 @@ public:
 };
 
 template <typename Action> class DynamicSymbol : public Symbol {
-  const Action &action;
+  const Action action;
 
 public:
   DynamicSymbol(const std::string &name, const Action &action)
-      : Symbol(name), action(action) {}
+  : Symbol(name), action(std::move(action)) {}
   const std::string getValue() const override { return action(); }
   void setValue(const std::string &v) override {}
   ~DynamicSymbol() { }

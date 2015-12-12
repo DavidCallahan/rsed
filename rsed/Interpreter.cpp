@@ -15,6 +15,8 @@
 #include "LineBuffer.h"
 #include "RegEx.h"
 
+extern int debug;
+
 enum ResultCode {
   OK_S,   // continue
   NEXT_S, // skip to next line
@@ -25,16 +27,30 @@ enum MatchKind { NoMatchK, StopAtK, StopAfterK };
 class State {
 
 public:
+  bool firstLine = false;
   bool saw_error;
   RegEx *regEx;
   std::string inputLine;
-  std::string currentLine;
+  std::string currentLine_;
+  std::string &getCurrentLine() {
+    if (firstLine) {
+      nextLine();
+     }
+    return currentLine_;
+  }
   LineBuffer *inputBuffer;
-  bool inputEof;
+  bool inputEof_;
+  bool getInputEof() {
+    if (firstLine) {
+      nextLine();
+    }
+    return inputEof_;
+  }
   void nextLine() {
-    if (!inputEof) {
-      inputEof = !inputBuffer->getLine(inputLine);
-      currentLine = inputLine;
+    if (!inputEof_) {
+      inputEof_ = !inputBuffer->getLine(inputLine);
+      currentLine_ = inputLine;
+      firstLine = false;
     }
   }
   LineBuffer *outputBuffer;
@@ -43,6 +59,7 @@ public:
   ResultCode interpretOne(Statement *stmt);
   ResultCode interpret(Foreach *foreach);
   ResultCode interpret(IfStatement *ifstmt);
+  ResultCode interpret(Set *set);
   std::string eval(Expression *ast);
   StringRef evalPattern(Expression *ast);
   // evaluate match control against current linke
@@ -63,17 +80,18 @@ public:
       : state(state), regIndex(-1), negate(false), matchKind(NoMatchK),
         hasCount(true), count(0), all(false) {}
   bool initialize(Control *c);
-  MatchKind eval(const std::string &line);
+  MatchKind eval(const std::string *line);
   void release() {
     if (regIndex >= 0) {
       state->regEx->releasePattern(regIndex);
       regIndex = -1;
     }
   }
+  bool needsInput() const { return regIndex >= 0; }
   ~ForeachControl() { release(); }
 };
 
-MatchKind ForeachControl::eval(const std::string &line) {
+MatchKind ForeachControl::eval(const std::string *line) {
   if (all) {
     return NoMatchK;
   }
@@ -82,9 +100,11 @@ MatchKind ForeachControl::eval(const std::string &line) {
       return StopAtK;
     count -= 1;
   }
-  bool rc = state->regEx->match(regIndex, line);
-  if (rc ^ negate) {
-    return matchKind;
+  if (regIndex >= 0) {
+    bool rc = state->regEx->match(regIndex, *line);
+    if (rc ^ negate) {
+      return matchKind;
+    }
   }
   return NoMatchK;
 }
@@ -99,14 +119,16 @@ bool ForeachControl::initialize(Control *c) {
     count = (unsigned)c->getLimit();
   }
   matchKind = (c->getStopKind() == AST::StopAt ? StopAtK : StopAfterK);
-  auto p = c->getPattern();
-  if (p->kind() == AST::NotN) {
-    negate = true;
-    p = ((NotExpr *)p)->getPattern();
+  regIndex = -1;
+  if (auto p = c->getPattern()) {
+    if (p->kind() == AST::NotN) {
+      negate = true;
+      p = ((NotExpr *)p)->getPattern();
+    }
+    StringRef pattern = state->evalPattern(p);
+    regIndex = state->regEx->setPattern(pattern);
   }
-  StringRef pattern = state->evalPattern(p);
-  regIndex = state->regEx->setPattern(pattern);
-  return regIndex >= 0;
+  return true;
 }
 
 std::string State::eval(Expression *e) {
@@ -136,8 +158,7 @@ std::string State::eval(Expression *e) {
     return AST::ContinueW;
 
   });
-  std::string result;
-  buffer >> result;
+  std::string result = buffer.str();
   return result;
 }
 
@@ -149,7 +170,7 @@ StringRef State::evalPattern(Expression *ast) {
     switch (e->kind()) {
     case AST::StringConstN: {
       const auto &sc = ((StringConst *)e)->getConstant();
-      s << sc;
+      s << sc.getText();
       flags |= sc.flags;
       break;
     }
@@ -178,7 +199,7 @@ ResultCode State::interpret(Statement *stmtList) {
   ResultCode rc = OK_S;
   stmtList->walk([this, &rc](Statement *stmt) {
     rc = interpretOne(stmt);
-    return (rc == OK_S ? AST::ContinueW : AST::StopW);
+    return (rc == OK_S ? AST::SkipChildrenW : AST::StopW);
   });
   return rc;
 }
@@ -191,8 +212,15 @@ ResultCode State::interpret(Foreach *foreach) {
   }
 
   auto b = foreach->getBody();
-  while (!inputEof) {
-    auto mk = fc.eval(currentLine);
+  for(;;) {
+    std::string * line = nullptr;
+    if (fc.needsInput()) {
+      if (getInputEof()) {
+        break;
+      }
+      line = & getCurrentLine();
+    }
+    auto mk = fc.eval(line);
     if (mk == StopAtK) {
       break;
     }
@@ -217,7 +245,7 @@ ResultCode State::interpret(IfStatement *ifstmt) {
     rc = regEx->match(pattern, target);
   } else {
     StringRef pattern = evalPattern(p);
-    rc = regEx->match(pattern, currentLine);
+    rc = regEx->match(pattern, getCurrentLine());
   }
   if (rc < 0) {
     return STOP_S;
@@ -232,11 +260,15 @@ ResultCode State::interpret(IfStatement *ifstmt) {
 }
 
 ResultCode State::interpretOne(Statement *stmt) {
+  if (debug) {
+    std::cout << "trace " << inputBuffer->getLineno() << ":";
+    stmt->dumpOne();
+  }
   switch (stmt->kind()) {
   case AST::SkipN:
     return NEXT_S;
   case AST::CopyN:
-    outputBuffer->append(currentLine);
+    outputBuffer->append(getCurrentLine());
     return NEXT_S;
   case AST::PrintN: {
     auto p = (Print *)stmt;
@@ -248,9 +280,6 @@ ResultCode State::interpretOne(Statement *stmt) {
     out->append(value);
     break;
   }
-  case AST::ErrorN: {
-    break;
-  }
   case AST::ReplaceN: {
     auto r = (Replace *)stmt;
     auto pattern = evalPattern(r->getPattern());
@@ -259,7 +288,7 @@ ResultCode State::interpretOne(Statement *stmt) {
       return STOP_S;
 
     auto target = eval(r->getReplacement());
-    currentLine = regEx->replace(index, target, currentLine);
+    currentLine_ = regEx->replace(index, target, getCurrentLine());
     regEx->releasePattern(index);
     break;
   }
@@ -268,11 +297,19 @@ ResultCode State::interpretOne(Statement *stmt) {
   case AST::IfStmtN:
     return interpret((IfStatement *)stmt);
   case AST::SetN:
+    return interpret((Set *)stmt);
+  case AST::ErrorN:
   case AST::InputN:
   case AST::OutputN:
     assert(!"not yet implemented");
     return STOP_S;
   }
+  return OK_S;
+}
+
+ResultCode State::interpret(Set *set) {
+  auto rhs = eval(set->getRhs());
+  set->getSymbol().setValue(rhs);
   return OK_S;
 }
 
@@ -282,13 +319,20 @@ void Interpreter::initialize() {
   state->outputBuffer = makeOutBuffer(&std::cout);
   state->regEx = RegEx::regEx;
   Symbol *lineno = makeSymbol(std::string("LINE"), [this]() {
+    auto line = state->inputBuffer->getLineno();
     std::stringstream buf;
-    buf << state->inputBuffer->getLineno();
-    std::string result;
-    buf >> result;
+    buf << line;
+    std::string result = buf.str();
     return result;
   });
   Symbol::defineSymbol(lineno);
+  for (unsigned i = 0; i < 10; i++) {
+    std::stringstream nameBuffer;
+    nameBuffer << "$" << i;
+    Symbol *matchSym = makeSymbol(
+        nameBuffer.str(), [this, i]() { return state->regEx->getSubMatch(i); });
+    Symbol::defineSymbol(matchSym);
+  }
 }
 
 bool Interpreter::setInput(const std::string &fileName) {
@@ -302,6 +346,6 @@ bool Interpreter::setInput(const std::string &fileName) {
 }
 
 void Interpreter::interpret(Statement *script) {
-  state->nextLine();
+  //  state->nextLine();
   state->interpret(script);
 }

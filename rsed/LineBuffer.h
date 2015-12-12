@@ -35,19 +35,22 @@ template <typename Stream> class StreamInBuffer : public LineBuffer {
 public:
   StreamInBuffer(Stream *stream) : stream(stream) {}
   bool eof() override { return stream->eof(); }
-  bool getLine(std::string &line) {
+  bool getLine(std::string &line) override {
     if (eof()) {
       line = "";
       return false;
     }
     getline(*stream, line);
+    if(eof() && line == "") {
+      return false;
+    }
     lineno += 1;
     return true;
   }
   void append(const std::string &line) override {
     assert(!"invalid append to input buffer");
   }
-  void close();
+  void close() override;
 };
 template class StreamInBuffer<std::istream>;
 template <> inline void StreamInBuffer<std::istream>::close() {}

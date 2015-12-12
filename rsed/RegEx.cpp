@@ -19,19 +19,21 @@ class C14RegEx : public RegEx {
   static syntax_option_type regExOptions;
   static bool specials[];
   std::vector<std::pair<std::regex, unsigned>> patterns;
-
+  std::smatch matches;
+  std::string lastTarget;
 public:
   virtual int setStyle(const std::string &style) override;
-  virtual int setPattern(const StringRef &pattern);
-  virtual void releasePattern(int);
+  virtual int setPattern(const StringRef &pattern) override;
+  virtual void releasePattern(int) override;
   
   virtual int match(const StringRef & pattern,
                      const std::string & target) override;
 
-  virtual bool match(int pattern, const std::string &line) ;
-  virtual std::string escape(const std::string &text);
+  virtual bool match(int pattern, const std::string &line) override ;
+  virtual std::string escape(const std::string &text) override;
+  virtual std::string getSubMatch(unsigned i) override;
   virtual std::string replace(int pattern, const std::string &replacement,
-                              const std::string &line);
+                              const std::string &line) override;
 };
 
 syntax_option_type C14RegEx::regExOptions = basic;
@@ -44,7 +46,19 @@ int C14RegEx::match(const StringRef &pattern, const std::string &target) {
   return -1; // TODO
 }
 bool C14RegEx::match(int pattern, const std::string &line) {
-  return -1; // TODO
+  lastTarget = line;
+  bool m = std::regex_search(lastTarget,
+                             matches,
+                             patterns[pattern].first);
+  
+  return m;
+}
+
+std::string C14RegEx::getSubMatch(unsigned int i) {
+  if (i >= matches.size()) {
+    return "";
+  }
+  return matches[i];
 }
 
 int C14RegEx::setPattern(const StringRef &pattern) {
@@ -53,6 +67,7 @@ int C14RegEx::setPattern(const StringRef &pattern) {
   patterns.emplace_back(std::move(temp), pattern.getFlags());
   return r;
 }
+
 
 void C14RegEx::releasePattern(int r) {
   assert(r + 1 == patterns.size());
@@ -113,3 +128,5 @@ std::string C14RegEx::replace(int pattern, const std::string &replacement,
   }
   return std::regex_replace(line, re, replacement, format_first_only);
 }
+
+

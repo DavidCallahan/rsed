@@ -516,16 +516,16 @@ static yyconst flex_int32_t yy_rule_can_match_eol[35] =
 int Scanner::init(const char * source) {
     auto in = new std::ifstream;
     in->open(source);
-    yyin = in ;
-    if(in->is_open()) return 1;
-    std::cerr << "could not open script file: " << source << '\n';
-    return 0;
+    yyin = in ; 
+    return in->is_open();
 }
 
 std::string * Scanner::getString() {
-    auto len = YYLeng();
+    int len = YYLeng();
     const char * text = YYText(); 
-    return new std::string(text+1, len-2);
+    auto s = new std::string(text+1, len-2);
+    std::cout << "string: " << *s << "\n";
+    return s;
 }
 
 
@@ -534,7 +534,7 @@ int yylex(Scanner *scanner) { return scanner->yylex(); }
 
 #define register 
 
-#line 536 "scanner.cpp"
+#line 538 "scanner.cpp"
 
 #define INITIAL 0
 
@@ -634,10 +634,10 @@ YY_DECL
 	register char *yy_cp, *yy_bp;
 	register int yy_act;
     
-#line 35 "scanner.lxx"
+#line 37 "scanner.lxx"
 
 
-#line 639 "scanner.cpp"
+#line 641 "scanner.cpp"
 
 	if ( !(yy_init) )
 		{
@@ -732,177 +732,177 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 37 "scanner.lxx"
+#line 39 "scanner.lxx"
 return FOREACH;
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 38 "scanner.lxx"
+#line 40 "scanner.lxx"
 return COPY;
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 39 "scanner.lxx"
+#line 41 "scanner.lxx"
 return SKIP;
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 40 "scanner.lxx"
+#line 42 "scanner.lxx"
 return REPLACE;
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 41 "scanner.lxx"
+#line 43 "scanner.lxx"
 return END;
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 42 "scanner.lxx"
+#line 44 "scanner.lxx"
 return IF;
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 43 "scanner.lxx"
+#line 45 "scanner.lxx"
 return ELSE;
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 44 "scanner.lxx"
+#line 46 "scanner.lxx"
 return THEN;
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 45 "scanner.lxx"
+#line 47 "scanner.lxx"
 return TO;
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 46 "scanner.lxx"
+#line 48 "scanner.lxx"
 return PAST;
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 47 "scanner.lxx"
+#line 49 "scanner.lxx"
 return NOT;
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 48 "scanner.lxx"
+#line 50 "scanner.lxx"
 return SET;
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 49 "scanner.lxx"
+#line 51 "scanner.lxx"
 return PRINT;
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 50 "scanner.lxx"
+#line 52 "scanner.lxx"
 return ERROR;
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 51 "scanner.lxx"
+#line 53 "scanner.lxx"
 return INPUT;
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 52 "scanner.lxx"
+#line 54 "scanner.lxx"
 return OUTPUT;
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 53 "scanner.lxx"
+#line 55 "scanner.lxx"
 return STYLE;
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 54 "scanner.lxx"
+#line 56 "scanner.lxx"
 return ALL;
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 56 "scanner.lxx"
+#line 58 "scanner.lxx"
 yylval.name = new std::string(yytext);   return IDENTIFIER;
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 57 "scanner.lxx"
+#line 59 "scanner.lxx"
 yylval.name = new std::string(yytext+1); return VARIABLE;
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 58 "scanner.lxx"
+#line 60 "scanner.lxx"
 yylval.name = new std::string(yytext+1); return VARIABLE;
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 59 "scanner.lxx"
+#line 61 "scanner.lxx"
 yylval.integer = atoi(yytext) ; return NUMBER;
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 61 "scanner.lxx"
+#line 63 "scanner.lxx"
 return MATCH;
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 62 "scanner.lxx"
+#line 64 "scanner.lxx"
 return '=';
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 63 "scanner.lxx"
+#line 65 "scanner.lxx"
 return '(';
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 64 "scanner.lxx"
+#line 66 "scanner.lxx"
 return ')';
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 65 "scanner.lxx"
+#line 67 "scanner.lxx"
 /* ignore commas */
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 66 "scanner.lxx"
+#line 68 "scanner.lxx"
 return NEWLINE;
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 68 "scanner.lxx"
+#line 70 "scanner.lxx"
 /* comment */
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 69 "scanner.lxx"
+#line 71 "scanner.lxx"
 /* eat up whitespace */
 	YY_BREAK
 case 31:
 /* rule 31 can match eol */
 YY_RULE_SETUP
-#line 71 "scanner.lxx"
+#line 73 "scanner.lxx"
 return NEWLINE;
 	YY_BREAK
 case 32:
 /* rule 32 can match eol */
 YY_RULE_SETUP
-#line 73 "scanner.lxx"
+#line 75 "scanner.lxx"
 yylval.name = new std::string(yytext); return STRING;
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 75 "scanner.lxx"
+#line 77 "scanner.lxx"
 printf( "Unrecognized character: %s\n", yytext );
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 77 "scanner.lxx"
+#line 79 "scanner.lxx"
 ECHO;
 	YY_BREAK
-#line 904 "scanner.cpp"
+#line 906 "scanner.cpp"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -1811,7 +1811,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 77 "scanner.lxx"
+#line 79 "scanner.lxx"
 
 
 

@@ -8,6 +8,7 @@
 
 #include "Symbol.h"
 #include <unordered_map>
+#include <stdlib.h>
 namespace {
 std::unordered_map<std::string, Symbol *> stringMap;
 }
@@ -19,6 +20,9 @@ Symbol *Symbol::findSymbol(const std::string &name) {
   }
   auto & s = stringMap[name];
   s = new SimpleSymbol(std::move(name));
+  if (auto e = getenv(name.c_str())) {
+    s->setValue(e);
+  }
   return s;
 }
 
