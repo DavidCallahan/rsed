@@ -15,6 +15,7 @@
 #include "Interpreter.h"
 #include "LineBuffer.h"
 #include "RegEx.h"
+#include "BuiltinCalls.h"
 
 using std::vector;
 using std::string;
@@ -426,14 +427,7 @@ string State::evalCall(Call *c) {
     args.emplace_back(eval(((Arg *)a)->getValue()));
     a = a->getNext();
   }
-  const std::string &delimiters = " \f\n\r\t\v";
-  std::stringstream ss;
-  for (auto &s : args) {
-    s.erase(s.find_last_not_of(delimiters) + 1);
-    s.erase(0, s.find_first_not_of(delimiters));
-    ss << s;
-  }
-  return ss.str();
+  return BuiltinCalls::evalCall(c->getCallId(), args);
 }
 
 void Interpreter::initialize() {

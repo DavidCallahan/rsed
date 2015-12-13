@@ -10,7 +10,7 @@
 #include <iomanip>
 #include "RegEx.h"
 #include "AST.h"
-#include "BuiltinCalls.hpp"
+#include "BuiltinCalls.h"
 
 namespace {
 class Dumper {

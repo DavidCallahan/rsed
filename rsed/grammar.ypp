@@ -4,7 +4,7 @@
 #include "AST.h"
 #include "Scanner.h"
 #include "RegEx.h"
-#include "BuiltinCalls.hpp"
+#include "BuiltinCalls.h"
 
 int yylex(Scanner *);
 void yyerror(Statement ** result, Scanner * scanner, const char * msg) {
@@ -24,7 +24,7 @@ void set_style(std::string *name,Scanner *scanner) {
 Expression * call(std::string * name, Expression * args, Scanner * scanner) {
 
     unsigned id = 0;
-    bool ok = getCallId(*name, &id);
+    bool ok = BuiltinCalls::getCallId(*name, &id);
     if (!ok) {
        scanner->error() << "invalid function name: " << *name;
     }

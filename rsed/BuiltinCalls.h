@@ -9,6 +9,10 @@
 #ifndef BuiltinCalls_hpp
 #define BuiltinCalls_hpp
 #include <string>
-bool getCallId(const std::string & name, unsigned *);
+#include <vector>
+namespace BuiltinCalls {
+bool getCallId(const std::string &name, unsigned *);
+std::string evalCall(unsigned id, const std::vector<std::string> &args);
+}
 
 #endif /* BuiltinCalls_hpp */
