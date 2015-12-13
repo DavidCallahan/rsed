@@ -7,6 +7,7 @@
 //
 
 #include "BuiltinCalls.h"
+#include "EvalState.h"
 using std::string;
 #include <vector>
 using std::vector;
@@ -33,20 +34,36 @@ bool getCallId(const string &name, unsigned *u) {
   return false;
 }
 
-string evalCall(unsigned int id, const vector<string> &args) {
+string evalCall(unsigned int id, const vector<StringRef> &args, EvalState * state) {
+  std::stringstream ss;
   if (id == TRIM) {
     const std::string &delimiters = " \f\n\r\t\v";
-    std::stringstream ss;
-    for (auto s : args) {
+    for (auto & sr : args) {
+      string s = sr.getText();
       s.erase(s.find_last_not_of(delimiters) + 1);
       s.erase(0, s.find_first_not_of(delimiters));
       ss << s;
     }
-    return ss.str();
   }
-  if (id == REPLACE) {
-    
+  else if (id == REPLACE) {
+    if (args.size() < 3) {
+      state->error() << "Two few arguments to replace()\n" ;
+      return "";
+    }
+    auto regEx = state->getRegEx();
+    int r = regEx->setPattern(args[0]);
+    if (r < 0) {
+      state->error() << "Error parsing regular expression: " << args[0] << '\n';
+      return "";
+    }
+    auto & replaceText = args[1].getText();
+    auto last = args.end();
+    for (auto p = args.begin() +2; p != last; ++p) {
+      auto rs = regEx->replace(r, replaceText, p->getText());
+      ss << rs;
+    }
+    regEx->releasePattern(r);
   }
-  return "";
+  return ss.str();
 }
 }

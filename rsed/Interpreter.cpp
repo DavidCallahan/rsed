@@ -208,9 +208,9 @@ ResultCode State::interpret(Statement *stmtList) {
   ResultCode rc = OK_S;
   stmtList->walk([this, &rc](Statement *stmt) {
     rc = interpretOne(stmt);
-    return (rc == OK_S ? AST::SkipChildrenW : AST::StopW);
+    return (rc == OK_S && !sawError ? AST::SkipChildrenW : AST::StopW);
   });
-  return rc;
+  return (sawError ? STOP_S : rc);
 }
 
 ResultCode State::interpret(Foreach *foreach) {
@@ -416,15 +416,14 @@ ResultCode State::interpret(Columns *cols) {
 }
 
 string State::evalCall(Call *c) {
-  assert(c->getCallId() == 0); // trim
   auto a = c->getArgs();
-  vector<string> args;
+  vector<StringRef> args;
   while (a) {
     assert(a->kind() == a->ArgN);
-    args.emplace_back(eval(((Arg *)a)->getValue()));
+    args.emplace_back(evalPattern(((Arg *)a)->getValue()));
     a = a->getNext();
   }
-  return BuiltinCalls::evalCall(c->getCallId(), args);
+  return BuiltinCalls::evalCall(c->getCallId(), args, this);
 }
 
 void Interpreter::initialize() {

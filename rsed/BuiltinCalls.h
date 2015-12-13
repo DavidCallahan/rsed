@@ -10,9 +10,12 @@
 #define BuiltinCalls_hpp
 #include <string>
 #include <vector>
+#include "StringRef.h"
+class EvalState;
 namespace BuiltinCalls {
 bool getCallId(const std::string &name, unsigned *);
-std::string evalCall(unsigned id, const std::vector<std::string> &args);
+std::string evalCall(unsigned id, const std::vector<StringRef> &args,
+                     class EvalState *);
 }
 
 #endif /* BuiltinCalls_hpp */

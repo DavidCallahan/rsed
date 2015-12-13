@@ -36,6 +36,7 @@ void AST::dump() const {
     d.dump(0, (Statement *)this);
   } else {
     d.dumpExpr((Expression *)this);
+    std::cout << '\n';
   }
 }
 

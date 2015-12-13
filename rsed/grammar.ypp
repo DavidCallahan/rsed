@@ -44,7 +44,7 @@ Expression * call(std::string * name, Expression * args, Scanner * scanner) {
   int integer;
 }
 
-%token <name>  STRING VARIABLE IDENTIFIER
+%token <name>  STRING VARIABLE IDENTIFIER 
 %token <token> FOREACH COPY SKIP TO PAST END NEWLINE REPLACE
 %token <token> THEN ELSE IF NOT SET PRINT MATCH STYLE COLUMNS
 %token <integer> NUMBER INPUT OUTPUT ERROR ALL
@@ -53,6 +53,7 @@ Expression * call(std::string * name, Expression * args, Scanner * scanner) {
 %type <stmt> ifstmt elsestmt set input output errorStmt 
 %type <expr> stringTerm string variable optControl
 %type <expr>  predicate buffer optBuffer stringPattern
+%type <name> callname
 %start script
 
 %parse-param {Statement ** parseTree}
@@ -137,7 +138,11 @@ stringTerm: string
 	  | NUMBER { $$ = AST::integer($1); }
 	  ;
 
-call: IDENTIFIER '(' optarglist ')' { $$ = call($1, $3, scanner); } ;
+call: callname '(' optarglist ')' { $$ = call($1, $3, scanner); } ;
+callname: IDENTIFIER 
+| REPLACE { $$ = new std::string("replace"); }
+        ;
+
 optarglist: /*empty*/ { $$ = AST::emptyExpr(); }
           | arglist 
 	  ;

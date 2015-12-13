@@ -65,6 +65,7 @@ columns	    return COLUMNS;
 =	    return '=';
 \(	    return '(';
 \)	    return ')';
+,	    return ',';
 ,	    /* ignore commas */
 ;	    return NEWLINE;
 	    	   
