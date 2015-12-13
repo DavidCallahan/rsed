@@ -41,7 +41,7 @@ public:
       return false;
     }
     getline(*stream, line);
-    if(eof() && line == "") {
+    if (eof() && line == "") {
       return false;
     }
     lineno += 1;

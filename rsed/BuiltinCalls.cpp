@@ -8,9 +8,9 @@
 
 #include "BuiltinCalls.hpp"
 
-bool getCallId(const std::string & name, unsigned *u) {
+bool getCallId(const std::string &name, unsigned *u) {
   *u = 0;
-  if ( name == "trim" ) {
+  if (name == "trim") {
     return true;
   }
   return false;

@@ -441,7 +441,7 @@ public:
   ExprKind kind() const override { return CallN; }
   Expression *getArgs() const { return args; }
   unsigned getCallId() const { return callId; }
-  const std::string & getName() const  { return name; }
+  const std::string &getName() const { return name; }
   void setCallId(unsigned callId) { this->callId = callId; }
 };
 inline Expression *AST::call(std::string *name, Expression *args,

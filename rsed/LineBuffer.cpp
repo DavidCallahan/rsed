@@ -10,9 +10,9 @@
 #include <unordered_map>
 
 namespace {
-  std::unordered_map<std::string, LineBuffer *> bufferIn, bufferOut;
+std::unordered_map<std::string, LineBuffer *> bufferIn, bufferOut;
 }
 
-LineBuffer *LineBuffer::findOutputBuffer(const std::string & name) {
+LineBuffer *LineBuffer::findOutputBuffer(const std::string &name) {
   assert(!"not yet implemented"); // TODO
 }

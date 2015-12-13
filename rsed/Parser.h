@@ -11,7 +11,7 @@
 
 class Parser {
 public:
-  class Statement * parse(const std::string &);
+  class Statement *parse(const std::string &);
 };
 
 #endif

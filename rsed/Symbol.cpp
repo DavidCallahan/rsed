@@ -15,10 +15,10 @@ std::unordered_map<std::string, Symbol *> stringMap;
 
 Symbol *Symbol::findSymbol(const std::string &name) {
   auto p = stringMap.find(name);
-  if(p != stringMap.end()) {
+  if (p != stringMap.end()) {
     return p->second;
   }
-  auto & s = stringMap[name];
+  auto &s = stringMap[name];
   s = new SimpleSymbol(std::move(name));
   if (auto e = getenv(name.c_str())) {
     s->setValue(e);
@@ -27,8 +27,8 @@ Symbol *Symbol::findSymbol(const std::string &name) {
 }
 
 void Symbol::defineSymbol(Symbol *sym) {
-  auto & s = stringMap[sym->name];
-  if(s) {
+  auto &s = stringMap[sym->name];
+  if (s) {
     delete s;
   }
   s = sym;

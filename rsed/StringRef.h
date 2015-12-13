@@ -21,9 +21,9 @@ public:
     CASE_INSENSITIVE = 2,
     GLOBAL = 4,
   };
-  
+
   StringRef() : flags(0) {}
-  StringRef(std::string text, unsigned flags) : text(text), flags(flags) {} 
+  StringRef(std::string text, unsigned flags) : text(text), flags(flags) {}
   unsigned getFlags() const { return flags; }
   const std::string &getText() const { return text; }
   StringRef(std::string *asScanned);
@@ -40,7 +40,7 @@ public:
 
   bool isRaw() const { return flags & RAW_STRING; }
   void setIsRaw() { flags |= RAW_STRING; }
-  
+
   static StringRef processEscapes(const StringRef &r);
 };
 std::ostream &operator<<(std::ostream &, const StringRef &);

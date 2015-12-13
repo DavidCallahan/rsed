@@ -10,16 +10,16 @@
 #include "Scanner.h"
 #include "Parser.h"
 
-int yyparse (Statement ** parseTree, Scanner * scanner);
-extern int yydebug ;
+int yyparse(Statement **parseTree, Scanner *scanner);
+extern int yydebug;
 
-Statement * Parser::parse(const std::string & script) {
+Statement *Parser::parse(const std::string &script) {
   // yydebug = 1;
   Scanner s;
-  if(! s.init(script.c_str())) {
+  if (!s.init(script.c_str())) {
     return nullptr;
   }
-  Statement * result = nullptr;
+  Statement *result = nullptr;
   auto rv = yyparse(&result, &s);
   return (rv ? nullptr : result);
 }

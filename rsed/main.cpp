@@ -16,7 +16,7 @@
 #include "gflags/gflags.h"
 
 int debug;
-extern int yydebug ;
+extern int yydebug;
 static int dump = 0;
 std::string input("");
 
@@ -27,9 +27,8 @@ DEFINE_string(input, "", "input file to be processed");
 
 std::string parseOptions(int argc, char *argv[]) {
 
-  
   gflags::ParseCommandLineFlags(&(argc), &(argv), true);
-  
+
   // only command line arguments are preserved by gflags, so the 0th one is
   // the tool name and 1st is the input.
   assert(argc == 2 && "Input is required");
@@ -38,13 +37,12 @@ std::string parseOptions(int argc, char *argv[]) {
   dump = FLAGS_dump;
   input = FLAGS_input;
   return argv[1];
-  
 }
 
 int main(int argc, char *argv[]) {
 
   std::string script = parseOptions(argc, argv);
-  if(argc == 1) {
+  if (argc == 1) {
     std::cerr << "usage: rsed <script>\n";
     exit(1);
   }
@@ -53,16 +51,16 @@ int main(int argc, char *argv[]) {
   interp.initialize();
 
   Parser parser;
-  Statement * ast = parser.parse(script);
-  if(!ast) {
+  Statement *ast = parser.parse(script);
+  if (!ast) {
     exit(1);
   }
-  if(dump) {
+  if (dump) {
     ast->dump();
   }
-  if(input != "") {
+  if (input != "") {
     bool ok = interp.setInput(input);
-    if(! ok) {
+    if (!ok) {
       exit(1);
     }
   }
@@ -70,6 +68,4 @@ int main(int argc, char *argv[]) {
   exit(interp.getReturnCode());
 }
 
-void breakPoint() {
-  std::cout << "at break\n" ;
-}
+void breakPoint() { std::cout << "at break\n"; }

@@ -14,25 +14,49 @@ std::string asCLiteral(const std::string &s) {
   auto n = s.length();
   for (size_t i = 0; i < n; i++) {
     auto c = s[i];
-    if (c == '\\' && (i+1) < n) {
-      switch(s[++i]) {
-        case 'n':  c = '\n' ; break ;
-        case 't':  c = '\t' ; break ;
-        case 'v':  c = '\v' ; break ;
-        case 'b':  c = '\b' ; break ;
-        case 'r':  c = '\r' ; break ;
-        case 'f':  c = '\f' ; break ;
-        case 'a':  c = '\a' ; break ;
-        case '\\': c = '\\' ; break ;
-        case '?':  c = '\?' ; break ;
-        case '\'': c = '\'' ; break ;
-        case '"':  c = '\"' ; break ;
-        case '0':  c = '\0' ; break ;
-        default:
-          i -= 1;
+    if (c == '\\' && (i + 1) < n) {
+      switch (s[++i]) {
+      case 'n':
+        c = '\n';
+        break;
+      case 't':
+        c = '\t';
+        break;
+      case 'v':
+        c = '\v';
+        break;
+      case 'b':
+        c = '\b';
+        break;
+      case 'r':
+        c = '\r';
+        break;
+      case 'f':
+        c = '\f';
+        break;
+      case 'a':
+        c = '\a';
+        break;
+      case '\\':
+        c = '\\';
+        break;
+      case '?':
+        c = '\?';
+        break;
+      case '\'':
+        c = '\'';
+        break;
+      case '"':
+        c = '\"';
+        break;
+      case '0':
+        c = '\0';
+        break;
+      default:
+        i -= 1;
       }
     }
-    result.append(1,c);
+    result.append(1, c);
   }
   return result;
 }

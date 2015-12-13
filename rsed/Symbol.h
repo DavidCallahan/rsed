@@ -19,7 +19,7 @@ public:
 
   virtual const std::string getValue() const = 0;
   virtual void setValue(const std::string &v) = 0;
-  virtual ~Symbol() { }
+  virtual ~Symbol() {}
 
   static Symbol *findSymbol(const std::string &name);
   static void defineSymbol(Symbol *sym);
@@ -32,7 +32,7 @@ public:
   SimpleSymbol(const std::string &name) : Symbol(name), value("") {}
   const std::string getValue() const override { return value; }
   void setValue(const std::string &v) override { value = v; }
-  ~SimpleSymbol() { }
+  ~SimpleSymbol() {}
 };
 
 template <typename Action> class DynamicSymbol : public Symbol {
@@ -40,14 +40,14 @@ template <typename Action> class DynamicSymbol : public Symbol {
 
 public:
   DynamicSymbol(const std::string &name, const Action &action)
-  : Symbol(name), action(std::move(action)) {}
+      : Symbol(name), action(std::move(action)) {}
   const std::string getValue() const override { return action(); }
   void setValue(const std::string &v) override {}
-  ~DynamicSymbol() { }
+  ~DynamicSymbol() {}
 };
 template <typename Action>
 inline DynamicSymbol<Action> *makeSymbol(const std::string &name,
-                                         const Action & action) {
+                                         const Action &action) {
   return new DynamicSymbol<Action>(name, action);
 }
 

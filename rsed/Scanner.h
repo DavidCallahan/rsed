@@ -6,13 +6,13 @@
 
 class Scanner : public yyFlexLexer {
 public:
-  Scanner() {} 
-  int init(const char * source);
+  Scanner() {}
+  int init(const char *source);
   int yylex();
-  std::string * getString();
+  std::string *getString();
   bool sawError = false;
-  std::ostream & error() {
+  std::ostream &error() {
     sawError = true;
-    return std::cerr << lineno() << "; " ;
+    return std::cerr << lineno() << "; ";
   }
 };

@@ -239,7 +239,7 @@ void Dumper::dumpExpr(const Expression *node) {
       auto a = static_cast<const Arg *>(node);
       dumpExpr(a->getValue());
       if (a->getNext()) {
-        OS << "," ;
+        OS << ",";
       }
       break;
     }

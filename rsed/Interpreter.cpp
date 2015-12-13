@@ -417,25 +417,24 @@ ResultCode State::interpret(Columns *cols) {
   return OK_S;
 }
 
-string State::evalCall(Call * c) {
+string State::evalCall(Call *c) {
   assert(c->getCallId() == 0); // trim
   auto a = c->getArgs();
   vector<string> args;
   while (a) {
     assert(a->kind() == a->ArgN);
-    args.emplace_back(eval(((Arg*)a)->getValue()));
+    args.emplace_back(eval(((Arg *)a)->getValue()));
     a = a->getNext();
   }
-  const std::string& delimiters = " \f\n\r\t\v";
+  const std::string &delimiters = " \f\n\r\t\v";
   std::stringstream ss;
-  for ( auto & s : args) {
-    s.erase( s.find_last_not_of( delimiters ) + 1 );
-    s.erase( 0, s.find_first_not_of( delimiters ));
+  for (auto &s : args) {
+    s.erase(s.find_last_not_of(delimiters) + 1);
+    s.erase(0, s.find_first_not_of(delimiters));
     ss << s;
   }
   return ss.str();
 }
-
 
 void Interpreter::initialize() {
   state = new State;
