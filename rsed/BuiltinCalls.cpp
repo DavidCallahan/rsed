@@ -14,25 +14,27 @@ using std::vector;
 #include <iostream>
 
 namespace {
-vector<string> builtins{"trim", "replace"};
+enum Builtins { TRIM = 0, REPLACE };
+typedef std::pair<unsigned, string> BuiltinName;
+vector<BuiltinName> builtins{
+    {TRIM, "trim"}, {REPLACE, "replace"},
+};
 }
 
 namespace BuiltinCalls {
 
 bool getCallId(const string &name, unsigned *u) {
-  unsigned i = 0;
   for (auto &s : builtins) {
-    if (name == s) {
-      *u = i;
+    if (name == s.second) {
+      *u = s.first;
       return true;
     }
-    ++i;
   }
   return false;
 }
 
 string evalCall(unsigned int id, const vector<string> &args) {
-  if (id == 0) {
+  if (id == TRIM) {
     const std::string &delimiters = " \f\n\r\t\v";
     std::stringstream ss;
     for (auto s : args) {
@@ -41,9 +43,10 @@ string evalCall(unsigned int id, const vector<string> &args) {
       ss << s;
     }
     return ss.str();
+  }
+  if (id == REPLACE) {
     
   }
   return "";
-
 }
 }

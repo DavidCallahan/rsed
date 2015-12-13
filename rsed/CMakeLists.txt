@@ -11,6 +11,7 @@ SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -I${CMAKE_CURRENT_SOURCE_DIR} -std=c++
 set (headers 
 AST.h		LineBuffer.h	RegEx.h		StringRef.h	rsed.h
 Interpreter.h	Parser.h	Scanner.h	Symbol.h	BuiltinCalls.h
+EvalState.h
 )
 
 add_executable(rsed

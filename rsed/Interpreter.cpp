@@ -16,6 +16,7 @@
 #include "LineBuffer.h"
 #include "RegEx.h"
 #include "BuiltinCalls.h"
+#include "EvalState.h"
 
 using std::vector;
 using std::string;
@@ -28,7 +29,7 @@ enum ResultCode {
 };
 enum MatchKind { NoMatchK, StopAtK, StopAfterK };
 
-class State {
+class State : public EvalState {
 
 public:
   bool firstLine = true;
@@ -38,7 +39,6 @@ public:
   bool matchColumns = true;
   vector<string> columns;
 
-  RegEx *regEx;
   std::string inputLine;
   std::string currentLine_;
   std::string &getCurrentLine() {
@@ -76,6 +76,7 @@ public:
       firstLine = false;
     }
   }
+  unsigned getLineno() const override { return inputBuffer->getLineno(); }
   LineBuffer *outputBuffer;
 
   ResultCode interpret(Statement *stmtList);
@@ -90,10 +91,6 @@ public:
   // evaluate match control against current linke
   MatchKind matchPattern(AST &);
 
-  std::ostream &error() {
-    sawError = true;
-    return std::cerr << inputBuffer->getLineno() << ": ";
-  }
 };
 
 class ForeachControl {
@@ -113,7 +110,7 @@ public:
   MatchKind eval(const std::string *line);
   void release() {
     if (regIndex >= 0) {
-      state->regEx->releasePattern(regIndex);
+      state->getRegEx()->releasePattern(regIndex);
       regIndex = -1;
     }
   }
@@ -131,7 +128,7 @@ MatchKind ForeachControl::eval(const std::string *line) {
     count -= 1;
   }
   if (regIndex >= 0) {
-    bool rc = state->regEx->match(regIndex, *line);
+    bool rc = state->getRegEx()->match(regIndex, *line);
     state->matchColumns = false;
     if (rc ^ negate) {
       return matchKind;
@@ -157,7 +154,7 @@ bool ForeachControl::initialize(Control *c) {
       p = ((NotExpr *)p)->getPattern();
     }
     StringRef pattern = state->evalPattern(p);
-    regIndex = state->regEx->setPattern(pattern);
+    regIndex = state->getRegEx()->setPattern(pattern);
   }
   return true;
 }
@@ -434,7 +431,7 @@ void Interpreter::initialize() {
   state = new State;
   state->inputBuffer = makeInBuffer(&std::cin);
   state->outputBuffer = makeOutBuffer(&std::cout);
-  state->regEx = RegEx::regEx;
+  state->setRegEx(RegEx::regEx);
   Symbol::defineSymbol(makeSymbol("LINE", [this]() {
     auto line = state->inputBuffer->getLineno();
     std::stringstream buf;
