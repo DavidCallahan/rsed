@@ -64,15 +64,15 @@ StringRef::StringRef(std::string *text) : flags(0) {
   delete text;
 }
 std::ostream &operator<<(std::ostream &OS, const StringRef &s) {
-  OS << '\"' << s.text << '"';
-  if (s.flags) {
-    if (s.flags & s.RAW_STRING) {
+  OS << '\"' << s.getText() << '"';
+  if (s.getFlags()) {
+    if (s.getFlags() & s.RAW_STRING) {
       OS << 'r';
     }
-    if (s.flags & s.CASE_INSENSITIVE) {
+    if (s.getFlags() & s.CASE_INSENSITIVE) {
       OS << 'i';
     }
-    if (s.flags & s.GLOBAL) {
+    if (s.getFlags() & s.GLOBAL) {
       OS << 'g';
     }
   }

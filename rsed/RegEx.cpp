@@ -96,7 +96,7 @@ int C14RegEx::setStyle(const std::string &style) {
   const char *list = "[]()+$.?^{}";
   memset(specials, false, sizeof(specials));
   while (*list) {
-    specials[*list] = true;
+    specials[(int)*list] = true;
     list += 1;
   }
 

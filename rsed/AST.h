@@ -147,9 +147,9 @@ inline Statement *AST::foreach (Expression *control, Statement * body) {
 }
 
 class Control : public Expression {
-  int limit;
   StopKind stopKind;
   Expression *pattern;
+  int limit;
 
 public:
   enum { NO_LIMIT = -1 };
@@ -326,8 +326,8 @@ public:
 inline Expression *AST::integer(int value) { return new Integer(value); }
 
 class Set : public Statement {
-  Symbol &symbol;
   Expression *rhs;
+  Symbol &symbol;
 
 public:
   Set(Symbol &symbol, Expression *rhs) : rhs(rhs), symbol(symbol) {}

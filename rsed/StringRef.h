@@ -11,17 +11,17 @@
 #include <string>
 #include <sstream>
 
-struct StringRef {
+class StringRef {
+  std::string text;
+  unsigned flags;
+
+public:
   enum {
     RAW_STRING = 1,
     CASE_INSENSITIVE = 2,
     GLOBAL = 4,
   };
-
-  unsigned flags;
-  std::string text;
-
-public:
+  
   StringRef() : flags(0) {}
   StringRef(std::string text, unsigned flags) : text(text), flags(flags) {} 
   unsigned getFlags() const { return flags; }
@@ -38,7 +38,7 @@ public:
     append(temp);
   }
 
-  bool isRaw() { return flags & RAW_STRING; }
+  bool isRaw() const { return flags & RAW_STRING; }
   void setIsRaw() { flags |= RAW_STRING; }
   
   static StringRef processEscapes(const StringRef &r);

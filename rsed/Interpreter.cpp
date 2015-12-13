@@ -172,7 +172,7 @@ StringRef State::evalPattern(Expression *ast) {
     case AST::StringConstN: {
       const auto &sc = ((StringConst *)e)->getConstant();
       s << sc.getText();
-      flags |= sc.flags;
+      flags |= sc.getFlags();
       break;
     }
     case AST::VariableN:
