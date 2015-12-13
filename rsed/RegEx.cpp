@@ -8,6 +8,8 @@
 
 #include <assert.h>
 #include <regex>
+#include <string>
+#include <cstring>
 #include "StringRef.h"
 #include "RegEx.h"
 
