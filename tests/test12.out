@@ -1,0 +1,9 @@
+foo 2
+foo $2
+foo $temp
+foo $$
+2 bar
+foo $temp
+foo $$temp
+foo \$temp
+foo $$

@@ -1,0 +1,10 @@
+set $temp = 2
+print "foo $temp"
+print "foo $$temp"
+print "foo \$temp"
+print "foo $$"
+print "$temp bar"
+print "foo $temp"r
+print "foo $$temp"r
+print "foo \$temp"r
+print "foo $$"r

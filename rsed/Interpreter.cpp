@@ -170,7 +170,7 @@ StringRef State::evalPattern(Expression *ast) {
     switch (e->kind()) {
     case AST::StringConstN: {
       const auto &sc = ((StringConst *)e)->getConstant();
-      s << expandVariables(sc.getText());
+      s << (sc.isRaw() ? sc.getText() : expandVariables(sc.getText()));
       flags |= sc.getFlags();
       break;
     }
@@ -205,7 +205,7 @@ StringRef State::evalPattern(Expression *ast) {
   return StringRef(s.str(), flags);
 }
 
-static std::regex variable("\\$[0-9a-zA-Z]+");
+static std::regex variable(R"((\\\$)|(\$[0-9a-zA-Z]+))");
 
 string State::expandVariables(string text) {
 
@@ -224,9 +224,12 @@ string State::expandVariables(string text) {
     const char *cvar = match.first;
     result.write(last, cvar - last);
 
-    result << Symbol::findSymbol(string(cvar + 1, match.second - cvar - 1))
-                  ->getValue();
-
+    if (*cvar == '\\') {
+      result << '$';
+    } else {
+      result << Symbol::findSymbol(string(cvar + 1, match.second - cvar - 1))
+                    ->getValue();
+    }
     last = match.second;
   }
   result.write(last, len - (last - ctext));
