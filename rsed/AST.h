@@ -33,7 +33,10 @@ public:
   template <typename T> static T *list(T *car, T *cdr) {
     if (!car)
       return cdr;
-    car->next = cdr;
+    T *tail = car;
+    while(tail->next)
+      tail = (T*)tail->next;
+    tail->next = cdr;
     return car;
   }
 
@@ -76,6 +79,12 @@ public:
   static Expression *memoryBuffer(std::string *name);
   static inline Expression *all() { return emptyExpr(); }
 
+  // foreach control should not have NOT
+  static std::string checkPattern(Expression *pattern);
+
+  // top expressions should not have MATCH or NOT
+  static std::string checkTopExpression(Expression *pattern);
+  
   virtual bool isStatement() const = 0;
 
   enum StmtKind {

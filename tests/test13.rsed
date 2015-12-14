@@ -1,28 +1,28 @@
 #! ./rsed
-set $SEP = "^==============================================================="
+$SEP = "^==============================================================="
 skip past $SEP
 if "^(.*\S)\s+relative  time/iter  iters/s" then
-   set $target = $1
+   $target = $1
 else
    error "expected benchmark header"
 end
 skip past $SEP
 foreach to $SEP
    columns 48 58 69
-   set $name = trim($0)
-   set $time = trim($2)
-   set $rate = trim($3)
+   $name = trim($0)
+   $time = trim($2)
+   $rate = trim($3)
    if $time =~ "([0-9.]+)(.*)?" then
-      set $time = $1
-      set $units = $2
+      $time = $1
+      $units = $2
    else 
-      set $units = "s"
+      $units = "s"
    end
    if $rate =~ "([0-9.]+)(.*)?" then
-      set $rate = $1
-      set $scale = $2
+      $rate = $1
+      $scale = $2
    else 
-      set $scale = ""
+      $scale = ""
    end
    print "$target,$name,$time,$units,$rate,$scale"
    skip

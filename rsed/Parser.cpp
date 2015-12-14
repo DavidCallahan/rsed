@@ -21,5 +21,5 @@ Statement *Parser::parse(const std::string &script) {
   }
   Statement *result = nullptr;
   auto rv = yyparse(&result, &s);
-  return (rv ? nullptr : result);
+  return (rv || s.sawError? nullptr : result);
 }

@@ -1,2 +1,2 @@
-set $temp = "foo"
+$temp = "foo"
 print "temp = --$temp--$temp--$ENV1--"

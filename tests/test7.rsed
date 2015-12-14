@@ -1,1 +1,1 @@
-replace all "/" "\\"r
+replace "/" with  "\\"r all

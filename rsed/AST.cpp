@@ -95,7 +95,7 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
   case AST::SetN: {
     auto s = static_cast<const Set *>(node);
     indent(depth);
-    OS << "set $" << s->getName() << " = ";
+    OS << "$" << s->getName() << " = ";
     dumpExpr(s->getRhs());
     OS << '\n';
     break;
@@ -215,9 +215,9 @@ void Dumper::dumpExpr(const Expression *node) {
     }
     case AST::MatchN: {
       auto m = static_cast<const Match *>(node);
-      dumpExpr(m->getPattern());
-      OS << " =~ ";
       dumpExpr(m->getTarget());
+      OS << " =~ ";
+      dumpExpr(m->getPattern());
       break;
     }
     case AST::BufferN: {
@@ -268,6 +268,9 @@ void Dumper::ifstmt(int depth, const IfStatement *i) {
       break;
     }
     if (e->kind() != AST::IfStmtN || e->getNext()) {
+      OS << std::setw(3) << id << ' ';
+      indent(depth);
+      OS << "else\n";
       dump(depth + 1, e);
       break;
     }
@@ -282,4 +285,30 @@ void Dumper::indent(int depth) {
   while (depth--) {
     OS << "   ";
   }
+}
+
+std::string AST::checkPattern(Expression *pattern) {
+  std::string msg;
+  pattern->walkDown([&msg](Expression *e) {
+    if (e->kind() == e->MatchN) {
+      msg = "invalid =~ in expression";
+      return StopW;
+    } 
+    return ContinueW;
+  });
+  return msg;
+}
+std::string AST::checkTopExpression(Expression *pattern) {
+  std::string msg;
+  pattern->walkDown([&msg](Expression *e) {
+    if (e->kind() == e->NotN) {
+      msg = "invalid NOT in expression";
+      return StopW;
+    } else if (e->kind() == e->MatchN) {
+      msg = "invalid MATCH in expression";
+      return StopW;
+    }
+    return ContinueW;
+  });
+  return msg;
 }

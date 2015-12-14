@@ -31,25 +31,27 @@ ID       [a-zA-Z][a-zA-Z0-9_]*
 
 %%
 
-foreach     return FOREACH;
-copy        return COPY;
-skip        return SKIP;
-replace     return REPLACE;
-end         return END;
-if	    return IF;
-else	    return ELSE;
-then	    return THEN;
-to	    return TO;
-past	    return PAST;
-not	    return NOT;
-set	    return SET;
-print	    return PRINT;
-error	    return ERROR;
-input	    return INPUT;
-output	    return OUTPUT;
-style	    return STYLE;
 all	    return ALL;
 columns	    return COLUMNS;
+copy        return COPY;
+else	    return ELSE;
+end         return END;
+error	    return ERROR;
+for	    return FOR;
+foreach     return FOREACH;
+if	    return IF;
+in	    return IN;
+input	    return INPUT;
+not	    return NOT;
+output	    return OUTPUT;
+past	    return PAST;
+print	    return PRINT;
+replace     return REPLACE;
+skip        return SKIP;
+style	    return STYLE;
+then	    return THEN;
+to	    return TO;
+with	    return WITH;
 
 {ID}	    yylval.name = new std::string(yytext);   return IDENTIFIER;
 \${ID}	    yylval.name = new std::string(yytext+1); return VARIABLE;

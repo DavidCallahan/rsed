@@ -26,9 +26,22 @@ Expression * call(std::string * name, Expression * args, Scanner * scanner) {
     unsigned id = 0;
     bool ok = BuiltinCalls::getCallId(*name, &id);
     if (!ok) {
-       scanner->error() << "invalid function name: " << *name;
+       scanner->error() << "invalid function name: " << *name << '\n';
     }
     return AST::call(name, args, id);
+}
+
+void checkTopExpr(Expression *top, Scanner * scanner) {
+  auto msg = AST::checkTopExpression(top);
+  if (msg != "" ){
+      scanner->error() << msg << "\n";
+  }
+}
+void checkPattern(Expression *pattern, Scanner * scanner) {
+  auto msg = AST::checkPattern(pattern);
+  if (msg != "") {
+     scanner->error() << msg << "\n";
+  }
 }
 
 %}
@@ -44,21 +57,21 @@ Expression * call(std::string * name, Expression * args, Scanner * scanner) {
   int integer;
 }
 
-%token <name>  STRING VARIABLE IDENTIFIER 
-%token <token> FOREACH COPY SKIP TO PAST END NEWLINE REPLACE
-%token <token> THEN ELSE IF NOT SET PRINT MATCH STYLE COLUMNS
-%token <integer> NUMBER INPUT OUTPUT ERROR ALL
+%token <name>  STRING VARIABLE IDENTIFIER
+%token <token> FOREACH COPY SKIP TO PAST END NEWLINE REPLACE FOR
+%token <token> THEN ELSE IF NOT PRINT MATCH STYLE COLUMNS IN
+%token <integer> NUMBER INPUT OUTPUT ERROR ALL WITH
 %type <stmt> stmtlist stmt foreach copy skip replace print columns
-%type <expr> control toPast stringExpr pattern arglist optarglist call
+%type <expr> control toPast stringExpr pattern arglist optarglist call 
 %type <stmt> ifstmt elsestmt set input output errorStmt 
 %type <expr> stringTerm string variable optControl
-%type <expr>  predicate buffer optBuffer stringPattern
-%type <name> callname
+%type <expr>  predicate buffer optBuffer patternString topExpr
 %start script
 
 %parse-param {Statement ** parseTree}
 %parse-param {Scanner * scanner}
 %lex-param {Scanner * scanner}
+%nonassoc MATCH REPLACE
 
 %%
 
@@ -78,8 +91,8 @@ optStyle: /* empty */ | STYLE IDENTIFIER NEWLINE { set_style($2, scanner); } ;
 foreach : FOREACH optControl NEWLINE stmtlist END NEWLINE  { $$ = AST::foreach($2, $4) ; }
 optControl: /*empty*/ { $$ =AST::emptyExpr(); } | control ;
 
-set: SET VARIABLE optEquals stringExpr NEWLINE { $$ = AST::set($2, $4); };
-optEquals: /* empty */ | '=';
+set: VARIABLE '=' topExpr NEWLINE { $$ = AST::set($1,$3); }
+   ;
 
 copy: COPY control NEWLINE { $$ = AST::copy($2); } ;
 
@@ -87,17 +100,18 @@ skip: SKIP control NEWLINE { $$ = AST::skip($2); }
     | SKIP IF pattern NEWLINE  { $$ = AST::skipOne($3); }    // to end of foreach 
     | SKIP NEWLINE { $$ = AST::skip(); } ;  // skip 1
 
-control: NUMBER toPast  { $$ = AST::limit($1,$2); }
+control: FOR NUMBER toPast  { $$ = AST::limit($2,$3); }
        | toPast  
-       | NUMBER	{ $$ = AST::limit($1); }
+       | FOR NUMBER	{ $$ = AST::limit($2); }
        | ALL { $$ = AST::all(); }
        ;
 
 toPast: TO pattern  { $$ = AST::control(AST::StopAt, $2); }
       | PAST pattern { $$ = AST::control(AST::StopAfter, $2); } ;
 
-replace: REPLACE control pattern stringExpr NEWLINE { $$ = AST::replace($2,$3,$4); }
-       | REPLACE pattern stringExpr NEWLINE { $$ = AST::replaceOne($2,$3); } ;	// within a foreach 
+replace: REPLACE pattern WITH topExpr control NEWLINE { $$ = AST::replace($5,$2,$4); }
+       | REPLACE pattern WITH topExpr NEWLINE { $$ = AST::replaceOne($2,$4); }
+       ;
 
 // for use insode of foreach loops
 ifstmt: IF predicate optThen NEWLINE stmtlist elsestmt END NEWLINE 
@@ -112,37 +126,48 @@ elsestmt: /* empty */ { $$ = AST::emptyStmt() ; }
 	| ELSE NEWLINE stmtlist
 	  { $$ = $3; } ;
 
-predicate: stringExpr | stringExpr MATCH stringExpr { $$ = AST::match($1,$3); } ;
-
-print: PRINT stringExpr optBuffer NEWLINE { $$ = AST::print($2,$3); };
-errorStmt: ERROR stringExpr NEWLINE { $$ = AST::error($2); };
+print: PRINT topExpr optBuffer NEWLINE { $$ = AST::print($2,$3); };
+errorStmt: ERROR topExpr NEWLINE { $$ = AST::error($2); };
 optBuffer: /* empty */ { $$ = AST::emptyExpr(); } | TO buffer { $$ = $2; };
 
 columns: COLUMNS stringExpr NEWLINE { $$ = AST::columns($2); } ;
 
-pattern: stringPattern | NOT stringPattern { $$ = AST::notExpr($2); }
 
-stringPattern: string
-       | variable
-       | '(' stringExpr ')' { $$ = $2; }
+predicate: patternString;
+pattern: patternString { $$ = $1; checkPattern($1,scanner); };
+topExpr: stringExpr { $$ = $1; checkTopExpr($1,scanner); }
+       | REPLACE pattern WITH stringExpr IN stringExpr {	
+       	   $$ = call(new std::string("sub"),
+	   	     AST::list(AST::arg($2), 
+	                       AST::list(AST::arg($4), AST::arg($6))),
+		     scanner);
+       }
+       ;
+
+patternString: stringExpr
+       | stringExpr MATCH stringExpr { $$ = AST::match($1,$3); } 
+       | NOT stringExpr { $$ = $2; }
        ; 
+
+stringExpr: stringTerm
+	  | stringExpr stringTerm  { $$ = AST::list($1, $2); }
+	  ;
+
+stringTerm: variable
+	  | string
+	  | call
+	  | NUMBER { $$ = AST::integer($1); }	  
+	  | '(' patternString ')' { $$ = $2; }
+	  ;
 
 variable: VARIABLE { $$ = AST::variable($1); };
 string:	  STRING   { $$ = AST::stringConst($1); };
 
-stringExpr: stringTerm | stringTerm stringExpr { $$ = AST::list($1, $2); }
-stringTerm: string
-	  | variable
-	  | call
-	  | IDENTIFIER { $$ = AST::identifier($1); }
-	  | NUMBER { $$ = AST::integer($1); }
-	  ;
+call: IDENTIFIER '(' optarglist ')' { $$ = call($1, $3, scanner); }  
+    ;
 
-call: callname '(' optarglist ')' { $$ = call($1, $3, scanner); } ;
-callname: IDENTIFIER 
-| REPLACE { $$ = new std::string("replace"); }
-        ;
 
+     
 optarglist: /*empty*/ { $$ = AST::emptyExpr(); }
           | arglist 
 	  ;
@@ -153,7 +178,5 @@ arglist: stringExpr { $$ = AST::arg($1); }
 input: INPUT buffer NEWLINE { $$ = AST::input($2); } ;
 output: OUTPUT buffer NEWLINE { $$ = AST::output($2); } ;
 buffer: stringExpr { $$ = AST::fileBuffer($1); } ;
-
-
 
 %%

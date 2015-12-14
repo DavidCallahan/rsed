@@ -1,3 +1,4 @@
 skip to "/asx/"
-replace all "/TARGETS" "/BUCK"
+replace "/TARGETS" with "/BUCK" all
+
 
