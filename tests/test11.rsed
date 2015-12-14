@@ -1,0 +1,4 @@
+print "test 11a"
+print 'test 11b'
+print "test \"11c\""
+print 'test \'11d\''
