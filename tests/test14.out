@@ -1,0 +1,5 @@
+admarket/asx/common/test/NgramBenchmark.cpp,StraightForward,810.43,ns,1.23,M
+admarket/asx/common/test/NgramBenchmark.cpp,FastImpl,547.30,ns,1.83,M
+admarket/asx/common/test/NgramBenchmark.cpp,PrehashedFast,422.56,ns,2.37,M
+admarket/asx/common/test/NgramBenchmark.cpp,genHashNgram,161.87,ns,6.18,M
+admarket/asx/common/test/NgramBenchmark.cpp,genHashNgramNew,75.00,ns,13.33,M

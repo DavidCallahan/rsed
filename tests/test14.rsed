@@ -1,0 +1,30 @@
+#! ./rsed
+$SEP = "^==============================================================="
+skip past $SEP
+if "^(.*\S)\s+relative  time/iter  iters/s" then
+   $target = $1
+else
+   error "expected benchmark header"
+end
+skip past $SEP
+foreach to $SEP
+   columns 48 58 69
+   $name = trim($0)
+   $time = trim($2)
+   $rate = trim($3)
+   if $time =~ "([0-9.]+)(.*)?" then
+      $time = $1
+      $units = $2
+   else 
+      $units = "s"
+   end
+   if $rate =~ "([0-9.]+)(.*)?" then
+      $rate = $1
+      $scale = $2
+   else 
+      $scale = ""
+   end
+   print "$target,$name,$time,$units,$rate,$scale"
+   skip
+end
+
