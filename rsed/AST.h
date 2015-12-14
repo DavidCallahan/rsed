@@ -406,12 +406,11 @@ public:
 inline Statement *AST::output(Expression *buffer) { return new Output(buffer); }
 
 class Match : public Expression {
-  Expression *pattern;
   Expression *target;
-
+  Expression *pattern;
 public:
-  Match(Expression *pattern, Expression *target)
-      : pattern(pattern), target(target) {}
+  Match(Expression *target, Expression *pattern)
+      : target(target), pattern(pattern) {}
   ExprKind kind() const override { return MatchN; }
   Expression *getPattern() const { return pattern; }
   Expression *getTarget() const { return target; }
