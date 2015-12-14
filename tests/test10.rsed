@@ -1,0 +1,2 @@
+set $temp = "foo"
+print "temp = --$temp--$temp--$ENV1--"

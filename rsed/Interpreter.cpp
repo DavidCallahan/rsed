@@ -15,9 +15,12 @@
 #include "Interpreter.h"
 #include "LineBuffer.h"
 #include "RegEx.h"
+#include "BuiltinCalls.h"
+#include "EvalState.h"
 
 using std::vector;
 using std::string;
+using std::stringstream;
 extern int debug;
 
 enum ResultCode {
@@ -27,7 +30,7 @@ enum ResultCode {
 };
 enum MatchKind { NoMatchK, StopAtK, StopAfterK };
 
-class State {
+class State : public EvalState {
 
 public:
   bool firstLine = true;
@@ -37,10 +40,9 @@ public:
   bool matchColumns = true;
   vector<string> columns;
 
-  RegEx *regEx;
-  std::string inputLine;
-  std::string currentLine_;
-  std::string &getCurrentLine() {
+  string inputLine;
+  string currentLine_;
+  string &getCurrentLine() {
     if (firstLine) {
       nextLine();
     }
@@ -75,6 +77,7 @@ public:
       firstLine = false;
     }
   }
+  unsigned getLineno() const override { return inputBuffer->getLineno(); }
   LineBuffer *outputBuffer;
 
   ResultCode interpret(Statement *stmtList);
@@ -83,16 +86,12 @@ public:
   ResultCode interpret(IfStatement *ifstmt);
   ResultCode interpret(Set *set);
   ResultCode interpret(Columns *cols);
-  std::string eval(Expression *ast);
+  string eval(Expression *ast);
+  string expandVariables(string text);
   StringRef evalPattern(Expression *ast);
-  std::string evalCall(Call *);
+  string evalCall(Call *);
   // evaluate match control against current linke
   MatchKind matchPattern(AST &);
-
-  std::ostream &error() {
-    sawError = true;
-    return std::cerr << inputBuffer->getLineno() << ": ";
-  }
 };
 
 class ForeachControl {
@@ -109,10 +108,10 @@ public:
       : state(state), regIndex(-1), negate(false), matchKind(NoMatchK),
         hasCount(true), count(0), all(false) {}
   bool initialize(Control *c);
-  MatchKind eval(const std::string *line);
+  MatchKind eval(const string *line);
   void release() {
     if (regIndex >= 0) {
-      state->regEx->releasePattern(regIndex);
+      state->getRegEx()->releasePattern(regIndex);
       regIndex = -1;
     }
   }
@@ -120,7 +119,7 @@ public:
   ~ForeachControl() { release(); }
 };
 
-MatchKind ForeachControl::eval(const std::string *line) {
+MatchKind ForeachControl::eval(const string *line) {
   if (all) {
     return NoMatchK;
   }
@@ -130,7 +129,7 @@ MatchKind ForeachControl::eval(const std::string *line) {
     count -= 1;
   }
   if (regIndex >= 0) {
-    bool rc = state->regEx->match(regIndex, *line);
+    bool rc = state->getRegEx()->match(regIndex, *line);
     state->matchColumns = false;
     if (rc ^ negate) {
       return matchKind;
@@ -156,22 +155,22 @@ bool ForeachControl::initialize(Control *c) {
       p = ((NotExpr *)p)->getPattern();
     }
     StringRef pattern = state->evalPattern(p);
-    regIndex = state->regEx->setPattern(pattern);
+    regIndex = state->getRegEx()->setPattern(pattern);
   }
   return true;
 }
 
-std::string State::eval(Expression *e) { return evalPattern(e).getText(); }
+string State::eval(Expression *e) { return evalPattern(e).getText(); }
 
 // this expression is:
 StringRef State::evalPattern(Expression *ast) {
-  std::stringstream s;
+  stringstream s;
   unsigned flags = 0;
   ast->walkDown([&s, &flags, this](Expression *e) {
     switch (e->kind()) {
     case AST::StringConstN: {
       const auto &sc = ((StringConst *)e)->getConstant();
-      s << sc.getText();
+      s << expandVariables(sc.getText());
       flags |= sc.getFlags();
       break;
     }
@@ -206,13 +205,41 @@ StringRef State::evalPattern(Expression *ast) {
   return StringRef(s.str(), flags);
 }
 
+static std::regex variable("\\$[0-9a-zA-Z]+");
+
+string State::expandVariables(string text) {
+
+  const char *ctext = text.c_str();
+  size_t len = text.length();
+  auto vars_begin = std::cregex_iterator(ctext, ctext + len, variable);
+  auto vars_end = std::cregex_iterator();
+  if (vars_begin == vars_end) {
+    return text;
+  }
+
+  stringstream result;
+  const char *last = ctext;
+  for (std::cregex_iterator vars = vars_begin; vars != vars_end; ++vars) {
+    auto match = (*vars)[0];
+    const char *cvar = match.first;
+    result.write(last, cvar - last);
+
+    result << Symbol::findSymbol(string(cvar + 1, match.second - cvar - 1))
+                  ->getValue();
+
+    last = match.second;
+  }
+  result.write(last, len - (last - ctext));
+  return result.str();
+}
+
 ResultCode State::interpret(Statement *stmtList) {
   ResultCode rc = OK_S;
   stmtList->walk([this, &rc](Statement *stmt) {
     rc = interpretOne(stmt);
-    return (rc == OK_S ? AST::SkipChildrenW : AST::StopW);
+    return (rc == OK_S && !sawError ? AST::SkipChildrenW : AST::StopW);
   });
-  return rc;
+  return (sawError ? STOP_S : rc);
 }
 
 ResultCode State::interpret(Foreach *foreach) {
@@ -224,7 +251,7 @@ ResultCode State::interpret(Foreach *foreach) {
 
   auto b = foreach->getBody();
   for (;;) {
-    std::string *line = nullptr;
+    string *line = nullptr;
     if (fc.needsInput()) {
       if (getInputEof()) {
         break;
@@ -256,7 +283,7 @@ ResultCode State::interpret(IfStatement *ifstmt) {
   if (p->kind() == AST::MatchN) {
     auto m = (Match *)p;
     StringRef pattern = evalPattern(m->getPattern());
-    std::string target = eval(m->getTarget());
+    string target = eval(m->getTarget());
     rc = regEx->match(pattern, target);
     matchColumns = false;
   } else {
@@ -290,7 +317,7 @@ ResultCode State::interpretOne(Statement *stmt) {
   case AST::PrintN: {
     auto p = (Print *)stmt;
     LineBuffer *out = outputBuffer;
-    std::string value = eval(p->getText());
+    string value = eval(p->getText());
     if (auto b = p->getBuffer()) {
       out = LineBuffer::findOutputBuffer(eval(b));
     }
@@ -338,7 +365,7 @@ ResultCode State::interpret(Set *set) {
 }
 
 static bool getUnsigned(const string &str, unsigned *u) {
-  std::stringstream ss(str);
+  stringstream ss(str);
   ss >> *u;
   return !ss.fail();
 }
@@ -418,34 +445,26 @@ ResultCode State::interpret(Columns *cols) {
 }
 
 string State::evalCall(Call *c) {
-  assert(c->getCallId() == 0); // trim
   auto a = c->getArgs();
-  vector<string> args;
+  vector<StringRef> args;
   while (a) {
     assert(a->kind() == a->ArgN);
-    args.emplace_back(eval(((Arg *)a)->getValue()));
+    args.emplace_back(evalPattern(((Arg *)a)->getValue()));
     a = a->getNext();
   }
-  const std::string &delimiters = " \f\n\r\t\v";
-  std::stringstream ss;
-  for (auto &s : args) {
-    s.erase(s.find_last_not_of(delimiters) + 1);
-    s.erase(0, s.find_first_not_of(delimiters));
-    ss << s;
-  }
-  return ss.str();
+  return BuiltinCalls::evalCall(c->getCallId(), args, this);
 }
 
 void Interpreter::initialize() {
   state = new State;
   state->inputBuffer = makeInBuffer(&std::cin);
   state->outputBuffer = makeOutBuffer(&std::cout);
-  state->regEx = RegEx::regEx;
+  state->setRegEx(RegEx::regEx);
   Symbol::defineSymbol(makeSymbol("LINE", [this]() {
     auto line = state->inputBuffer->getLineno();
-    std::stringstream buf;
+    stringstream buf;
     buf << line;
-    std::string result = buf.str();
+    string result = buf.str();
     return result;
   }));
   Symbol::defineSymbol(
@@ -456,14 +475,14 @@ void Interpreter::initialize() {
     return state->inputLine;
   }));
   for (unsigned i = 0; i < 10; i++) {
-    std::stringstream nameBuffer;
+    stringstream nameBuffer;
     nameBuffer << i;
     Symbol::defineSymbol(
         makeSymbol(nameBuffer.str(), [this, i]() { return state->match(i); }));
   }
 }
 
-bool Interpreter::setInput(const std::string &fileName) {
+bool Interpreter::setInput(const string &fileName) {
   auto f = new std::ifstream(fileName);
   if (!f || !f->is_open()) {
     std::cerr << "unable to open: " << fileName << '\n';

@@ -10,7 +10,7 @@
 #include <iomanip>
 #include "RegEx.h"
 #include "AST.h"
-#include "BuiltinCalls.hpp"
+#include "BuiltinCalls.h"
 
 namespace {
 class Dumper {
@@ -36,6 +36,7 @@ void AST::dump() const {
     d.dump(0, (Statement *)this);
   } else {
     d.dumpExpr((Expression *)this);
+    std::cout << '\n';
   }
 }
 
