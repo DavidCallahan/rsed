@@ -22,7 +22,7 @@ typedef std::pair<unsigned, string> BuiltinName;
 vector<BuiltinName> builtins{
     {TRIM, "trim"}, {REPLACE, "substitue"}, {REPLACE, "sub"}, {SHELL, "shell"}};
 }
-
+// TODO -- length, substring
 namespace BuiltinCalls {
 
 bool getCallId(const string &name, unsigned *u) {

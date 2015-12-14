@@ -34,8 +34,8 @@ public:
     if (!car)
       return cdr;
     T *tail = car;
-    while(tail->next)
-      tail = (T*)tail->next;
+    while (tail->next)
+      tail = (T *)tail->next;
     tail->next = cdr;
     return car;
   }
@@ -84,7 +84,7 @@ public:
 
   // top expressions should not have MATCH or NOT
   static std::string checkTopExpression(Expression *pattern);
-  
+
   virtual bool isStatement() const = 0;
 
   enum StmtKind {
@@ -221,7 +221,7 @@ inline Statement *AST::replace(Expression *control, Expression *pattern,
 #ifndef IMPLICIT_FOREACH_COPY
   body = list<Statement>(body, new Copy());
 #endif
-  return foreach (control,body);
+  return foreach (control, body);
 }
 inline Statement *AST::replaceOne(Expression *pattern,
                                   Expression *replacement) {
@@ -421,6 +421,7 @@ inline Statement *AST::output(Expression *buffer) { return new Output(buffer); }
 class Match : public Expression {
   Expression *target;
   Expression *pattern;
+
 public:
   Match(Expression *target, Expression *pattern)
       : target(target), pattern(pattern) {}
@@ -610,5 +611,19 @@ AST::WalkResult Expression::walkDown(const ACTION &a) {
   }
   return ContinueW;
 }
+
+// TODO arithmetic ---  comparisons, booleans, (+ - * /)
+// TODO -- optimization pass to pull string cmoparison and regular expression
+//    compilation out of loops.
+// TODO -- add better error handlings by tagging operations with line numbers
+//    and reporting source script line (and maybe variable values mentioned in
+//    the line?)
+// TODO work in input/output. Add "tempfile() to support
+//        $temp = tempfile()
+//        output $temp
+//        ...
+//        input $temp
+//       don't worry about in-memory buffering
+// TODO add "columns .... in expr"
 
 #endif /* defined(__rsed__AST__) */

@@ -448,7 +448,12 @@ ResultCode State::interpret(Columns *cols) {
     // std::cout << (columns.size() -1) << " " << columns.back() << '\n';
     lastC = c;
   }
-  columns.push_back(current.substr(last));
+  if (last < current.length()) {
+    columns.push_back(current.substr(last));
+  }
+  else {
+    columns.push_back("");
+  } 
   return OK_S;
 }
 
