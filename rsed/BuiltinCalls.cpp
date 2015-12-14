@@ -13,13 +13,14 @@ using std::string;
 using std::vector;
 #include <sstream>
 #include <iostream>
+#include <cstdio>
+#include <memory>
 
 namespace {
-enum Builtins { TRIM = 0, REPLACE };
+enum Builtins { TRIM = 0, REPLACE, SHELL };
 typedef std::pair<unsigned, string> BuiltinName;
 vector<BuiltinName> builtins{
-    {TRIM, "trim"}, {REPLACE, "substitue"}, {REPLACE, "sub"},
-};
+    {TRIM, "trim"}, {REPLACE, "substitue"}, {REPLACE, "sub"}, {SHELL, "shell"}};
 }
 
 namespace BuiltinCalls {
@@ -33,6 +34,22 @@ bool getCallId(const string &name, unsigned *u) {
   }
   return false;
 }
+
+#if 0
+bool shell(string cmd, vector<string> * lines) {
+  std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
+  if (!pipe) return false;
+  char buffer[128];
+  std::string result = "";
+  std::ifstream input(pipe);
+  
+  while (!feof(pipe.get())) {
+    if (fgets(buffer, 128, pipe.get()) != NULL)
+      result += buffer;
+  }
+  return result;
+}
+#endif
 
 string evalCall(unsigned int id, const vector<StringRef> &args,
                 EvalState *state) {

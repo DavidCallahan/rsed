@@ -217,7 +217,11 @@ public:
 };
 inline Statement *AST::replace(Expression *control, Expression *pattern,
                                Expression *replacement) {
-  return foreach (control, new Replace(pattern, replacement));
+  Statement *body = new Replace(pattern, replacement);
+#ifndef IMPLICIT_FOREACH_COPY
+  body = list<Statement>(body, new Copy());
+#endif
+  return foreach (control,body);
 }
 inline Statement *AST::replaceOne(Expression *pattern,
                                   Expression *replacement) {

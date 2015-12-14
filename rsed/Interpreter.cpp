@@ -236,6 +236,8 @@ string State::expandVariables(string text) {
   return result.str();
 }
 
+/// interpret all statements on a list until an error
+/// is seen or som
 ResultCode State::interpret(Statement *stmtList) {
   ResultCode rc = OK_S;
   stmtList->walk([this, &rc](Statement *stmt) {
@@ -269,9 +271,12 @@ ResultCode State::interpret(Foreach *foreach) {
     if (rc == STOP_S) {
       return STOP_S;
     }
+#ifdef IMPLICIT_FOREACH_COPY
+    // should there be an implicit copy or no?
     if (rc != NEXT_S) {
       outputBuffer->append(getCurrentLine());
     }
+#endif
     nextLine();
     if (mk == StopAfterK) {
       break;
