@@ -9,7 +9,6 @@ public:
   Scanner() {}
   int init(const char *source);
   int yylex();
-  std::string *getString();
   bool sawError = false;
   std::ostream &error() {
     sawError = true;

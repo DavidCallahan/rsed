@@ -12,14 +12,9 @@ int Scanner::init(const char * source) {
     return in->is_open();
 }
 
-std::string * Scanner::getString() {
-    int len = YYLeng();
-    const char * text = YYText(); 
-    auto s = new std::string(text+1, len-2);
-    std::cout << "string: " << *s << "\n";
-    return s;
+static std::string * makeString(const char * text) {
+    return new std::string(text);
 }
-
 
 // invoked in grammar.tab.cpp
 int yylex(Scanner *scanner) { return scanner->yylex(); }
@@ -73,8 +68,8 @@ columns	    return COLUMNS;
 
 \n([ \t]*(#.*)?\n)* return NEWLINE;
 
-\"([^"]|\\\")*\"[rig]*  yylval.name = new std::string(yytext); return STRING;
-\'([^']|\\\')*\'[rig]*  yylval.name = new std::string(yytext); return STRING;
+\"([^"]|\\\")*\"[rig]*  yylval.name = makeString(yytext); return STRING;
+\'([^']|\\\')*\'[rig]*  yylval.name = makeString(yytext); return STRING;
 
 
 .           printf( "Unrecognized character: %s\n", yytext );

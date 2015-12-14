@@ -64,9 +64,10 @@ std::string asCLiteral(const std::string &s) {
 
 StringRef::StringRef(std::string *text) : flags(0) {
   auto len = text->length();
+  auto delim = text->at(0);
   for (; len > 2; len--) {
     auto c = text->at(len - 1);
-    if (c == '"') {
+    if (c == delim) {
       break;
     }
     switch (c) {
