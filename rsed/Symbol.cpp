@@ -9,11 +9,12 @@
 #include "Symbol.h"
 #include <unordered_map>
 #include <stdlib.h>
+using std::string;
 namespace {
-std::unordered_map<std::string, Symbol *> stringMap;
+std::unordered_map<string, Symbol *> stringMap;
 }
 
-Symbol *Symbol::findSymbol(const std::string &name) {
+Symbol *Symbol::findSymbol(const string &name) {
   auto p = stringMap.find(name);
   if (p != stringMap.end()) {
     return p->second;

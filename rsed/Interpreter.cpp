@@ -20,6 +20,7 @@
 
 using std::vector;
 using std::string;
+using std::stringstream;
 extern int debug;
 
 enum ResultCode {
@@ -39,9 +40,9 @@ public:
   bool matchColumns = true;
   vector<string> columns;
 
-  std::string inputLine;
-  std::string currentLine_;
-  std::string &getCurrentLine() {
+  string inputLine;
+  string currentLine_;
+  string &getCurrentLine() {
     if (firstLine) {
       nextLine();
     }
@@ -85,12 +86,12 @@ public:
   ResultCode interpret(IfStatement *ifstmt);
   ResultCode interpret(Set *set);
   ResultCode interpret(Columns *cols);
-  std::string eval(Expression *ast);
+  string eval(Expression *ast);
+  string expandVariables(string text);
   StringRef evalPattern(Expression *ast);
-  std::string evalCall(Call *);
+  string evalCall(Call *);
   // evaluate match control against current linke
   MatchKind matchPattern(AST &);
-
 };
 
 class ForeachControl {
@@ -107,7 +108,7 @@ public:
       : state(state), regIndex(-1), negate(false), matchKind(NoMatchK),
         hasCount(true), count(0), all(false) {}
   bool initialize(Control *c);
-  MatchKind eval(const std::string *line);
+  MatchKind eval(const string *line);
   void release() {
     if (regIndex >= 0) {
       state->getRegEx()->releasePattern(regIndex);
@@ -118,7 +119,7 @@ public:
   ~ForeachControl() { release(); }
 };
 
-MatchKind ForeachControl::eval(const std::string *line) {
+MatchKind ForeachControl::eval(const string *line) {
   if (all) {
     return NoMatchK;
   }
@@ -159,17 +160,17 @@ bool ForeachControl::initialize(Control *c) {
   return true;
 }
 
-std::string State::eval(Expression *e) { return evalPattern(e).getText(); }
+string State::eval(Expression *e) { return evalPattern(e).getText(); }
 
 // this expression is:
 StringRef State::evalPattern(Expression *ast) {
-  std::stringstream s;
+  stringstream s;
   unsigned flags = 0;
   ast->walkDown([&s, &flags, this](Expression *e) {
     switch (e->kind()) {
     case AST::StringConstN: {
       const auto &sc = ((StringConst *)e)->getConstant();
-      s << sc.getText();
+      s << expandVariables(sc.getText());
       flags |= sc.getFlags();
       break;
     }
@@ -204,6 +205,34 @@ StringRef State::evalPattern(Expression *ast) {
   return StringRef(s.str(), flags);
 }
 
+static std::regex variable("\\$[0-9a-zA-Z]+");
+
+string State::expandVariables(string text) {
+
+  const char *ctext = text.c_str();
+  size_t len = text.length();
+  auto vars_begin = std::cregex_iterator(ctext, ctext + len, variable);
+  auto vars_end = std::cregex_iterator();
+  if (vars_begin == vars_end) {
+    return text;
+  }
+
+  stringstream result;
+  const char *last = ctext;
+  for (std::cregex_iterator vars = vars_begin; vars != vars_end; ++vars) {
+    auto match = (*vars)[0];
+    const char *cvar = match.first;
+    result.write(last, cvar - last);
+
+    result << Symbol::findSymbol(string(cvar + 1, match.second - cvar - 1))
+                  ->getValue();
+
+    last = match.second;
+  }
+  result.write(last, len - (last - ctext));
+  return result.str();
+}
+
 ResultCode State::interpret(Statement *stmtList) {
   ResultCode rc = OK_S;
   stmtList->walk([this, &rc](Statement *stmt) {
@@ -222,7 +251,7 @@ ResultCode State::interpret(Foreach *foreach) {
 
   auto b = foreach->getBody();
   for (;;) {
-    std::string *line = nullptr;
+    string *line = nullptr;
     if (fc.needsInput()) {
       if (getInputEof()) {
         break;
@@ -254,7 +283,7 @@ ResultCode State::interpret(IfStatement *ifstmt) {
   if (p->kind() == AST::MatchN) {
     auto m = (Match *)p;
     StringRef pattern = evalPattern(m->getPattern());
-    std::string target = eval(m->getTarget());
+    string target = eval(m->getTarget());
     rc = regEx->match(pattern, target);
     matchColumns = false;
   } else {
@@ -288,7 +317,7 @@ ResultCode State::interpretOne(Statement *stmt) {
   case AST::PrintN: {
     auto p = (Print *)stmt;
     LineBuffer *out = outputBuffer;
-    std::string value = eval(p->getText());
+    string value = eval(p->getText());
     if (auto b = p->getBuffer()) {
       out = LineBuffer::findOutputBuffer(eval(b));
     }
@@ -336,7 +365,7 @@ ResultCode State::interpret(Set *set) {
 }
 
 static bool getUnsigned(const string &str, unsigned *u) {
-  std::stringstream ss(str);
+  stringstream ss(str);
   ss >> *u;
   return !ss.fail();
 }
@@ -433,9 +462,9 @@ void Interpreter::initialize() {
   state->setRegEx(RegEx::regEx);
   Symbol::defineSymbol(makeSymbol("LINE", [this]() {
     auto line = state->inputBuffer->getLineno();
-    std::stringstream buf;
+    stringstream buf;
     buf << line;
-    std::string result = buf.str();
+    string result = buf.str();
     return result;
   }));
   Symbol::defineSymbol(
@@ -446,14 +475,14 @@ void Interpreter::initialize() {
     return state->inputLine;
   }));
   for (unsigned i = 0; i < 10; i++) {
-    std::stringstream nameBuffer;
+    stringstream nameBuffer;
     nameBuffer << i;
     Symbol::defineSymbol(
         makeSymbol(nameBuffer.str(), [this, i]() { return state->match(i); }));
   }
 }
 
-bool Interpreter::setInput(const std::string &fileName) {
+bool Interpreter::setInput(const string &fileName) {
   auto f = new std::ifstream(fileName);
   if (!f || !f->is_open()) {
     std::cerr << "unable to open: " << fileName << '\n';
