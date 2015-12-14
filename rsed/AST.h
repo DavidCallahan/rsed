@@ -59,7 +59,7 @@ public:
   static Statement *error(Expression *text);
   static Statement *input(Expression *buffer);
   static Statement *output(Expression *buffer);
-  static Statement *columns(Expression *cols);
+  static Statement *columns(Expression *cols, Expression *inExpr);
 
   static Expression *limit(int number, Expression *control);
   static Expression *limit(int number);
@@ -255,13 +255,18 @@ inline Statement *AST::skip() { return new Skip(); }
 
 class Columns : public Statement {
   Expression *columns;
+  Expression *inExpr;
 
 public:
-  Columns(Expression *columns) : columns(columns) {}
+  Columns(Expression *columns, Expression *inExpr)
+      : columns(columns), inExpr(inExpr) {}
   StmtKind kind() const override { return ColumnsN; }
   Expression *getColumns() const { return columns; }
+  Expression *getInExpr() const { return inExpr; }
 };
-inline Statement *AST::columns(Expression *cols) { return new Columns(cols); }
+inline Statement *AST::columns(Expression *cols, Expression *inExpr) {
+  return new Columns(cols,inExpr);
+}
 
 class Pattern : public Expression {
   StringRef pattern;

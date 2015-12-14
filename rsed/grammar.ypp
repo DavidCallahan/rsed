@@ -64,7 +64,7 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
 %type <stmt> stmtlist stmt foreach copy skip replace print columns
 %type <expr> control toPast stringExpr pattern arglist optarglist call 
 %type <stmt> ifstmt elsestmt set input output errorStmt 
-%type <expr> stringTerm string variable optControl
+%type <expr> stringTerm string variable optControl optIn
 %type <expr>  predicate buffer optBuffer patternString topExpr
 %start script
 
@@ -130,8 +130,10 @@ print: PRINT topExpr optBuffer NEWLINE { $$ = AST::print($2,$3); };
 errorStmt: ERROR topExpr NEWLINE { $$ = AST::error($2); };
 optBuffer: /* empty */ { $$ = AST::emptyExpr(); } | TO buffer { $$ = $2; };
 
-columns: COLUMNS stringExpr NEWLINE { $$ = AST::columns($2); } ;
-
+columns: COLUMNS stringExpr optIn NEWLINE { $$ = AST::columns($2,$3); } ;
+optIn: /* empty */ { $$ = AST::emptyExpr(); }
+     | IN topExpr  { $$ = $2; }
+     ;
 
 predicate: patternString;
 pattern: patternString { $$ = $1; checkPattern($1,scanner); };

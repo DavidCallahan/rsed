@@ -125,6 +125,10 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     indent(depth);
     OS << "columns ";
     dumpExpr(c->getColumns());
+    if (c->getInExpr()) {
+      OS << " in " ;
+      dumpExpr(c->getInExpr());
+    }
     OS << '\n';
     break;
   }

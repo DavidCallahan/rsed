@@ -439,7 +439,8 @@ ResultCode State::interpret(Columns *cols) {
   }
 
   unsigned lastC = 0;
-  auto &current = getCurrentLine();
+  string inExpr = (cols->getInExpr() ? eval(cols->getInExpr()) : string(""));
+  auto &current = (cols->getInExpr() ? inExpr : getCurrentLine());
   for (auto c : nums) {
     if (c > current.length()) {
       c = (unsigned)current.length();

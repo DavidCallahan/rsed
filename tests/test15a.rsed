@@ -1,0 +1,5 @@
+$temp = "0123456789abcde"
+columns 10 20 in $temp "f"
+print $0
+print $1
+print $2
