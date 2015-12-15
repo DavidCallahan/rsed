@@ -314,7 +314,6 @@ inline Expression *AST::variable(std::string *var) {
   return v;
 }
 
-
 class StringConst : public Expression {
   StringRef constant;
 
@@ -365,9 +364,9 @@ public:
   static StmtKind typeKind() { return PrintN; }
   StmtKind kind() const override { return typeKind(); }
   Expression *getText() const { return text; }
-  void setText(Expression *text) { this->text = text;}
+  void setText(Expression *text) { this->text = text; }
   Expression *getBuffer() const { return buffer; }
-  void setBuffer(Expression * buffer) { this->buffer = buffer; }
+  void setBuffer(Expression *buffer) { this->buffer = buffer; }
 };
 inline Statement *AST::print(Expression *text, Expression *buffer) {
   return new Print(text, buffer);
@@ -381,7 +380,7 @@ public:
   static StmtKind typeKind() { return ErrorN; }
   StmtKind kind() const override { return typeKind(); }
   Expression *getText() const { return text; }
-  void setText(Expression *text) { this->text = text;}
+  void setText(Expression *text) { this->text = text; }
 };
 inline Statement *AST::error(Expression *text) { return new Error(text); }
 
@@ -394,7 +393,7 @@ public:
   Buffer(std::string *bufferName) : fileName(nullptr), bufferName(bufferName) {}
   ExprKind kind() const override { return BufferN; }
   Expression *getFileName() const { return fileName; }
-  void setFileName(Expression* fileName) { this->fileName =fileName; }
+  void setFileName(Expression *fileName) { this->fileName = fileName; }
   const std::string &getBufferName() const { return *bufferName; }
   bool isFile() const { return getFileName(); }
 };
@@ -431,18 +430,18 @@ class RegEx;
 class Match : public Expression {
   Expression *target;
   Expression *pattern;
-  RegEx * regEx = nullptr;
+  RegEx *regEx = nullptr;
+
 public:
   Match(Expression *target, Expression *pattern)
       : target(target), pattern(pattern) {}
   ExprKind kind() const override { return MatchN; }
-  Expression *getPattern() const { return pattern;}
+  Expression *getPattern() const { return pattern; }
   void setPattern(Expression *pattern) { this->pattern = pattern; }
   Expression *getTarget() const { return target; }
-  void setTarget(Expression * target) { this->target = target; }
-  RegEx * getRegEx() const { return regEx; }
-  void setRegEx(RegEx * regEx) { this->regEx = regEx; }
-  
+  void setTarget(Expression *target) { this->target = target; }
+  RegEx *getRegEx() const { return regEx; }
+  void setRegEx(RegEx *regEx) { this->regEx = regEx; }
 };
 inline Expression *AST::match(Expression *pattern, Expression *target) {
   return new Match(pattern, target);
@@ -469,7 +468,7 @@ public:
       : name(name), args(args), callId(callId) {}
   ExprKind kind() const override { return CallN; }
   Expression *getArgs() const { return args; }
-  void setArgs(Expression * args) { this->args = args; }
+  void setArgs(Expression *args) { this->args = args; }
   unsigned getCallId() const { return callId; }
   const std::string &getName() const { return name; }
   void setCallId(unsigned callId) { this->callId = callId; }

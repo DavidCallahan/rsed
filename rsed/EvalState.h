@@ -15,7 +15,7 @@ class EvalState {
 protected:
   bool sawError = false;
   RegEx *regEx = nullptr;
-  
+
 public:
   std::ostream &error() {
     sawError = true;
@@ -23,7 +23,7 @@ public:
   }
   virtual unsigned getLineno() const = 0;
   RegEx *getRegEx() const { return regEx; }
-  void setRegEx(RegEx * regEx) { this->regEx = regEx; }
+  void setRegEx(RegEx *regEx) { this->regEx = regEx; }
 };
 
 #endif /* EvalState_h */

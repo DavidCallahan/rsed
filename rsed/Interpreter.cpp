@@ -437,10 +437,9 @@ ResultCode State::interpret(Columns *cols) {
   }
   if (last < current.length()) {
     columns.push_back(current.substr(last));
-  }
-  else {
+  } else {
     columns.push_back("");
-  } 
+  }
   return OK_S;
 }
 

@@ -8,7 +8,6 @@
 
 // TODO -- compiler suitable regular expressions
 
-
 #include <gflags/gflags.h>
 #include "Optimize.h"
 #include "AST.h"
@@ -157,7 +156,7 @@ HoistInfo Optimizer::checkHoist(Expression *expr) {
   }
   auto N = terms.size();
   size_t first = N;
-  Expression * last = nullptr;
+  Expression *last = nullptr;
   for (auto i = terms.size(); i > 0;) {
     i -= 1;
     if (::isInvariant(hterms[i])) {
@@ -168,36 +167,36 @@ HoistInfo Optimizer::checkHoist(Expression *expr) {
     }
     if (first != N) {
       // i+1..first inclusive are all invariant....
-      Expression * cur = terms[i+1];
+      Expression *cur = terms[i + 1];
       if (i + 1 != first || shouldHoist(hterms[first])) {
-          // truncate the list at 'first'
-          terms[first]->setNext(nullptr);
-          cur = hoist(cur);
+        // truncate the list at 'first'
+        terms[first]->setNext(nullptr);
+        cur = hoist(cur);
       }
-      last = AST::list(cur,last);
+      last = AST::list(cur, last);
       first = N;
     }
     last = AST::list(terms[i], last);
   }
-  if (first == N-1) {
+  if (first == N - 1) {
     // entire expression is invariant
-    return HoistInfo(true,N+1);
+    return HoistInfo(true, N + 1);
   }
   if (first != N) {
     // i+1..first inclusive are all invariant....
-    Expression * cur = terms[0];
+    Expression *cur = terms[0];
     if (1 != first || shouldHoist(hterms[first])) {
       // truncate the list at 'first'
       terms[first]->setNext(nullptr);
       cur = hoist(cur);
     }
-    last = AST::list(cur,last);
+    last = AST::list(cur, last);
   }
   // what do we do here? I guesss we have
   // to move change how this is handled
   //   --maybe add a wrapper Concat node
   assert("not yet finished");
-  return HoistInfo(false,0);
+  return HoistInfo(false, 0);
 }
 
 HoistInfo Optimizer::checkHoistTerm(Expression *expr) {
@@ -258,6 +257,4 @@ HoistInfo Optimizer::checkHoistTerm(Expression *expr) {
   return HoistInfo(false, 0);
 }
 
-Expression *Optimizer::hoist(Expression *expr) {
-  return expr;
-}
+Expression *Optimizer::hoist(Expression *expr) { return expr; }

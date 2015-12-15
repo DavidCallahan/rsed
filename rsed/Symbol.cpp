@@ -39,7 +39,7 @@ void Symbol::defineSymbol(Symbol *sym) {
 }
 
 Symbol *Symbol::newTempSymbol() {
-  for(;;) {
+  for (;;) {
     std::stringstream buffer;
     buffer << "temp" << nextTemp++;
     string name = buffer.str();

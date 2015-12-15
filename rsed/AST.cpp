@@ -126,7 +126,7 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     OS << "columns ";
     dumpExpr(c->getColumns());
     if (c->getInExpr()) {
-      OS << " in " ;
+      OS << " in ";
       dumpExpr(c->getInExpr());
     }
     OS << '\n';
@@ -295,7 +295,7 @@ std::string AST::checkPattern(Expression *pattern) {
     if (e->kind() == e->MatchN) {
       msg = "invalid =~ in expression";
       return StopW;
-    } 
+    }
     return ContinueW;
   });
   return msg;

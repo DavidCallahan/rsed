@@ -93,21 +93,22 @@ string evalCall(unsigned int id, const vector<StringRef> &args,
     ss << (args.size() > 0 ? args.front().getText().length() : 0);
     break;
   }
-    case JOIN: {
-      if (args.size() < 2) {
-        break;
-      }
-      auto sep = args[0].getText();
-      auto output = args[1].getText();
-      auto size = output.length();
-      ss << output;
-      
-      for (auto i = 2; i < args.size(); i++) {
-        if (size > 0) ss << sep;
-        ss << args[i].getText();
-        size += args[i].getText().length();
-      }
+  case JOIN: {
+    if (args.size() < 2) {
+      break;
     }
+    auto sep = args[0].getText();
+    auto output = args[1].getText();
+    auto size = output.length();
+    ss << output;
+
+    for (auto i = 2; i < args.size(); i++) {
+      if (size > 0)
+        ss << sep;
+      ss << args[i].getText();
+      size += args[i].getText().length();
+    }
+  }
   }
   return ss.str();
 }
