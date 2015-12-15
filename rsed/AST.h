@@ -102,14 +102,12 @@ public:
   };
   enum ExprKind {
     ControlN,
-    PatternN,
     NotN,
     VariableN,
     IntegerN,
     BufferN,
     MatchN,
     StringConstN,
-    IdentifierN,
     CallN,
     ArgN,
   };
@@ -123,6 +121,7 @@ public:
   virtual StmtKind kind() const = 0;
   Statement() {}
   Statement *getNext() const { return (Statement *)next; }
+  void setNext(Statement *next) { this->next = next; }
   void dumpOne();
 
   template <typename ACTION> WalkResult walk(const ACTION &a);
@@ -134,6 +133,7 @@ public:
   bool isStatement() const override { return false; }
   virtual ExprKind kind() const = 0;
   Expression *getNext() const { return (Expression *)next; }
+  void setNext(Expression *next) { this->next = next; }
 
   template <typename ACTION> WalkResult walkDown(const ACTION &a);
   template <typename ACTION> WalkResult walkUp(const ACTION &a);
@@ -146,10 +146,13 @@ class Foreach : public Statement {
 public:
   Foreach(Expression *control, Statement *body)
       : control(control), body(body) {}
-  StmtKind kind() const override { return ForeachN; }
+  static StmtKind typeKind() { return ForeachN; }
+  StmtKind kind() const override { return typeKind(); }
 
   Expression *getControl() const { return control; }
+  void setControl(Expression *control) { this->control = control; }
   Statement *getBody() const { return body; }
+  void setBody(Statement *body) { this->body = body; }
 };
 inline Statement *AST::foreach (Expression *control, Statement * body) {
   return new Foreach(control, body);
@@ -171,6 +174,7 @@ public:
   int getLimit() const { return limit; }
   StopKind getStopKind() const { return stopKind; }
   Expression *getPattern() const { return pattern; }
+  void setPattern(Expression *pattern) { this->pattern = pattern; }
 };
 inline Expression *AST::control(AST::StopKind stopKind, Expression *pattern) {
   return new Control(stopKind, pattern);
@@ -190,7 +194,8 @@ public:
 };
 class Copy : public CopySkip {
 public:
-  StmtKind kind() const override { return CopyN; }
+  static StmtKind typeKind() { return CopyN; }
+  StmtKind kind() const override { return typeKind(); }
 };
 inline Statement *AST::copy(Expression *control) {
   return foreach (control, new Copy());
@@ -198,7 +203,8 @@ inline Statement *AST::copy(Expression *control) {
 
 class Skip : public CopySkip {
 public:
-  StmtKind kind() const override { return SkipN; }
+  static StmtKind typeKind() { return SkipN; }
+  StmtKind kind() const override { return typeKind(); }
 };
 inline Statement *AST::skip(Expression *control) {
   return foreach (control, new Skip());
@@ -211,9 +217,14 @@ class Replace : public Statement {
 public:
   Replace(Expression *pattern, Expression *replacement)
       : pattern(pattern), replacement(replacement) {}
-  StmtKind kind() const override { return ReplaceN; }
+  static StmtKind typeKind() { return ReplaceN; }
+  StmtKind kind() const override { return typeKind(); }
   Expression *getPattern() const { return pattern; }
+  void setPattern(Expression *pattern) { this->pattern = pattern; }
   Expression *getReplacement() const { return replacement; }
+  void setReplacement(Expression *replacement) {
+    this->replacement = replacement;
+  }
 };
 inline Statement *AST::replace(Expression *control, Expression *pattern,
                                Expression *replacement) {
@@ -229,17 +240,21 @@ inline Statement *AST::replaceOne(Expression *pattern,
 }
 
 class IfStatement : public Statement {
-  Expression *pattern;
+  Expression *pattern; // TODO rename predicate
   Statement *thenStmts;
   Statement *elseStmts;
 
 public:
   IfStatement(Expression *pattern, Statement *thenStmts, Statement *elseStmts)
       : pattern(pattern), thenStmts(thenStmts), elseStmts(elseStmts) {}
-  StmtKind kind() const override { return IfStmtN; }
+  static StmtKind typeKind() { return IfStmtN; }
+  StmtKind kind() const override { return typeKind(); }
   Expression *getPattern() const { return pattern; }
+  void setPattern(Expression *pattern) { this->pattern = pattern; }
   Statement *getThenStmts() const { return thenStmts; }
+  void setThenStmts(Statement *thenStmts) { this->thenStmts = thenStmts; }
   Statement *getElseStmts() const { return elseStmts; }
+  void setElseStmts(Statement *elseStmts) { this->elseStmts = elseStmts; }
 };
 inline Statement *AST::ifStmt(Expression *pattern, Statement *thenStmts,
                               Statement *elseStmts) {
@@ -260,24 +275,15 @@ class Columns : public Statement {
 public:
   Columns(Expression *columns, Expression *inExpr)
       : columns(columns), inExpr(inExpr) {}
-  StmtKind kind() const override { return ColumnsN; }
+  static StmtKind typeKind() { return ColumnsN; }
+  StmtKind kind() const override { return typeKind(); }
   Expression *getColumns() const { return columns; }
+  void setColumns(Expression *columns) { this->columns = columns; }
   Expression *getInExpr() const { return inExpr; }
+  void setInExpr(Expression *inExpr) { this->inExpr = inExpr; }
 };
 inline Statement *AST::columns(Expression *cols, Expression *inExpr) {
-  return new Columns(cols,inExpr);
-}
-
-class Pattern : public Expression {
-  StringRef pattern;
-
-public:
-  Pattern(std::string *pattern) : pattern(pattern) {}
-  ExprKind kind() const override { return PatternN; }
-  const StringRef &getPattern() const { return pattern; }
-};
-inline Expression *AST::pattern(std::string *pattern) {
-  return new Pattern(pattern);
+  return new Columns(cols, inExpr);
 }
 
 class NotExpr : public Expression {
@@ -287,6 +293,7 @@ public:
   NotExpr(Expression *pattern) : pattern(pattern) {}
   ExprKind kind() const override { return NotN; }
   Expression *getPattern() const { return pattern; }
+  void setPattern(Expression *pattern) { this->pattern = pattern; }
 };
 inline Expression *AST::notExpr(Expression *pattern) {
   return new NotExpr(pattern);
@@ -307,19 +314,6 @@ inline Expression *AST::variable(std::string *var) {
   return v;
 }
 
-class Identifier : public Expression {
-  std::string name;
-
-public:
-  Identifier(std::string name) : name(name) {}
-  ExprKind kind() const override { return IdentifierN; }
-  const std::string &getName() const { return name; }
-};
-inline Expression *AST::identifier(std::string *var) {
-  auto ident = new Identifier(*var);
-  delete var;
-  return ident;
-}
 
 class StringConst : public Expression {
   StringRef constant;
@@ -349,10 +343,12 @@ class Set : public Statement {
 
 public:
   Set(Symbol &symbol, Expression *rhs) : rhs(rhs), symbol(symbol) {}
-  StmtKind kind() const override { return SetN; }
+  static StmtKind typeKind() { return SetN; }
+  StmtKind kind() const override { return typeKind(); }
   const std::string &getName() const { return symbol.getName(); }
   Symbol &getSymbol() const { return symbol; }
   Expression *getRhs() const { return rhs; }
+  void setRhs(Expression *rhs) { this->rhs = rhs; }
 };
 inline Statement *AST::set(std::string *lhs, Expression *stringExpr) {
   auto s = new Set(*Symbol::findSymbol(*lhs), stringExpr);
@@ -366,9 +362,12 @@ class Print : public Statement {
 
 public:
   Print(Expression *text, Expression *buffer) : text(text), buffer(buffer) {}
-  StmtKind kind() const override { return PrintN; }
+  static StmtKind typeKind() { return PrintN; }
+  StmtKind kind() const override { return typeKind(); }
   Expression *getText() const { return text; }
+  void setText(Expression *text) { this->text = text;}
   Expression *getBuffer() const { return buffer; }
+  void setBuffer(Expression * buffer) { this->buffer = buffer; }
 };
 inline Statement *AST::print(Expression *text, Expression *buffer) {
   return new Print(text, buffer);
@@ -379,8 +378,10 @@ class Error : public Statement {
 
 public:
   Error(Expression *text) : text(text) {}
-  StmtKind kind() const override { return ErrorN; }
+  static StmtKind typeKind() { return ErrorN; }
+  StmtKind kind() const override { return typeKind(); }
   Expression *getText() const { return text; }
+  void setText(Expression *text) { this->text = text;}
 };
 inline Statement *AST::error(Expression *text) { return new Error(text); }
 
@@ -393,6 +394,7 @@ public:
   Buffer(std::string *bufferName) : fileName(nullptr), bufferName(bufferName) {}
   ExprKind kind() const override { return BufferN; }
   Expression *getFileName() const { return fileName; }
+  void setFileName(Expression* fileName) { this->fileName =fileName; }
   const std::string &getBufferName() const { return *bufferName; }
   bool isFile() const { return getFileName(); }
 };
@@ -408,7 +410,8 @@ class Input : public Statement {
 
 public:
   Input(Expression *buffer) : buffer(buffer) {}
-  StmtKind kind() const override { return InputN; }
+  static StmtKind typeKind() { return InputN; }
+  StmtKind kind() const override { return typeKind(); }
   Expression *getBuffer() const { return buffer; }
 };
 inline Statement *AST::input(Expression *buffer) { return new Input(buffer); }
@@ -418,21 +421,28 @@ class Output : public Statement {
 
 public:
   Output(Expression *buffer) : buffer(buffer) {}
-  StmtKind kind() const override { return OutputN; }
+  static StmtKind typeKind() { return OutputN; }
+  StmtKind kind() const override { return typeKind(); }
   Expression *getBuffer() const { return buffer; }
 };
 inline Statement *AST::output(Expression *buffer) { return new Output(buffer); }
 
+class RegEx;
 class Match : public Expression {
   Expression *target;
   Expression *pattern;
-
+  RegEx * regEx = nullptr;
 public:
   Match(Expression *target, Expression *pattern)
       : target(target), pattern(pattern) {}
   ExprKind kind() const override { return MatchN; }
-  Expression *getPattern() const { return pattern; }
+  Expression *getPattern() const { return pattern;}
+  void setPattern(Expression *pattern) { this->pattern = pattern; }
   Expression *getTarget() const { return target; }
+  void setTarget(Expression * target) { this->target = target; }
+  RegEx * getRegEx() const { return regEx; }
+  void setRegEx(RegEx * regEx) { this->regEx = regEx; }
+  
 };
 inline Expression *AST::match(Expression *pattern, Expression *target) {
   return new Match(pattern, target);
@@ -445,6 +455,7 @@ public:
   Arg(Expression *value) : value(value) {}
   ExprKind kind() const override { return ArgN; }
   Expression *getValue() const { return value; }
+  void setValue(Expression *value) { this->value = value; }
 };
 inline Expression *AST::arg(Expression *value) { return new Arg(value); }
 
@@ -458,6 +469,7 @@ public:
       : name(name), args(args), callId(callId) {}
   ExprKind kind() const override { return CallN; }
   Expression *getArgs() const { return args; }
+  void setArgs(Expression * args) { this->args = args; }
   unsigned getCallId() const { return callId; }
   const std::string &getName() const { return name; }
   void setCallId(unsigned callId) { this->callId = callId; }
@@ -615,6 +627,10 @@ AST::WalkResult Expression::walkDown(const ACTION &a) {
     }
   }
   return ContinueW;
+}
+
+template <typename T> T *isa(Statement *stmt) {
+  return (stmt->kind() == T::typeKind() ? (T *)stmt : nullptr);
 }
 
 // TODO arithmetic ---  comparisons, booleans, (+ - * /)

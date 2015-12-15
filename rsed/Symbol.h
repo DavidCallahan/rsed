@@ -20,8 +20,10 @@ public:
   virtual const std::string getValue() const = 0;
   virtual void setValue(const std::string &v) = 0;
   virtual ~Symbol() {}
+  virtual bool isDynamic() const { return false; }
 
   static Symbol *findSymbol(const std::string &name);
+  static Symbol *newTempSymbol();
   static void defineSymbol(Symbol *sym);
 };
 
@@ -43,6 +45,7 @@ public:
       : Symbol(name), action(std::move(action)) {}
   const std::string getValue() const override { return action(); }
   void setValue(const std::string &v) override {}
+  virtual bool isDynamic() const override { return true; }
   ~DynamicSymbol() {}
 };
 template <typename Action>

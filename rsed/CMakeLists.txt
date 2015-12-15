@@ -10,17 +10,17 @@ SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -I${CMAKE_CURRENT_SOURCE_DIR} -std=c++
 SET( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++" )
 
 set (headers
-AST.h		LineBuffer.h	RegEx.h		StringRef.h	rsed.h
-Interpreter.h	Parser.h	Scanner.h	Symbol.h	BuiltinCalls.h
-EvalState.h
+AST.h		Interpreter.h	Parser.h	StringRef.h
+BuiltinCalls.h	LineBuffer.h	RegEx.h		Symbol.h
+EvalState.h	Optimize.h	Scanner.h	rsed.h
 )
 
 add_executable(rsed
-AST.cpp			Parser.cpp		grammar.tab.cpp
-BuiltinCalls.cpp	RegEx.cpp		main.cpp
-Interpreter.cpp		StringRef.cpp		scanner.cpp
-LineBuffer.cpp		Symbol.cpp
-${FLEX_RSED_OUTPUTS} ${BISON_RSEDOUTPUTS}
+AST.cpp			Optimize.cpp		Symbol.cpp
+BuiltinCalls.cpp	Parser.cpp		main.cpp
+Interpreter.cpp		RegEx.cpp
+LineBuffer.cpp		StringRef.cpp
+${FLEX_RSED_OUTPUTS} ${BISON_RSED_OUTPUTS}
 ${headers}
 		     )
 # )

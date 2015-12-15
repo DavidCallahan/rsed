@@ -177,11 +177,13 @@ void Dumper::dumpExpr(const Expression *node) {
   }
   for (;;) {
     switch (node->kind()) {
+#if 0
     case AST::PatternN: {
       auto p = static_cast<const Pattern *>(node);
       OS << p->getPattern();
       break;
     }
+#endif
     case AST::ControlN: {
       auto c = static_cast<const Control *>(node);
       if (c->hasLimit()) {
@@ -211,10 +213,6 @@ void Dumper::dumpExpr(const Expression *node) {
     }
     case AST::VariableN: {
       OS << '$' << static_cast<const Variable *>(node)->getName();
-      break;
-    }
-    case AST::IdentifierN: {
-      OS << static_cast<const Identifier *>(node)->getName();
       break;
     }
     case AST::MatchN: {

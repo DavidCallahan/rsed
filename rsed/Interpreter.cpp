@@ -177,15 +177,6 @@ StringRef State::evalPattern(Expression *ast) {
     case AST::VariableN:
       s << ((Variable *)e)->getSymbol().getValue();
       break;
-    case AST::IdentifierN:
-      if (s.tellg()) {
-        s << ' ';
-      }
-      s << ((Identifier *)e)->getName();
-      if (e->getNext()) {
-        s << ' ';
-      }
-      break;
     case AST::IntegerN:
       s << ((Integer *)e)->getValue();
       break;
@@ -194,7 +185,6 @@ StringRef State::evalPattern(Expression *ast) {
       break;
     case AST::BufferN:
     case AST::ControlN:
-    case AST::PatternN:
     case AST::NotN:
     case AST::MatchN:
     case AST::ArgN:
@@ -400,9 +390,6 @@ ResultCode State::interpret(Columns *cols) {
     case AST::VariableN:
       process(((Variable *)e)->getSymbol().getValue());
       break;
-    case AST::IdentifierN:
-      process(((Identifier *)e)->getName());
-      break;
     case AST::IntegerN: {
       auto u = ((Integer *)e)->getValue();
       if (u < 0) {
@@ -418,7 +405,6 @@ ResultCode State::interpret(Columns *cols) {
     case AST::ArgN:
     case AST::BufferN:
     case AST::ControlN:
-    case AST::PatternN:
     case AST::NotN:
     case AST::MatchN:
       assert(!"invalid expresion in pattern");

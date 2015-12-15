@@ -14,6 +14,7 @@
 #include "RegEx.h"
 #include "Interpreter.h"
 #include "gflags/gflags.h"
+#include "Optimize.h"
 
 int debug;
 extern int yydebug;
@@ -58,6 +59,7 @@ int main(int argc, char *argv[]) {
   if (dump) {
     ast->dump();
   }
+  ast = Optimize::optimize(ast);
   if (input != "") {
     bool ok = interp.setInput(input);
     if (!ok) {
