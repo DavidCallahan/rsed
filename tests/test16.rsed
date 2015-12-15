@@ -1,0 +1,5 @@
+$foo = "foo bar"
+print length($foo)
+print length("foo" "bar")
+print length()
+print length("")

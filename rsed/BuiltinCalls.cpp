@@ -17,10 +17,13 @@ using std::vector;
 #include <memory>
 
 namespace {
-enum Builtins { TRIM = 0, REPLACE, SHELL };
+enum Builtins { TRIM = 0, REPLACE, SHELL, LENGTH };
 typedef std::pair<unsigned, string> BuiltinName;
-vector<BuiltinName> builtins{
-    {TRIM, "trim"}, {REPLACE, "substitue"}, {REPLACE, "sub"}, {SHELL, "shell"}};
+vector<BuiltinName> builtins{{LENGTH, "length"},
+                             {TRIM, "trim"},
+                             {REPLACE, "substitue"},
+                             {REPLACE, "sub"},
+                             {SHELL, "shell"}};
 }
 // TODO -- length, substring
 namespace BuiltinCalls {
@@ -54,7 +57,8 @@ bool shell(string cmd, vector<string> * lines) {
 string evalCall(unsigned int id, const vector<StringRef> &args,
                 EvalState *state) {
   std::stringstream ss;
-  if (id == TRIM) {
+  switch (id) {
+  case TRIM: {
     const std::string &delimiters = " \f\n\r\t\v";
     for (auto &sr : args) {
       string s = sr.getText();
@@ -62,7 +66,9 @@ string evalCall(unsigned int id, const vector<StringRef> &args,
       s.erase(0, s.find_first_not_of(delimiters));
       ss << s;
     }
-  } else if (id == REPLACE) {
+    break;
+  }
+  case REPLACE: {
     if (args.size() < 3) {
       state->error() << "Two few arguments to replace()\n";
       return "";
@@ -80,6 +86,12 @@ string evalCall(unsigned int id, const vector<StringRef> &args,
       ss << rs;
     }
     regEx->releasePattern(r);
+    break;
+  }
+  case LENGTH: {
+    ss << (args.size() > 0 ? args.front().getText().length() : 0);
+    break;
+  }
   }
   return ss.str();
 }
