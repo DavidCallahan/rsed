@@ -1,0 +1,6 @@
+$start = ""
+print join(",", "a", "b")
+print join(",", $start, "c")
+print join(",", "a")
+print join(",")
+print join()

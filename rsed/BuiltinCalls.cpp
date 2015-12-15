@@ -17,12 +17,13 @@ using std::vector;
 #include <memory>
 
 namespace {
-enum Builtins { TRIM = 0, REPLACE, SHELL, LENGTH };
+enum Builtins { TRIM = 0, REPLACE, SHELL, LENGTH, JOIN };
 typedef std::pair<unsigned, string> BuiltinName;
 vector<BuiltinName> builtins{{LENGTH, "length"},
                              {TRIM, "trim"},
                              {REPLACE, "substitue"},
                              {REPLACE, "sub"},
+                             {JOIN, "join"},
                              {SHELL, "shell"}};
 }
 // TODO -- length, substring
@@ -92,6 +93,21 @@ string evalCall(unsigned int id, const vector<StringRef> &args,
     ss << (args.size() > 0 ? args.front().getText().length() : 0);
     break;
   }
+    case JOIN: {
+      if (args.size() < 2) {
+        break;
+      }
+      auto sep = args[0].getText();
+      auto output = args[1].getText();
+      auto size = output.length();
+      ss << output;
+      
+      for (auto i = 2; i < args.size(); i++) {
+        if (size > 0) ss << sep;
+        ss << args[i].getText();
+        size += args[i].getText().length();
+      }
+    }
   }
   return ss.str();
 }
