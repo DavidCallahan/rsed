@@ -20,6 +20,7 @@ class AST {
 protected:
   AST *next;
   int id;
+  int sourceLine;
   static int next_id;
 
 public:
@@ -28,7 +29,9 @@ public:
   int getId() const { return id; }
   enum StopKind { StopAfter, StopAt };
 
-  AST(AST *next = nullptr) : next(next), id(++next_id) {}
+  AST(AST *next, int sourceLine = 0)
+      : next(next), id(++next_id), sourceLine(sourceLine) {}
+  AST(int sourceLine = 0) : AST(nullptr, sourceLine) {}
 
   template <typename T> static T *list(T *car, T *cdr) {
     if (!car)
@@ -40,17 +43,21 @@ public:
     return car;
   }
 
-  static Statement *replace(std::string *pattern, std::string *replaement);
+#if 0
+  static Statement *replace(std::string *pattern, std::string *replaement,
+                            int sourceLine = 0);
+#endif
   static inline Statement *emptyStmt() { return nullptr; }
   static inline Expression *emptyExpr() { return nullptr; }
 
-  static Statement *foreach (Expression *control, Statement * body);
-  static Statement *copy(Expression *control);
-  static Statement *skip(Expression *control);
+  static Statement *foreach (Expression *control, Statement * body,
+                             int sourceLine);
+  static Statement *copy(Expression *control, int sourceLine = 0);
+  static Statement *skip(Expression *control, int sourceLine = 0);
   static Statement *skip();
   static Statement *skipOne(Expression *pattern);
   static Statement *replace(Expression *control, Expression *pattern,
-                            Expression *replacement);
+                            Expression *replacement, int sourceLine = 0);
   static Statement *replaceOne(Expression *pattern, Expression *replacement);
   static Statement *ifStmt(Expression *pattern, Statement *thenStmts,
                            Statement *elseStmts);
@@ -110,16 +117,37 @@ public:
     StringConstN,
     CallN,
     ArgN,
+    BinaryN,
   };
-
+  enum Operators {
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+    NEG,
+    MATCH,
+    REPLACE,
+    CALL,
+    CONCAT,
+    LT,
+    LE,
+    EQ,
+    NE,
+    GE,
+    GT,
+    NOT,
+    AND,
+    OR
+  };
+  static const char *opName(Operators op);
   enum WalkResult { StopW, ContinueW, SkipChildrenW, SkipExpressionsW };
 };
 
 class Statement : public AST {
 public:
+  Statement(int sourceLine = 0) : AST(sourceLine) {}
   bool isStatement() const override { return true; }
   virtual StmtKind kind() const = 0;
-  Statement() {}
   Statement *getNext() const { return (Statement *)next; }
   void setNext(Statement *next) { this->next = next; }
   void dumpOne();
@@ -129,6 +157,9 @@ public:
 };
 
 class Expression : public AST {
+protected:
+  Expression(int sourceLine = 0) : AST(sourceLine) {}
+
 public:
   bool isStatement() const override { return false; }
   virtual ExprKind kind() const = 0;
@@ -139,24 +170,28 @@ public:
   template <typename ACTION> WalkResult walkUp(const ACTION &a);
 };
 
+class Binary : public Expression {
+public:
+  Operators op;
+  Expression *left;
+  Expression *right;
+
+  Binary(Operators op, Expression *left, Expression *right, int sourceLine)
+      : Expression(sourceLine), op(op), left(left), right(right) {}
+  ExprKind kind() const override { return BinaryN; }
+};
+typedef Binary *BinaryP;
 class Foreach : public Statement {
+public:
   Expression *control;
   Statement *body;
 
-public:
-  Foreach(Expression *control, Statement *body)
-      : control(control), body(body) {}
+  Foreach(Expression *control, Statement *body, int sourceLine)
+      : Statement(sourceLine), control(control), body(body) {}
   static StmtKind typeKind() { return ForeachN; }
   StmtKind kind() const override { return typeKind(); }
-
-  Expression *getControl() const { return control; }
-  void setControl(Expression *control) { this->control = control; }
-  Statement *getBody() const { return body; }
-  void setBody(Statement *body) { this->body = body; }
 };
-inline Statement *AST::foreach (Expression *control, Statement * body) {
-  return new Foreach(control, body);
-}
+typedef Foreach *ForeachP;
 
 class Control : public Expression {
   StopKind stopKind;
@@ -197,8 +232,8 @@ public:
   static StmtKind typeKind() { return CopyN; }
   StmtKind kind() const override { return typeKind(); }
 };
-inline Statement *AST::copy(Expression *control) {
-  return foreach (control, new Copy());
+inline Statement *AST::copy(Expression *control, int sourceLine) {
+  return new Foreach(control, new Copy(), sourceLine);
 }
 
 class Skip : public CopySkip {
@@ -206,8 +241,8 @@ public:
   static StmtKind typeKind() { return SkipN; }
   StmtKind kind() const override { return typeKind(); }
 };
-inline Statement *AST::skip(Expression *control) {
-  return foreach (control, new Skip());
+inline Statement *AST::skip(Expression *control, int sourceLine) {
+  return new Foreach(control, new Skip(), sourceLine);
 }
 
 class Replace : public Statement {
@@ -227,12 +262,12 @@ public:
   }
 };
 inline Statement *AST::replace(Expression *control, Expression *pattern,
-                               Expression *replacement) {
+                               Expression *replacement, int sourceLine) {
   Statement *body = new Replace(pattern, replacement);
 #ifndef IMPLICIT_FOREACH_COPY
   body = list<Statement>(body, new Copy());
 #endif
-  return foreach (control, body);
+  return new Foreach(control, body, sourceLine);
 }
 inline Statement *AST::replaceOne(Expression *pattern,
                                   Expression *replacement) {
@@ -491,7 +526,7 @@ template <typename ACTION> AST::WalkResult Statement::walk(const ACTION &a) {
 
     switch (s->kind()) {
     case ForeachN: {
-      rc = ((Foreach *)s)->getBody()->walk(a);
+      rc = ForeachP(s)->body->walk(a);
       if (rc == StopW)
         return rc;
       break;
@@ -618,6 +653,14 @@ AST::WalkResult Expression::walkDown(const ACTION &a) {
       break;
     case NotN:
       rc = ((NotExpr *)e)->getPattern()->walkDown(a);
+      if (rc != ContinueW)
+        return rc;
+      break;
+    case BinaryN:
+      rc = BinaryP(e)->left->walkDown(a);
+      if (rc != ContinueW)
+        return rc;
+      rc = BinaryP(e)->right->walkDown(a);
       if (rc != ContinueW)
         return rc;
       break;

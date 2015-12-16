@@ -1,0 +1,89 @@
+%{
+
+namespace {
+
+#define LINE scanner->lineno()
+#define BINARY(OP) new AST::binary(Expression::OP,$1,$3, LINE)
+#define UNARY(OP) new AST::binary(Expression::OP, nullptr, $2, LINE)
+
+}
+
+
+%}
+%error-verbose
+
+%union ParseResult {
+  Statement * stmt;
+  Expression * expr;
+  int token;
+  std::string * name;
+  int integer;
+}
+
+%token <name>  STRING VARIABLE IDENTIFIER
+%token <token> REPLACE WITH IN MATCH
+%token <integer> NUMBER 
+%token <token> LE EQ NE GE NOT AND OR 
+%type <expr> expr primitive string call optArgList argList
+%start expr
+
+
+%left REPLACE
+%left OR
+%left AND
+%left NOT
+%nonassoc '<' LE EQ NE GE '>'
+%nonassoc MATCH
+%left '+' '-'
+%left '*' '/'
+%left UMINUS
+%%
+
+expr:  expr '+' expr  { $$ = BINARY(ADD); }
+    |  expr '-' expr  { $$ = BINARY(SUB); } 
+    |  expr '*' expr  { $$ = BINARY(MUL); } 
+    |  expr '/' expr  { $$ = BINARY(DIV); } 
+    |  '-' expr  %prec UMINUS { $$ = UNARY(NEG); }
+    |  expr MATCH expr { $$ = BINARY(MATCH); }
+
+    |  expr '<' expr  { $$ = BINARY(LT); }
+    |  expr LE expr  { $$ = BINARY(LE); } 
+    |  expr NE expr { $$ = BINARY(NE); } 
+    |  expr EQ expr { $$ = BINARY(EQ);} 
+    |  expr GE expr { $$ = BINARY(GE); } 
+    |  expr '>' expr  { $$ = BINARY(GT); }
+
+    |  expr AND expr { $$ = BINARY(AND); }
+    |  expr OR expr { $$ = BINARY(OR); }
+    |  NOT expr { $$ = UNARY(NOT); }
+
+    |  REPLACE expr WITH expr IN expr %prec REPLACE
+       { 
+         auto m = new AST::binary(AST::MATCH, $6,$2, LINE);
+         $$ =  new AST::binary(AST::REPLACE,m, $2, LINE);
+       }
+    |  string 
+    ;
+
+
+string: primitive  {} 
+      | string primitive { $$ = new AST::binary(AST::CONCAT, $1,$2, LINE); } 
+      ;
+
+primitive: VARIABLE { } 
+       | NUMBER { } 
+       | STRING { } 
+       | call
+       | '(' expr ')' { $$ = $2; }
+       ;
+
+call: IDENTIFIER '(' optArgList ')' { $$ = call($1, $3); } 
+optArgList: /*empty*/ { $$ = AST::emptyExpr(); }
+          | argList 
+	  ;
+argList: expr { $$ = AST::arg($1); } 
+       | expr ',' argList { $$ = BINARY(COMMA); }
+       ;
+
+
+%%	 

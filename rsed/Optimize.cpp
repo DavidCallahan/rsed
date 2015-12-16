@@ -39,6 +39,9 @@ class Optimizer {
   Statement *firstInvariant, *lastInvariant;
   void hoistInvariants(Statement *body);
   Expression *hoistInvariants(Expression *expr);
+  void hoistInvariants(Expression**expr) {
+    *expr = hoistInvariants(*expr);
+  }
   HoistInfo checkHoist(Expression *expr);
   HoistInfo checkHoistTerm(Expression *expr);
   Expression *hoist(Expression *expr);
@@ -68,11 +71,10 @@ Statement *Optimizer::optimize(Statement *input) {
   }
   input->setNext(optimize(input->getNext()));
   if (auto foreach = isa<Foreach>(input)) {
-    auto newBody = optimize(foreach->getBody());
+    auto newBody = optimize(foreach->body);
     noteSetVariables(newBody);
     hoistInvariants(newBody);
-    foreach
-      ->setBody(newBody);
+    foreach->body = newBody;
     if (lastInvariant) {
       lastInvariant->setNext(foreach);
       return firstInvariant;
@@ -107,7 +109,7 @@ void Optimizer::hoistInvariants(Statement *body) {
   body->walk([this](Statement *stmt) {
     switch (stmt->kind()) {
     case AST::ForeachN:
-      HOIST(Foreach, Control);
+      hoistInvariants(& ForeachP(stmt)->control);
       break;
     case AST::ReplaceN:
       HOIST(Replace, Pattern);
@@ -202,6 +204,9 @@ HoistInfo Optimizer::checkHoist(Expression *expr) {
 HoistInfo Optimizer::checkHoistTerm(Expression *expr) {
 
   switch (expr->kind()) {
+  case AST::BinaryN:
+    assert("not yet implemented");
+    break;
   case AST::ControlN:
     APPLY(Control, Pattern, hoistInvariants, expr);
     break;

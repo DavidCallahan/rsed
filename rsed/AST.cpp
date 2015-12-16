@@ -11,6 +11,7 @@
 #include "RegEx.h"
 #include "AST.h"
 #include "BuiltinCalls.h"
+#include <assert.h>
 
 namespace {
 class Dumper {
@@ -58,7 +59,7 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     auto f = static_cast<const Foreach *>(node);
     indent(depth);
     OS << "foreach ";
-    if (auto c = f->getControl()) {
+    if (auto c = f->control) {
       dumpExpr(c);
     }
     OS << '\n';
@@ -150,7 +151,7 @@ void Dumper::dump(int depth, const Statement *node) {
     switch (node->kind()) {
     case AST::ForeachN: {
       auto f = static_cast<const Foreach *>(node);
-      dump(depth + 1, f->getBody());
+      dump(depth + 1, f->body);
       end(depth, node->getId());
       break;
     }
@@ -166,6 +167,46 @@ void Dumper::dump(int depth, const Statement *node) {
   } while (node);
 }
 
+const char *AST::opName(AST::Operators op) {
+  switch (op) {
+  case ADD:
+    return "+";
+  case NEG:
+  case SUB:
+    return "-";
+  case MUL:
+    return "*";
+  case DIV:
+    return "/";
+  case MATCH:
+    return "+";
+  case REPLACE:
+    return "replace";
+  case CALL:
+    return "call";
+  case CONCAT:
+    return " ";
+  case LT:
+    return "<";
+  case LE:
+    return "<=";
+  case EQ:
+    return "==";
+  case NE:
+    return "!=";
+  case GE:
+    return ">=";
+  case GT:
+    return ">";
+  case NOT:
+    return "not";
+  case AND:
+    return "and";
+  case OR:
+    return "or";
+  }
+}
+
 void Dumper::dumpExpr(const Expression *node) {
   if (!node) {
     OS << "<nullptr>";
@@ -175,86 +216,83 @@ void Dumper::dumpExpr(const Expression *node) {
   if (addParens) {
     OS << "( ";
   }
-  for (;;) {
-    switch (node->kind()) {
-#if 0
-    case AST::PatternN: {
-      auto p = static_cast<const Pattern *>(node);
-      OS << p->getPattern();
-      break;
+  switch (node->kind()) {
+  case AST::BinaryN: {
+    auto b = static_cast<const Binary *>(node);
+    if (b->left) {
+      dumpExpr(b->left);
     }
-#endif
-    case AST::ControlN: {
-      auto c = static_cast<const Control *>(node);
-      if (c->hasLimit()) {
-        OS << c->getLimit();
+    OS << b->opName(b->op);
+    dumpExpr(b->right);
+    break;
+  }
+  case AST::ControlN: {
+    auto c = static_cast<const Control *>(node);
+    if (c->hasLimit()) {
+      OS << c->getLimit();
+      OS << ' ';
+    }
+    if (auto p = c->getPattern()) {
+      OS << (c->getStopKind() == AST::StopAt ? "to " : "past ");
+      dumpExpr(p);
+    }
+    break;
+  }
+  case AST::NotN: {
+    auto n = static_cast<const NotExpr *>(node);
+    OS << "not ";
+    dumpExpr(n->getPattern());
+    break;
+  }
+  case AST::IntegerN: {
+    auto i = static_cast<const Integer *>(node);
+    OS << i->getValue();
+    break;
+  }
+  case AST::StringConstN: {
+    OS << static_cast<const StringConst *>(node)->getConstant();
+    break;
+  }
+  case AST::VariableN: {
+    OS << '$' << static_cast<const Variable *>(node)->getName();
+    break;
+  }
+  case AST::MatchN: {
+    auto m = static_cast<const Match *>(node);
+    dumpExpr(m->getTarget());
+    OS << " =~ ";
+    dumpExpr(m->getPattern());
+    break;
+  }
+  case AST::BufferN: {
+    auto b = static_cast<const Buffer *>(node);
+    if (auto f = b->getFileName()) {
+      dumpExpr(f);
+    } else {
+      OS << b->getBufferName();
+    }
+    break;
+  }
+  case AST::CallN: {
+    auto c = static_cast<const Call *>(node);
+    OS << c->getName() << '(';
+    for (auto a = c->getArgs(); a; a = a->getNext()) {
+      dumpExpr(a);
+      if (a->getNext()) {
         OS << ' ';
       }
-      if (auto p = c->getPattern()) {
-        OS << (c->getStopKind() == AST::StopAt ? "to " : "past ");
-        dumpExpr(p);
-      }
-      break;
     }
-    case AST::NotN: {
-      auto n = static_cast<const NotExpr *>(node);
-      OS << "not ";
-      dumpExpr(n->getPattern());
-      break;
+    OS << ')';
+    break;
+  }
+  case AST::ArgN: {
+    auto a = static_cast<const Arg *>(node);
+    dumpExpr(a->getValue());
+    if (a->getNext()) {
+      OS << ",";
     }
-    case AST::IntegerN: {
-      auto i = static_cast<const Integer *>(node);
-      OS << i->getValue();
-      break;
-    }
-    case AST::StringConstN: {
-      OS << static_cast<const StringConst *>(node)->getConstant();
-      break;
-    }
-    case AST::VariableN: {
-      OS << '$' << static_cast<const Variable *>(node)->getName();
-      break;
-    }
-    case AST::MatchN: {
-      auto m = static_cast<const Match *>(node);
-      dumpExpr(m->getTarget());
-      OS << " =~ ";
-      dumpExpr(m->getPattern());
-      break;
-    }
-    case AST::BufferN: {
-      auto b = static_cast<const Buffer *>(node);
-      if (auto f = b->getFileName()) {
-        dumpExpr(f);
-      } else {
-        OS << b->getBufferName();
-      }
-      break;
-    }
-    case AST::CallN: {
-      auto c = static_cast<const Call *>(node);
-      OS << c->getName() << '(';
-      dumpExpr(c->getArgs());
-      OS << ')';
-      break;
-    }
-    case AST::ArgN: {
-      auto a = static_cast<const Arg *>(node);
-      dumpExpr(a->getValue());
-      if (a->getNext()) {
-        OS << ",";
-      }
-      break;
-    }
-      //    default:
-      //      OS << "bad-expr-kind=" << int(node->kind());
-      //      return;
-    }
-    node = node->getNext();
-    if (!node) {
-      break;
-    }
-    OS << ' ';
+    break;
+  }
   }
   if (addParens) {
     OS << " )";

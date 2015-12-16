@@ -183,6 +183,9 @@ StringRef State::evalPattern(Expression *ast) {
     case AST::CallN:
       s << evalCall((Call *)e);
       break;
+    case AST::BinaryN:
+      assert(BinaryP(e)->op == Binary::CONCAT);
+      break;
     case AST::BufferN:
     case AST::ControlN:
     case AST::NotN:
@@ -238,13 +241,13 @@ ResultCode State::interpret(Statement *stmtList) {
 }
 
 ResultCode State::interpret(Foreach *foreach) {
-  auto c = (Control *)foreach->getControl();
+  auto c = (Control *)foreach->control;
   ForeachControl fc(this);
   if (!fc.initialize(c)) {
     return STOP_S;
   }
 
-  auto b = foreach->getBody();
+  auto b = foreach->body;
   for (;;) {
     string *line = nullptr;
     if (fc.needsInput()) {
@@ -401,6 +404,9 @@ ResultCode State::interpret(Columns *cols) {
     }
     case AST::CallN:
       process(evalCall((Call *)e));
+      break;
+    case AST::BinaryN:
+      assert(BinaryP(e)->op == Binary::CONCAT);
       break;
     case AST::ArgN:
     case AST::BufferN:

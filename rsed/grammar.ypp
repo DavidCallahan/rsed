@@ -43,6 +43,9 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
      scanner->error() << msg << "\n";
   }
 }
+#define LINE scanner->lineno()
+#define BINARY(OP,x,y) new Binary(Binary::OP,x,y, LINE)
+#define UNARY(OP,y) new Binary(Binary::OP, nullptr, y, LINE)
 
 %}
 
@@ -58,8 +61,8 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
 }
 
 %token <name>  STRING VARIABLE IDENTIFIER
-%token <token> FOREACH COPY SKIP TO PAST END NEWLINE REPLACE FOR
-%token <token> THEN ELSE IF NOT PRINT MATCH STYLE COLUMNS IN
+%token <token> FOREACH COPY SKIP TO PAST END NEWLINE REPLACE_TOK FOR
+%token <token> THEN ELSE IF NOT_TOK PRINT MATCH_TOK STYLE COLUMNS IN
 %token <integer> NUMBER INPUT OUTPUT ERROR ALL WITH
 %type <stmt> stmtlist stmt foreach copy skip replace print columns
 %type <expr> control toPast stringExpr pattern arglist optarglist call 
@@ -71,7 +74,7 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
 %parse-param {Statement ** parseTree}
 %parse-param {Scanner * scanner}
 %lex-param {Scanner * scanner}
-%nonassoc MATCH REPLACE
+%nonassoc MATCH_TOK REPLACE_TOK
 
 %%
 
@@ -88,7 +91,8 @@ stmt: foreach | copy | skip | replace | ifstmt
 
 optStyle: /* empty */ | STYLE IDENTIFIER NEWLINE { set_style($2, scanner); } ;
 
-foreach : FOREACH optControl NEWLINE stmtlist END NEWLINE  { $$ = AST::foreach($2, $4) ; }
+foreach : FOREACH optControl NEWLINE stmtlist END NEWLINE
+                { $$ = new Foreach($2, $4, LINE) ; }
 optControl: /*empty*/ { $$ =AST::emptyExpr(); } | control ;
 
 set: VARIABLE '=' topExpr NEWLINE { $$ = AST::set($1,$3); }
@@ -109,8 +113,8 @@ control: FOR NUMBER toPast  { $$ = AST::limit($2,$3); }
 toPast: TO pattern  { $$ = AST::control(AST::StopAt, $2); }
       | PAST pattern { $$ = AST::control(AST::StopAfter, $2); } ;
 
-replace: REPLACE pattern WITH topExpr control NEWLINE { $$ = AST::replace($5,$2,$4); }
-       | REPLACE pattern WITH topExpr NEWLINE { $$ = AST::replaceOne($2,$4); }
+replace: REPLACE_TOK pattern WITH topExpr control NEWLINE { $$ = AST::replace($5,$2,$4); }
+       | REPLACE_TOK pattern WITH topExpr NEWLINE { $$ = AST::replaceOne($2,$4); }
        ;
 
 // for use insode of foreach loops
@@ -138,7 +142,7 @@ optIn: /* empty */ { $$ = AST::emptyExpr(); }
 predicate: patternString;
 pattern: patternString { $$ = $1; checkPattern($1,scanner); };
 topExpr: stringExpr { $$ = $1; checkTopExpr($1,scanner); }
-       | REPLACE pattern WITH stringExpr IN stringExpr {	
+       | REPLACE_TOK pattern WITH stringExpr IN stringExpr {	
        	   $$ = call(new std::string("sub"),
 	   	     AST::list(AST::arg($2), 
 	                       AST::list(AST::arg($4), AST::arg($6))),
@@ -146,13 +150,14 @@ topExpr: stringExpr { $$ = $1; checkTopExpr($1,scanner); }
        }
        ;
 
+
 patternString: stringExpr
-       | stringExpr MATCH stringExpr { $$ = AST::match($1,$3); } 
-       | NOT stringExpr { $$ = $2; }
+       | stringExpr MATCH_TOK stringExpr { $$ = AST::match($1,$3); } 
+       | NOT_TOK stringExpr { $$ = $2; }
        ; 
 
 stringExpr: stringTerm
-	  | stringExpr stringTerm  { $$ = AST::list($1, $2); }
+	  | stringExpr  stringTerm  { $$ = BINARY(CONCAT,$1,$2); }
 	  ;
 
 stringTerm: variable
