@@ -206,15 +206,13 @@ HoistInfo Optimizer::checkHoist(Expression *expr) {
 
 HoistInfo Optimizer::checkHoistTerm(Expression *expr) {
 
+#if 0
   switch (expr->kind()) {
   case AST::BinaryN:
     assert("not yet implemented");
     break;
   case AST::ControlN:
     APPLY(Control, Pattern, hoistInvariants, expr);
-    break;
-  case AST::NotN:
-    APPLY(NotExpr, Pattern, hoistInvariants, expr);
     break;
   case AST::BufferN:
     APPLY(Buffer, FileName, hoistInvariants, expr);
@@ -262,6 +260,7 @@ HoistInfo Optimizer::checkHoistTerm(Expression *expr) {
     break;
   }
   }
+#endif
   return HoistInfo(false, 0);
 }
 

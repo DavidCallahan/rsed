@@ -156,8 +156,8 @@ topExpr: stringExpr { $$ = $1; checkTopExpr($1,scanner); }
 
 
 patternString: stringExpr
-       | stringExpr MATCH_TOK stringExpr { $$ = AST::match($1,$3); } 
-       | NOT_TOK stringExpr { $$ = $2; }
+       | stringExpr MATCH_TOK stringExpr { $$ = BINARY(MATCH, $1,$3); } 
+       | NOT_TOK stringExpr { $$ = UNARY(NOT,$2); }
        ; 
 
 stringExpr: stringTerm

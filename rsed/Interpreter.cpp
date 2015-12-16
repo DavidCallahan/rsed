@@ -150,9 +150,9 @@ bool ForeachControl::initialize(Control *c) {
   matchKind = (c->getStopKind() == AST::StopAt ? StopAtK : StopAfterK);
   regIndex = -1;
   if (auto p = c->getPattern()) {
-    if (p->kind() == AST::NotN) {
+    if (p->isOp(AST::NOT)) {
       negate = true;
-      p = ((NotExpr *)p)->getPattern();
+      p = BinaryP(p)->left;
     }
     StringRef pattern = state->evalPattern(p);
     regIndex = state->getRegEx()->setPattern(pattern);
@@ -188,8 +188,6 @@ StringRef State::evalPattern(Expression *ast) {
       break;
     case AST::BufferN:
     case AST::ControlN:
-    case AST::NotN:
-    case AST::MatchN:
     case AST::ArgN:
       assert(!"invalid expresion in pattern");
     }
@@ -281,10 +279,10 @@ ResultCode State::interpret(Foreach *foreach) {
 ResultCode State::interpret(IfStatement *ifstmt) {
   auto p = ifstmt->getPattern();
   int rc;
-  if (p->kind() == AST::MatchN) {
-    auto m = (Match *)p;
-    StringRef pattern = evalPattern(m->getPattern());
-    string target = eval(m->getTarget());
+  if (p->isOp(p->MATCH)) {
+    auto m = (Binary *)p;
+    StringRef pattern = evalPattern(m->right);
+    string target = eval(m->left);
     rc = regEx->match(pattern, target);
     matchColumns = false;
   } else {
@@ -411,8 +409,6 @@ ResultCode State::interpret(Columns *cols) {
     case AST::ArgN:
     case AST::BufferN:
     case AST::ControlN:
-    case AST::NotN:
-    case AST::MatchN:
       assert(!"invalid expresion in pattern");
     }
     return AST::ContinueW;

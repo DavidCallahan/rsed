@@ -179,7 +179,7 @@ const char *AST::opName(AST::Operators op) {
   case DIV:
     return "/";
   case MATCH:
-    return "+";
+    return "=~";
   case REPLACE:
     return "replace";
   case CONCAT:
@@ -232,12 +232,6 @@ void Dumper::dumpExpr(const Expression *node) {
     }
     break;
   }
-  case AST::NotN: {
-    auto n = static_cast<const NotExpr *>(node);
-    OS << "not ";
-    dumpExpr(n->getPattern());
-    break;
-  }
   case AST::IntegerN: {
     auto i = static_cast<const Integer *>(node);
     OS << i->getValue();
@@ -249,13 +243,6 @@ void Dumper::dumpExpr(const Expression *node) {
   }
   case AST::VariableN: {
     OS << '$' << static_cast<const Variable *>(node)->getName();
-    break;
-  }
-  case AST::MatchN: {
-    auto m = static_cast<const Match *>(node);
-    dumpExpr(m->getTarget());
-    OS << " =~ ";
-    dumpExpr(m->getPattern());
     break;
   }
   case AST::BufferN: {
@@ -317,7 +304,7 @@ void Dumper::indent(int depth) {
 std::string AST::checkPattern(Expression *pattern) {
   std::string msg;
   pattern->walkDown([&msg](Expression *e) {
-    if (e->kind() == e->MatchN) {
+    if (e->isOp(MATCH)) {
       msg = "invalid =~ in expression";
       return StopW;
     }
@@ -328,10 +315,10 @@ std::string AST::checkPattern(Expression *pattern) {
 std::string AST::checkTopExpression(Expression *pattern) {
   std::string msg;
   pattern->walkDown([&msg](Expression *e) {
-    if (e->kind() == e->NotN) {
+    if (e->isOp(NOT)) {
       msg = "invalid NOT in expression";
       return StopW;
-    } else if (e->kind() == e->MatchN) {
+    } else if (e->isOp(MATCH)) {
       msg = "invalid MATCH in expression";
       return StopW;
     }

@@ -93,11 +93,9 @@ public:
   };
   enum ExprKind {
     ControlN,
-    NotN,
     VariableN,
     IntegerN,
     BufferN,
-    MatchN,
     StringConstN,
     CallN,
     ArgN,
@@ -162,6 +160,7 @@ public:
 
   template <typename ACTION> WalkResult walkDown(const ACTION &a);
   template <typename ACTION> WalkResult walkUp(const ACTION &a);
+  bool isOp(AST::Operators op);
 };
 
 class Binary : public Expression {
@@ -173,8 +172,12 @@ public:
   Binary(Operators op, Expression *left, Expression *right, int sourceLine)
       : Expression(sourceLine), op(op), left(left), right(right) {}
   ExprKind kind() const override { return BinaryN; }
+  bool isOp(Operators op) { return op == this->op; }
 };
 typedef Binary *BinaryP;
+inline bool Expression::isOp(AST::Operators op) {
+  return kind() == BinaryN && BinaryP(this)->isOp(op);
+}
 class Foreach : public Statement {
 public:
   Expression *control;
@@ -315,19 +318,6 @@ inline Statement *AST::columns(Expression *cols, Expression *inExpr) {
   return new Columns(cols, inExpr);
 }
 
-class NotExpr : public Expression {
-  Expression *pattern;
-
-public:
-  NotExpr(Expression *pattern) : pattern(pattern) {}
-  ExprKind kind() const override { return NotN; }
-  Expression *getPattern() const { return pattern; }
-  void setPattern(Expression *pattern) { this->pattern = pattern; }
-};
-inline Expression *AST::notExpr(Expression *pattern) {
-  return new NotExpr(pattern);
-}
-
 class Variable : public Expression {
   Symbol &symbol;
 
@@ -455,6 +445,7 @@ public:
 };
 inline Statement *AST::output(Expression *buffer) { return new Output(buffer); }
 
+#if 0
 class RegEx;
 class Match : public Expression {
   Expression *target;
@@ -475,6 +466,7 @@ public:
 inline Expression *AST::match(Expression *pattern, Expression *target) {
   return new Match(pattern, target);
 }
+#endif
 
 class Arg : public Expression {
 public:
@@ -590,15 +582,6 @@ template <typename ACTION> AST::WalkResult Expression::walkUp(const ACTION &a) {
   case ControlN:
     rc = ((Control *)e)->getPattern()->walkUp(a);
     break;
-  case MatchN:
-    rc = walkUp(((Match *)e)->getPattern(), a);
-    if (rc != ContinueW)
-      return rc;
-    rc = walkUp(((Match *)e)->getTarget(), a);
-    break;
-  case NotN:
-    rc = walkUp(((NotExpr *)e)->getPattern(), a);
-    break;
   case BinaryN:
     if (BinaryP(e)->left) {
       rc = walkUp(BinaryP(e)->left);
@@ -636,19 +619,6 @@ AST::WalkResult Expression::walkDown(const ACTION &a) {
   switch (e->kind()) {
   case ControlN:
     rc = ((Control *)e)->getPattern()->walkDown(a);
-    if (rc != ContinueW)
-      return rc;
-    break;
-  case MatchN:
-    rc = ((Match *)e)->getPattern()->walkDown(a);
-    if (rc != ContinueW)
-      return rc;
-    rc = ((Match *)e)->getTarget()->walkDown(a);
-    if (rc != ContinueW)
-      return rc;
-    break;
-  case NotN:
-    rc = ((NotExpr *)e)->getPattern()->walkDown(a);
     if (rc != ContinueW)
       return rc;
     break;
