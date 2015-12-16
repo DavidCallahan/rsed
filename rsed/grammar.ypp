@@ -64,15 +64,16 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
 }
 
 %token <name>  STRING VARIABLE IDENTIFIER
-%token <token> FOREACH COPY SKIP TO PAST END NEWLINE REPLACE_TOK FOR
+%token <token> FOREACH COPY SKIP TO PAST END NEWLINE REPLACE_TOK FOR SPLIT
 %token <token> THEN ELSE IF NOT_TOK PRINT MATCH_TOK STYLE COLUMNS IN
 %token <integer> NUMBER INPUT OUTPUT ERROR ALL WITH
-%type <stmt> stmtlist stmt foreach copy skip replace print columns
+%type <stmt> stmtlist stmt foreach copy skip replace 
+%type <stmt> split print columns
 %type <expr> control toPast stringExpr pattern call
 %type <stmt> ifstmt elsestmt set input output errorStmt 
-%type <expr> stringTerm string variable optControl optIn
+%type <expr> stringTerm string variable optControl optTopExpr
 %type <expr>  predicate buffer optBuffer patternString topExpr
-%type <arg> optarglist arglist
+%type <arg> optarglist arglist 
 %start script
 
 %parse-param {Statement ** parseTree}
@@ -88,7 +89,7 @@ optNewline: /* empty*/ | NEWLINE ;
 
 stmtlist: { $$ = AST::emptyStmt(); } | stmt stmtlist { $$ = Statement::list($1, $2); } ;
 
-stmt: foreach | copy | skip | replace | ifstmt 
+stmt: foreach | copy | skip | replace | ifstmt | split
     | set | print | input | output | errorStmt | columns
     ;
 
@@ -121,6 +122,15 @@ replace: REPLACE_TOK pattern WITH topExpr control NEWLINE { $$ = AST::replace($5
        | REPLACE_TOK pattern WITH topExpr NEWLINE { $$ = AST::replaceOne($2,$4); }
        ;
 
+
+split: SPLIT optTopExpr WITH pattern NEWLINE { $$ = new Split($4, $2, LINE); }
+     ;
+columns: SPLIT optTopExpr COLUMNS stringExpr NEWLINE { $$ = AST::columns($4, $2); }
+       ;
+optTopExpr: /* empty */ { $$ = nullptr; }
+	  | topExpr     
+          ;
+
 // for use insode of foreach loops
 ifstmt: IF predicate optThen NEWLINE stmtlist elsestmt END NEWLINE 
 	{ $$ = AST::ifStmt($2, $5, $6);} 
@@ -137,11 +147,6 @@ elsestmt: /* empty */ { $$ = AST::emptyStmt() ; }
 print: PRINT topExpr optBuffer NEWLINE { $$ = AST::print($2,$3); };
 errorStmt: ERROR topExpr NEWLINE { $$ = AST::error($2); };
 optBuffer: /* empty */ { $$ = AST::emptyExpr(); } | TO buffer { $$ = $2; };
-
-columns: COLUMNS stringExpr optIn NEWLINE { $$ = AST::columns($2,$3); } ;
-optIn: /* empty */ { $$ = AST::emptyExpr(); }
-     | IN topExpr  { $$ = $2; }
-     ;
 
 predicate: patternString;
 pattern: patternString { $$ = $1; checkPattern($1,scanner); };

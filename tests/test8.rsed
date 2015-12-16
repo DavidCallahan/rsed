@@ -9,7 +9,7 @@ end
 skip past $SEP
 foreach to $SEP
     skip if "^----------------"
-    columns 48 58 69
+    split columns 48 58 69
     print trim($0)
     print $2
     print $3

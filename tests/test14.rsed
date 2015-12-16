@@ -8,7 +8,7 @@ else
 end
 skip past $SEP
 foreach to $SEP
-   columns 48 58 69
+   split columns 48 58 69
    $name = trim($0)
    $time = trim($2)
    $rate = trim($3)

@@ -1,0 +1,12 @@
+$temp = "abbaxbbcbb"
+split $temp with "b+"
+print $0
+print $1
+print $2
+print $3
+print "next"
+split $temp with "ab"
+print $0
+print $1
+print $2
+

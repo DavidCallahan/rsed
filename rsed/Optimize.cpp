@@ -105,6 +105,7 @@ void Optimizer::noteSetVariables(Statement *body) {
 // #define HOIST(T, F) ((T *)stmt)->set##F(hoistInvariants(((T
 // *)stmt)->get##F()))
 void Optimizer::hoistInvariants(Statement *body) {
+#if 0
   firstInvariant = lastInvariant = nullptr;
   body->walk([this](Statement *stmt) {
     switch (stmt->kind()) {
@@ -136,6 +137,7 @@ void Optimizer::hoistInvariants(Statement *body) {
     }
     return AST::ContinueW;
   });
+#endif
 }
 
 Expression *Optimizer::hoistInvariants(Expression *expr) {

@@ -86,6 +86,7 @@ public:
   ResultCode interpret(IfStatement *ifstmt);
   ResultCode interpret(Set *set);
   ResultCode interpret(Columns *cols);
+  ResultCode interpret(Split *split);
   string eval(Expression *ast);
   string expandVariables(string text);
   StringRef evalPattern(Expression *ast);
@@ -278,7 +279,7 @@ ResultCode State::interpret(Foreach *foreach) {
 
 ResultCode State::interpret(IfStatement *ifstmt) {
   auto p = ifstmt->getPattern();
-  int rc; 
+  int rc;
   if (p->isOp(p->MATCH)) {
     auto m = (Binary *)p;
     StringRef pattern = evalPattern(m->right);
@@ -343,6 +344,8 @@ ResultCode State::interpretOne(Statement *stmt) {
     return interpret((Set *)stmt);
   case AST::ColumnsN:
     return interpret((Columns *)stmt);
+  case AST::SplitN:
+    return interpret((Split *)stmt);
   case AST::ErrorN: {
     auto e = (Error *)stmt;
     auto msg = eval(e->getText());
@@ -443,6 +446,15 @@ ResultCode State::interpret(Columns *cols) {
     columns.push_back("");
   }
   return OK_S;
+}
+
+ResultCode State::interpret(Split *split) {
+  auto sep = evalPattern(split->separator);
+  const string &target = (split->target ? eval(split->target) : getCurrentLine());
+  matchColumns = true;
+  columns.clear();
+  auto ok = regEx->split(sep, target, &columns);
+  return (ok ? OK_S : STOP_S);
 }
 
 string State::evalCall(Call *c) {

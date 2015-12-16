@@ -85,6 +85,18 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     OS << '\n';
     break;
   }
+    case AST::SplitN: {
+      auto s = static_cast<const Split*>(node);
+      OS << "split " ;
+      if (s->target) {
+        dumpExpr(s->target);
+        OS << ' ';
+      }
+      OS << "with " ;
+      dumpExpr(s->separator);
+      OS << '\n';
+      break;
+    }
   case AST::IfStmtN: {
     auto i = static_cast<const IfStatement *>(node);
     indent(depth);

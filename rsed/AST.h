@@ -28,8 +28,7 @@ public:
   int getId() const { return id; }
   enum StopKind { StopAfter, StopAt };
 
-  AST(int sourceLine = 0)
-      : id(++next_id), sourceLine(sourceLine) {}
+  AST(int sourceLine = 0) : id(++next_id), sourceLine(sourceLine) {}
 
   static inline Statement *emptyStmt() { return nullptr; }
   static inline Expression *emptyExpr() { return nullptr; }
@@ -83,6 +82,7 @@ public:
     SkipN,
     CopyN,
     ReplaceN,
+    SplitN,
     IfStmtN,
     SetN,
     ColumnsN,
@@ -125,7 +125,8 @@ public:
 };
 
 class Statement : public AST {
-  Statement * next = nullptr;
+  Statement *next = nullptr;
+
 public:
   Statement(int sourceLine = 0) : AST(sourceLine) {}
   bool isStatement() const override { return true; }
@@ -145,7 +146,6 @@ public:
     tail->next = cdr;
     return car;
   }
-  
 };
 
 class Expression : public AST {
@@ -270,6 +270,15 @@ inline Statement *AST::replaceOne(Expression *pattern,
                                   Expression *replacement) {
   return new Replace(pattern, replacement);
 }
+class Split : public Statement {
+public:
+  Expression *separator;
+  Expression *target;
+  Split(Expression *separator, Expression *target, int sourceLine)
+      : Statement(sourceLine), separator(separator), target(target) {}
+  static StmtKind typeKind() { return SplitN; }
+  StmtKind kind() const override { return typeKind(); }
+};
 
 class IfStatement : public Statement {
   Expression *pattern; // TODO rename predicate
@@ -473,8 +482,7 @@ public:
   Expression *value;
   Arg *nextArg;
   Arg(Expression *value, Arg *nextArg, int souceLine)
-      : Expression(sourceLine), value(value), nextArg(nextArg) {
-  }
+      : Expression(sourceLine), value(value), nextArg(nextArg) {}
   ExprKind kind() const override { return ArgN; }
 };
 
@@ -557,6 +565,14 @@ AST::WalkResult Statement::walkExprs(const ACTION &a) {
     if (rc != ContinueW)
       return rc;
     rc = ((Replace *)this)->getReplacement()->walkDown(a);
+    break;
+  case SplitN:
+    if ((Split *)this->pattern) {
+      rc = ((Split *)this)->separator->walkDown(a);
+      if (rc != ContinueW)
+        return rc;
+    }
+    rc = ((Split *)this)->separator->walkDown(a);
     break;
   case SetN:
     rc = ((Set *)this)->getRhs()->walkDown(a);
