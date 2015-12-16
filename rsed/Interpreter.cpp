@@ -278,7 +278,7 @@ ResultCode State::interpret(Foreach *foreach) {
 
 ResultCode State::interpret(IfStatement *ifstmt) {
   auto p = ifstmt->getPattern();
-  int rc;
+  int rc; 
   if (p->isOp(p->MATCH)) {
     auto m = (Binary *)p;
     StringRef pattern = evalPattern(m->right);

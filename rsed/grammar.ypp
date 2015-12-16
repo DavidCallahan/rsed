@@ -145,7 +145,7 @@ optIn: /* empty */ { $$ = AST::emptyExpr(); }
 
 predicate: patternString;
 pattern: patternString { $$ = $1; checkPattern($1,scanner); };
-topExpr: stringExpr { $$ = $1; checkTopExpr($1,scanner); }
+topExpr: patternString { $$ = $1; checkTopExpr($1,scanner); }
        | REPLACE_TOK pattern WITH stringExpr IN stringExpr {
          Arg *a = new Arg($6, nullptr, LINE);
          a = new Arg($4, a, LINE);
