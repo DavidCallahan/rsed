@@ -21,14 +21,16 @@ void set_style(std::string *name,Scanner *scanner) {
    delete name;
 }
 
-Expression * call(std::string * name, Expression * args, Scanner * scanner) {
+Expression * call(std::string * name, Arg * args, Scanner * scanner) {
 
     unsigned id = 0;
     bool ok = BuiltinCalls::getCallId(*name, &id);
     if (!ok) {
        scanner->error() << "invalid function name: " << *name << '\n';
     }
-    return AST::call(name, args, id);
+    auto c = new Call(*name, args, id, scanner->lineno());
+    delete name;
+    return c;
 }
 
 void checkTopExpr(Expression *top, Scanner * scanner) {
@@ -55,6 +57,7 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
 %union ParseResult {
   Statement * stmt;
   Expression * expr;
+  Arg * arg;
   int token;
   std::string * name;
   int integer;
@@ -65,10 +68,11 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
 %token <token> THEN ELSE IF NOT_TOK PRINT MATCH_TOK STYLE COLUMNS IN
 %token <integer> NUMBER INPUT OUTPUT ERROR ALL WITH
 %type <stmt> stmtlist stmt foreach copy skip replace print columns
-%type <expr> control toPast stringExpr pattern arglist optarglist call 
+%type <expr> control toPast stringExpr pattern call
 %type <stmt> ifstmt elsestmt set input output errorStmt 
 %type <expr> stringTerm string variable optControl optIn
 %type <expr>  predicate buffer optBuffer patternString topExpr
+%type <arg> optarglist arglist
 %start script
 
 %parse-param {Statement ** parseTree}
@@ -82,7 +86,7 @@ script: optNewline optStyle stmtlist { *parseTree = $3 } ;
 
 optNewline: /* empty*/ | NEWLINE ;
 
-stmtlist: { $$ = AST::emptyStmt(); } | stmt stmtlist { $$ = AST::list($1, $2); } ;
+stmtlist: { $$ = AST::emptyStmt(); } | stmt stmtlist { $$ = Statement::list($1, $2); } ;
 
 stmt: foreach | copy | skip | replace | ifstmt 
     | set | print | input | output | errorStmt | columns
@@ -142,11 +146,11 @@ optIn: /* empty */ { $$ = AST::emptyExpr(); }
 predicate: patternString;
 pattern: patternString { $$ = $1; checkPattern($1,scanner); };
 topExpr: stringExpr { $$ = $1; checkTopExpr($1,scanner); }
-       | REPLACE_TOK pattern WITH stringExpr IN stringExpr {	
-       	   $$ = call(new std::string("sub"),
-	   	     AST::list(AST::arg($2), 
-	                       AST::list(AST::arg($4), AST::arg($6))),
-		     scanner);
+       | REPLACE_TOK pattern WITH stringExpr IN stringExpr {
+         Arg *a = new Arg($6, nullptr, LINE);
+         a = new Arg($4, a, LINE);
+         a = new Arg($2, a, LINE);
+         $$ = call(new std::string("sub"),a, scanner);
        }
        ;
 
@@ -175,11 +179,11 @@ call: IDENTIFIER '(' optarglist ')' { $$ = call($1, $3, scanner); }
 
 
      
-optarglist: /*empty*/ { $$ = AST::emptyExpr(); }
+optarglist: /*empty*/ { $$ = nullptr; }
           | arglist 
 	  ;
-arglist: stringExpr { $$ = AST::arg($1); } 
-       | stringExpr ',' arglist { $$ = AST::list(AST::arg($1),$3); }
+arglist: stringExpr { $$ = new Arg($1, nullptr ,LINE); }
+       | stringExpr ',' arglist { $$ = new Arg($1, $3, LINE); }
        ;
 
 input: INPUT buffer NEWLINE { $$ = AST::input($2); } ;

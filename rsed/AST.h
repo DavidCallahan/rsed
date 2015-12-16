@@ -18,7 +18,6 @@ class Expression;
 
 class AST {
 protected:
-  AST *next;
   int id;
   int sourceLine;
   static int next_id;
@@ -29,24 +28,9 @@ public:
   int getId() const { return id; }
   enum StopKind { StopAfter, StopAt };
 
-  AST(AST *next, int sourceLine = 0)
-      : next(next), id(++next_id), sourceLine(sourceLine) {}
-  AST(int sourceLine = 0) : AST(nullptr, sourceLine) {}
+  AST(int sourceLine = 0)
+      : id(++next_id), sourceLine(sourceLine) {}
 
-  template <typename T> static T *list(T *car, T *cdr) {
-    if (!car)
-      return cdr;
-    T *tail = car;
-    while (tail->next)
-      tail = (T *)tail->next;
-    tail->next = cdr;
-    return car;
-  }
-
-#if 0
-  static Statement *replace(std::string *pattern, std::string *replaement,
-                            int sourceLine = 0);
-#endif
   static inline Statement *emptyStmt() { return nullptr; }
   static inline Expression *emptyExpr() { return nullptr; }
 
@@ -79,8 +63,8 @@ public:
   static Expression *stringConst(std::string *constant);
   static Expression *match(Expression *pattern, Expression *target);
   static Expression *identifier(std::string *name);
-  static Expression *arg(Expression *value);
-  static Expression *call(std::string *name, Expression *args, unsigned callId);
+  static Expression *call(std::string *name, Expression *args, unsigned callId,
+                          int sourceLine);
 
   static Expression *fileBuffer(Expression *name);
   static Expression *memoryBuffer(std::string *name);
@@ -127,7 +111,6 @@ public:
     NEG,
     MATCH,
     REPLACE,
-    CALL,
     CONCAT,
     LT,
     LE,
@@ -144,16 +127,27 @@ public:
 };
 
 class Statement : public AST {
+  Statement * next = nullptr;
 public:
   Statement(int sourceLine = 0) : AST(sourceLine) {}
   bool isStatement() const override { return true; }
   virtual StmtKind kind() const = 0;
-  Statement *getNext() const { return (Statement *)next; }
+  Statement *getNext() const { return next; }
   void setNext(Statement *next) { this->next = next; }
   void dumpOne();
 
   template <typename ACTION> WalkResult walk(const ACTION &a);
   template <typename ACTION> WalkResult walkExprs(const ACTION &a);
+  template <typename T> static T *list(T *car, T *cdr) {
+    if (!car)
+      return cdr;
+    T *tail = car;
+    while (tail->next)
+      tail = (T *)tail->next;
+    tail->next = cdr;
+    return car;
+  }
+  
 };
 
 class Expression : public AST {
@@ -163,8 +157,8 @@ protected:
 public:
   bool isStatement() const override { return false; }
   virtual ExprKind kind() const = 0;
-  Expression *getNext() const { return (Expression *)next; }
-  void setNext(Expression *next) { this->next = next; }
+  //  Expression *getNext() const { return (Expression *)next; }
+  //  void setNext(Expression *next) { this->next = next; }
 
   template <typename ACTION> WalkResult walkDown(const ACTION &a);
   template <typename ACTION> WalkResult walkUp(const ACTION &a);
@@ -265,7 +259,7 @@ inline Statement *AST::replace(Expression *control, Expression *pattern,
                                Expression *replacement, int sourceLine) {
   Statement *body = new Replace(pattern, replacement);
 #ifndef IMPLICIT_FOREACH_COPY
-  body = list<Statement>(body, new Copy());
+  body = Statement::list<Statement>(body, new Copy());
 #endif
   return new Foreach(control, body, sourceLine);
 }
@@ -483,37 +477,30 @@ inline Expression *AST::match(Expression *pattern, Expression *target) {
 }
 
 class Arg : public Expression {
-  Expression *value;
-
 public:
-  Arg(Expression *value) : value(value) {}
+  Expression *value;
+  Arg *nextArg;
+  Arg(Expression *value, Arg *nextArg, int souceLine)
+      : Expression(sourceLine), value(value), nextArg(nextArg) {
+  }
   ExprKind kind() const override { return ArgN; }
-  Expression *getValue() const { return value; }
-  void setValue(Expression *value) { this->value = value; }
 };
-inline Expression *AST::arg(Expression *value) { return new Arg(value); }
 
 class Call : public Expression {
   std::string name;
-  Expression *args;
   unsigned callId;
 
 public:
-  Call(std::string name, Expression *args, unsigned callId)
-      : name(name), args(args), callId(callId) {}
+  Arg *args;
+  Call(std::string name, Arg *args, unsigned callId, int sourceLine)
+      : Expression(sourceLine), name(name), callId(callId), args(args) {}
   ExprKind kind() const override { return CallN; }
-  Expression *getArgs() const { return args; }
-  void setArgs(Expression *args) { this->args = args; }
+
   unsigned getCallId() const { return callId; }
   const std::string &getName() const { return name; }
   void setCallId(unsigned callId) { this->callId = callId; }
 };
-inline Expression *AST::call(std::string *name, Expression *args,
-                             unsigned callId) {
-  auto c = new Call(*name, args, callId);
-  delete name;
-  return c;
-}
+typedef Call *CallP;
 
 template <typename ACTION> AST::WalkResult Statement::walk(const ACTION &a) {
   Statement *s = this;
@@ -598,75 +585,91 @@ AST::WalkResult Statement::walkExprs(const ACTION &a) {
 
 template <typename ACTION> AST::WalkResult Expression::walkUp(const ACTION &a) {
   Expression *e = this;
-  for (; e; e = e->getNext()) {
-    WalkResult rc = ContinueW;
-    switch (e->kind()) {
-    case ControlN:
-      rc = ((Control *)e)->getPattern()->walkUp(a);
-      if (rc != ContinueW)
-        return rc;
-      break;
-    case MatchN:
-      rc = walkUp(((Match *)e)->getPattern(), a);
-      if (rc != ContinueW)
-        return rc;
-      rc = walkUp(((Match *)e)->getTarget(), a);
-      if (rc != ContinueW)
-        return rc;
-      break;
-    case NotN:
-      rc = walkUp(((NotExpr *)e)->getPattern(), a);
-      if (rc != ContinueW)
-        return rc;
-      break;
-    default:
-      break;
-    }
-    rc = a(e);
+  WalkResult rc = ContinueW;
+  switch (e->kind()) {
+  case ControlN:
+    rc = ((Control *)e)->getPattern()->walkUp(a);
+    break;
+  case MatchN:
+    rc = walkUp(((Match *)e)->getPattern(), a);
     if (rc != ContinueW)
       return rc;
+    rc = walkUp(((Match *)e)->getTarget(), a);
+    break;
+  case NotN:
+    rc = walkUp(((NotExpr *)e)->getPattern(), a);
+    break;
+  case BinaryN:
+    if (BinaryP(e)->left) {
+      rc = walkUp(BinaryP(e)->left);
+      if (rc != ContinueW)
+        return rc;
+    }
+    rc = walkUp(BinaryP(e)->right);
+    break;
+  case CallN:
+    for (auto arg = CallP(e)->args; arg; arg = arg->nextArg) {
+      rc = arg->value->walkUp(a);
+      if (rc != ContinueW)
+        return rc;
+    }
+    break;
+  default:
+    rc = ContinueW;
+    break;
   }
+  if (rc != ContinueW)
+    return rc;
+  rc = a(e);
+  if (rc != ContinueW)
+    return rc;
   return ContinueW;
 }
 
 template <typename ACTION>
 AST::WalkResult Expression::walkDown(const ACTION &a) {
   Expression *e = this;
-  for (; e; e = e->getNext()) {
-    WalkResult rc = a(e);
+  WalkResult rc = a(e);
+  if (rc != ContinueW)
+    return rc;
+
+  switch (e->kind()) {
+  case ControlN:
+    rc = ((Control *)e)->getPattern()->walkDown(a);
     if (rc != ContinueW)
       return rc;
-
-    switch (e->kind()) {
-    case ControlN:
-      rc = ((Control *)e)->getPattern()->walkDown(a);
+    break;
+  case MatchN:
+    rc = ((Match *)e)->getPattern()->walkDown(a);
+    if (rc != ContinueW)
+      return rc;
+    rc = ((Match *)e)->getTarget()->walkDown(a);
+    if (rc != ContinueW)
+      return rc;
+    break;
+  case NotN:
+    rc = ((NotExpr *)e)->getPattern()->walkDown(a);
+    if (rc != ContinueW)
+      return rc;
+    break;
+  case BinaryN:
+    rc = BinaryP(e)->left->walkDown(a);
+    if (rc != ContinueW)
+      return rc;
+    rc = BinaryP(e)->right->walkDown(a);
+    if (rc != ContinueW)
+      return rc;
+    break;
+  case CallN:
+    for (auto arg = CallP(e)->args; arg; arg = arg->nextArg) {
+      rc = arg->value->walkDown(a);
       if (rc != ContinueW)
         return rc;
-      break;
-    case MatchN:
-      rc = ((Match *)e)->getPattern()->walkDown(a);
-      if (rc != ContinueW)
-        return rc;
-      rc = ((Match *)e)->getTarget()->walkDown(a);
-      if (rc != ContinueW)
-        return rc;
-      break;
-    case NotN:
-      rc = ((NotExpr *)e)->getPattern()->walkDown(a);
-      if (rc != ContinueW)
-        return rc;
-      break;
-    case BinaryN:
-      rc = BinaryP(e)->left->walkDown(a);
-      if (rc != ContinueW)
-        return rc;
-      rc = BinaryP(e)->right->walkDown(a);
-      if (rc != ContinueW)
-        return rc;
-      break;
-    default:
-      break;
     }
+    break;
+
+  default:
+    break;
   }
   return ContinueW;
 }

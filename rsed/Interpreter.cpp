@@ -182,7 +182,7 @@ StringRef State::evalPattern(Expression *ast) {
       break;
     case AST::CallN:
       s << evalCall((Call *)e);
-      break;
+      return AST::SkipChildrenW;
     case AST::BinaryN:
       assert(BinaryP(e)->op == Binary::CONCAT);
       break;
@@ -450,12 +450,9 @@ ResultCode State::interpret(Columns *cols) {
 }
 
 string State::evalCall(Call *c) {
-  auto a = c->getArgs();
   vector<StringRef> args;
-  while (a) {
-    assert(a->kind() == a->ArgN);
-    args.emplace_back(evalPattern(((Arg *)a)->getValue()));
-    a = a->getNext();
+  for (auto a = c->args; a; a = a->nextArg) {
+    args.emplace_back(evalPattern(a->value));
   }
   return BuiltinCalls::evalCall(c->getCallId(), args, this);
 }

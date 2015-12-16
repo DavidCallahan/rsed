@@ -144,9 +144,11 @@ Expression *Optimizer::hoistInvariants(Expression *expr) {
 
 HoistInfo Optimizer::checkHoist(Expression *expr) {
 
-  if (!expr->getNext()) {
+#if 0
+  if (expr->kind() != expr->BinaryN) {
     return checkHoistTerm(expr);
   }
+  assert(BinaryP(expr)->op == expr->CONCAT);
 
   // first of an implicit concatentation
   assert(expr->kind() != Expression::ArgN);
@@ -198,6 +200,7 @@ HoistInfo Optimizer::checkHoist(Expression *expr) {
   // to move change how this is handled
   //   --maybe add a wrapper Concat node
   assert("not yet finished");
+#endif
   return HoistInfo(false, 0);
 }
 
@@ -223,7 +226,7 @@ HoistInfo Optimizer::checkHoistTerm(Expression *expr) {
     APPLY(Match, Target, hoistInvariants, expr);
     break;
   case AST::ArgN:
-    return checkHoist(((Arg *)expr)->getValue());
+    return checkHoist(((Arg *)expr)->value);
 
   case AST::VariableN:
     return HoistInfo(isInvariant(((Variable *)expr)->getSymbol()), 0);
@@ -241,8 +244,8 @@ HoistInfo Optimizer::checkHoistTerm(Expression *expr) {
     auto *c = (Call *)expr;
     std::vector<HoistInfo> args;
     bool invariant = true;
-    for (auto a = c->getArgs(); a; a = a->getNext()) {
-      args.push_back(checkHoist(((Arg *)a)->getValue()));
+    for (auto a = c->args; a; a =a->nextArg) {
+      args.push_back(checkHoist(((Arg *)a)->value));
       if (!::isInvariant(args.back())) {
         invariant = false;
       }
@@ -251,9 +254,9 @@ HoistInfo Optimizer::checkHoistTerm(Expression *expr) {
       return HoistInfo(true, 2);
     }
     auto ap = args.begin();
-    for (auto a = c->getArgs(); a; a = a->getNext(), ++ap) {
+    for (auto a = c->args; a; a = a->nextArg, ++ap) {
       if (shouldHoist(*ap)) {
-        APPLY(Arg, Value, hoist, a);
+        a->value = hoist(a->value);
       }
     }
     break;

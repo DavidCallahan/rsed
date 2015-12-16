@@ -182,8 +182,6 @@ const char *AST::opName(AST::Operators op) {
     return "+";
   case REPLACE:
     return "replace";
-  case CALL:
-    return "call";
   case CONCAT:
     return " ";
   case LT:
@@ -211,10 +209,6 @@ void Dumper::dumpExpr(const Expression *node) {
   if (!node) {
     OS << "<nullptr>";
     return;
-  }
-  bool addParens = node->getNext();
-  if (addParens) {
-    OS << "( ";
   }
   switch (node->kind()) {
   case AST::BinaryN: {
@@ -276,26 +270,19 @@ void Dumper::dumpExpr(const Expression *node) {
   case AST::CallN: {
     auto c = static_cast<const Call *>(node);
     OS << c->getName() << '(';
-    for (auto a = c->getArgs(); a; a = a->getNext()) {
-      dumpExpr(a);
-      if (a->getNext()) {
-        OS << ' ';
+    for (auto a = c->args; a; a = a->nextArg) {
+      dumpExpr(a->value);
+      if (a->nextArg) {
+        OS << ", ";
       }
     }
     OS << ')';
     break;
   }
   case AST::ArgN: {
-    auto a = static_cast<const Arg *>(node);
-    dumpExpr(a->getValue());
-    if (a->getNext()) {
-      OS << ",";
-    }
+    assert("should not reach ArgN");
     break;
   }
-  }
-  if (addParens) {
-    OS << " )";
   }
 }
 
