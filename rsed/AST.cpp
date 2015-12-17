@@ -108,8 +108,9 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
   case AST::SetN: {
     auto s = static_cast<const Set *>(node);
     indent(depth);
-    OS << "$" << s->getName() << " = ";
-    dumpExpr(s->getRhs());
+    dumpExpr(s->lhs);
+    OS << " = ";
+    dumpExpr(s->rhs);
     OS << '\n';
     break;
   }

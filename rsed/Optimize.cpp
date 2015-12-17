@@ -90,6 +90,7 @@ Statement *Optimizer::optimize(Statement *input) {
 }
 
 void Optimizer::noteSetVariables(Statement *body) {
+#if 0
   setInLoop.clear();
   body->walk([this](Statement *stmt) {
     if (auto set = isa<Set>(stmt)) {
@@ -97,6 +98,7 @@ void Optimizer::noteSetVariables(Statement *body) {
     }
     return AST::ContinueW;
   });
+#endif
 }
 
 #define APPLY(T, F, A, x) ((T *)x)->set##F(A(((T *)x)->get##F()))

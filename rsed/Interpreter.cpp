@@ -387,8 +387,13 @@ ResultCode State::interpretOne(Statement *stmt) {
 }
 
 ResultCode State::interpret(Set *set) {
-  auto rhs = eval(set->getRhs());
-  set->getSymbol().setValue(rhs);
+  auto rhs = eval(set->rhs);
+  if (set->lhs->kind() == AST::VariableN) {
+    ((Variable*)set->lhs)->getSymbol().setValue(rhs);
+  }
+  else {
+    assert("not yet implemented non variable lhs");
+  }
   return OK_S;
 }
 

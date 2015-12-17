@@ -76,7 +76,7 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
 %type <expr>  predicate buffer optBuffer patternString topExpr
 %type <arg> optarglist arglist 
 %type <boole> optAll
-%type <name> name
+%type <expr> name
 %start script
 
 %parse-param {Statement ** parseTree}
@@ -102,8 +102,10 @@ foreach : FOREACH optControl NEWLINE stmtlist END NEWLINE
                 { $$ = new Foreach($2, $4, LINE) ; }
 optControl: /*empty*/ { $$ =AST::emptyExpr(); } | control ;
 
-set: name '=' topExpr NEWLINE { $$ = AST::set($1,$3); };
-name:  VARIABLE | IDENTIFIER;
+set: name '=' topExpr NEWLINE { $$ = new Set($1,$3,LINE); };
+name: variable 
+    | IDENTIFIER { $$ = AST::variable($1); }
+    ; 
 
 copy: COPY control NEWLINE { $$ = AST::copy($2); } ;
 

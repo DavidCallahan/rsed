@@ -365,23 +365,15 @@ public:
 inline Expression *AST::integer(int value) { return new Integer(value); }
 
 class Set : public Statement {
-  Expression *rhs;
-  Symbol &symbol;
-
 public:
-  Set(Symbol &symbol, Expression *rhs) : rhs(rhs), symbol(symbol) {}
+  Expression *rhs;
+  Expression *lhs;
+  
+  Set(Expression *lhs, Expression *rhs, int sourceLine) : rhs(rhs), lhs(lhs) {}
+
   static StmtKind typeKind() { return SetN; }
   StmtKind kind() const override { return typeKind(); }
-  const std::string &getName() const { return symbol.getName(); }
-  Symbol &getSymbol() const { return symbol; }
-  Expression *getRhs() const { return rhs; }
-  void setRhs(Expression *rhs) { this->rhs = rhs; }
 };
-inline Statement *AST::set(std::string *lhs, Expression *stringExpr) {
-  auto s = new Set(*Symbol::findSymbol(*lhs), stringExpr);
-  delete lhs;
-  return s;
-}
 
 class Print : public Statement {
   Expression *text;
@@ -453,29 +445,6 @@ public:
   Expression *getBuffer() const { return buffer; }
 };
 inline Statement *AST::output(Expression *buffer) { return new Output(buffer); }
-
-#if 0
-class RegEx;
-class Match : public Expression {
-  Expression *target;
-  Expression *pattern;
-  RegEx *regEx = nullptr;
-
-public:
-  Match(Expression *target, Expression *pattern)
-      : target(target), pattern(pattern) {}
-  ExprKind kind() const override { return MatchN; }
-  Expression *getPattern() const { return pattern; }
-  void setPattern(Expression *pattern) { this->pattern = pattern; }
-  Expression *getTarget() const { return target; }
-  void setTarget(Expression *target) { this->target = target; }
-  RegEx *getRegEx() const { return regEx; }
-  void setRegEx(RegEx *regEx) { this->regEx = regEx; }
-};
-inline Expression *AST::match(Expression *pattern, Expression *target) {
-  return new Match(pattern, target);
-}
-#endif
 
 class Arg : public Expression {
 public:
@@ -575,7 +544,7 @@ AST::WalkResult Statement::walkExprs(const ACTION &a) {
     rc = ((Split *)this)->separator->walkDown(a);
     break;
   case SetN:
-    rc = ((Set *)this)->getRhs()->walkDown(a);
+    rc = ((Set *)this)->rhs->walkDown(a);
     break;
   case IfStmtN:
     rc = ((IfStatement *)this)->getPattern()->walkDown(a);
