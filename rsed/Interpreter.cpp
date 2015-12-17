@@ -197,7 +197,7 @@ StringRef State::evalPattern(Expression *ast) {
   return StringRef(s.str(), flags);
 }
 
-static std::regex variable(R"((\\\$)|(\$[0-9a-zA-Z]+))");
+static std::regex variable(R"((\\\$)|(\$[0-9a-zA-Z_]+))");
 
 string State::expandVariables(string text) {
 
