@@ -388,8 +388,15 @@ ResultCode State::interpretOne(Statement *stmt) {
 
 ResultCode State::interpret(Set *set) {
   auto rhs = eval(set->rhs);
-  if (set->lhs->kind() == AST::VariableN) {
-    ((Variable*)set->lhs)->getSymbol().setValue(rhs);
+  auto lhs = set->lhs;
+  if (lhs->kind() == AST::VariableN) {
+    ((Variable*)lhs)->getSymbol().setValue(rhs);
+  }
+  else if (lhs->isOp(AST::LOOKUP)) {
+    auto b = BinaryP(lhs);
+    auto name = eval(b->right);
+    auto symbol = Symbol::findSymbol(name);
+    symbol->setValue(rhs);
   }
   else {
     assert("not yet implemented non variable lhs");

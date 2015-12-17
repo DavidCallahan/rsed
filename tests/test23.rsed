@@ -4,4 +4,7 @@ b="B"
 ab="AB"
 print $($x)
 print $($x "b")
+$($x)="c"
+print $a
+
 
