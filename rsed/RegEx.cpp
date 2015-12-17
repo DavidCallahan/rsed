@@ -7,6 +7,7 @@
 //
 
 #include <assert.h>
+#include <iostream>
 #include <regex>
 #include <string>
 #include <cstring>
@@ -16,6 +17,7 @@
 using namespace std::regex_constants;
 using std::vector;
 using std::string;
+extern int debug;
 
 namespace {
 
@@ -51,6 +53,7 @@ std::string RegEx::styleName;
 
 int C14RegEx::match(const StringRef &pattern, const std::string &target) {
 
+  if (debug) std::cout << "regex: " << pattern.getText() << '\n';
   std::regex rx(pattern.getText());
   lastTarget = target;
   return std::regex_search(lastTarget, matches, rx);
@@ -70,6 +73,7 @@ std::string C14RegEx::getSubMatch(unsigned int i) {
 
 int C14RegEx::setPattern(const StringRef &pattern) {
   int r = (int)patterns.size();
+  if (debug) std::cout << "regex: " << pattern.getText() << '\n';
   std::regex temp(pattern.getText());
   patterns.emplace_back(std::move(temp), pattern.getFlags());
   return r;

@@ -1,6 +1,6 @@
 $SEP =  "^========================="
 skip past $SEP
-if "^(\S+)\s+relative\s+time/iter\s+iters/s"r then
+if "^(\S+)\s+relative\s+time/iter\s+iters/s" then
    $BENCH=$1
    print "name $1"
 else 

@@ -89,7 +89,7 @@ public:
   ResultCode interpret(Split *split);
   string eval(Expression *ast);
   string expandVariables(string text);
-  StringRef evalPattern(Expression *ast);
+  StringRef evalPattern(Expression *ast, bool escapeRegex=true);
   string evalCall(Call *);
   // evaluate match control against current linke
   MatchKind matchPattern(AST &);
@@ -161,17 +161,30 @@ bool ForeachControl::initialize(Control *c) {
   return true;
 }
 
-string State::eval(Expression *e) { return evalPattern(e).getText(); }
+string State::eval(Expression *e) {
+  return evalPattern(e,false).getText();
+}
 
 // this expression is:
-StringRef State::evalPattern(Expression *ast) {
+StringRef State::evalPattern(Expression *ast, bool escapeRegex) {
   stringstream s;
   unsigned flags = 0;
-  ast->walkDown([&s, &flags, this](Expression *e) {
+  ast->walkDown([&s, &flags, escapeRegex, this](Expression *e) {
     switch (e->kind()) {
     case AST::StringConstN: {
       const auto &sc = ((StringConst *)e)->getConstant();
-      s << (sc.isRaw() ? sc.getText() : expandVariables(sc.getText()));
+      const auto &text = sc.getText();
+      if (sc.isRaw()) {
+        if (escapeRegex) {
+          s << regEx->escape(text);
+        }
+        else {
+          s << text;
+        }
+      }
+      else {
+        s << expandVariables(text);
+      }
       flags |= sc.getFlags();
       break;
     }

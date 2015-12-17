@@ -1,0 +1,11 @@
+$text = "foo $ bar"
+if $text =~ " $ "r then
+   print "match 1"
+end
+if $text =~ " \\\\$" then
+   print "match 2"
+end
+$text = "foo bar"
+if $text =~ " $ "r then
+   print "match 3"
+end
