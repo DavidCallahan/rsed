@@ -85,7 +85,9 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
 
 script: optNewline optStyle stmtlist { *parseTree = $3 } ;
 
+// todo -- allow empty lines in more places
 optNewline: /* empty*/ | NEWLINE ;
+optStyle: /* empty */ | STYLE IDENTIFIER NEWLINE { set_style($2, scanner); } ;
 
 stmtlist: { $$ = AST::emptyStmt(); } | stmt stmtlist { $$ = Statement::list($1, $2); } ;
 
@@ -93,15 +95,11 @@ stmt: foreach | copy | skip | replace | ifstmt | split
     | set | print | input | output | errorStmt | columns
     ;
 
-
-optStyle: /* empty */ | STYLE IDENTIFIER NEWLINE { set_style($2, scanner); } ;
-
 foreach : FOREACH optControl NEWLINE stmtlist END NEWLINE
                 { $$ = new Foreach($2, $4, LINE) ; }
 optControl: /*empty*/ { $$ =AST::emptyExpr(); } | control ;
 
-set: VARIABLE '=' topExpr NEWLINE { $$ = AST::set($1,$3); }
-   ;
+set: VARIABLE '=' topExpr NEWLINE { $$ = AST::set($1,$3); };
 
 copy: COPY control NEWLINE { $$ = AST::copy($2); } ;
 
@@ -116,17 +114,16 @@ control: FOR NUMBER toPast  { $$ = AST::limit($2,$3); }
        ;
 
 toPast: TO pattern  { $$ = AST::control(AST::StopAt, $2); }
-      | PAST pattern { $$ = AST::control(AST::StopAfter, $2); } ;
+      | PAST pattern { $$ = AST::control(AST::StopAfter, $2); }
+      ;
 
 replace: REPLACE_TOK pattern WITH topExpr control NEWLINE { $$ = AST::replace($5,$2,$4); }
        | REPLACE_TOK pattern WITH topExpr NEWLINE { $$ = AST::replaceOne($2,$4); }
        ;
 
 
-split: SPLIT optTopExpr WITH pattern NEWLINE { $$ = new Split($4, $2, LINE); }
-     ;
-columns: SPLIT optTopExpr COLUMNS stringExpr NEWLINE { $$ = AST::columns($4, $2); }
-       ;
+split: SPLIT optTopExpr WITH pattern NEWLINE { $$ = new Split($4, $2, LINE); } ;
+columns: SPLIT optTopExpr COLUMNS stringExpr NEWLINE { $$ = AST::columns($4, $2); } ;
 optTopExpr: /* empty */ { $$ = nullptr; }
 	  | topExpr     
           ;
@@ -162,7 +159,7 @@ topExpr: patternString { $$ = $1; checkTopExpr($1,scanner); }
 
 patternString: stringExpr
        | stringExpr MATCH_TOK stringExpr { $$ = BINARY(MATCH, $1,$3); } 
-       | NOT_TOK stringExpr { $$ = UNARY(NOT,$2); }
+       | NOT_TOK patternString { $$ = UNARY(NOT,$2); }
        ; 
 
 stringExpr: stringTerm

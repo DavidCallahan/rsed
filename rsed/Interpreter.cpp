@@ -285,6 +285,10 @@ ResultCode State::interpret(Foreach *foreach) {
 ResultCode State::interpret(IfStatement *ifstmt) {
   auto p = ifstmt->getPattern();
   int rc;
+  bool negate = p->isOp(p->NOT);
+  if (negate) {
+    p = BinaryP(p)->right;
+  }
   if (p->isOp(p->MATCH)) {
     auto m = (Binary *)p;
     StringRef pattern = evalPattern(m->right);
@@ -299,7 +303,7 @@ ResultCode State::interpret(IfStatement *ifstmt) {
   if (rc < 0) {
     return STOP_S;
   }
-  if (rc > 0) { // true
+  if (bool(rc) ^ negate) { // true
     return interpret(ifstmt->getThenStmts());
   }
   if (auto e = ifstmt->getElseStmts()) {

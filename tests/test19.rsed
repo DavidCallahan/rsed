@@ -6,7 +6,7 @@ if $text =~ " \\\\$" then
    print "match 2"
 end
 $text = "foo bar"
-if $text =~ escape(" $ "r) then
+if not $text =~ escape(" $ "r) then
    print "not match 3"
 end
 $raw = "$\.*+?()[]{}"r

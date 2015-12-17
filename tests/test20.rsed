@@ -1,0 +1,3 @@
+if not "foo" =~ "b" then
+   print "true"
+end
