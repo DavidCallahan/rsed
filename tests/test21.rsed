@@ -1,0 +1,5 @@
+$text = 'double " ' "single ' "
+print $text
+print quote($text)
+print quote("'", $text)
+print quote("\"", $text)

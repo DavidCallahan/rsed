@@ -17,7 +17,7 @@ using std::vector;
 #include <memory>
 
 namespace {
-enum Builtins { TRIM = 0, REPLACE, SHELL, LENGTH, JOIN, ESCAPE };
+enum Builtins { TRIM = 0, REPLACE, SHELL, LENGTH, JOIN, ESCAPE, QUOTE };
 typedef std::pair<unsigned, string> BuiltinName;
 vector<BuiltinName> builtins{{LENGTH, "length"},
                              {TRIM, "trim"},
@@ -25,7 +25,21 @@ vector<BuiltinName> builtins{{LENGTH, "length"},
                              {REPLACE, "sub"},
                              {JOIN, "join"},
                              {ESCAPE, "escape"},
+                             {QUOTE, "quote"},
                              {SHELL, "shell"}};
+  
+string doQuote(char quote, const string & text) {
+  string result;
+  result.append(1,quote);
+  for (auto c : text) {
+    if (c == quote) {
+      result.append(1, '\\');
+    }
+    result.append(1,c);
+  }
+  result.append(1,quote);
+  return result;
+}
 }
 // TODO -- length, substring
 namespace BuiltinCalls {
@@ -116,6 +130,24 @@ string evalCall(unsigned int id, const vector<StringRef> &args,
       ss << state->getRegEx()->escape(str.getText());
     }
     break;
+  
+  case QUOTE: {
+    char quote = '"';
+    auto ap = args.begin();
+    if (args.size() > 1) {
+      auto & q = *ap++;
+      if (q.getText().empty()) {
+        state->error() << "empty quote specification in quote()\n" ;
+        return "" ;
+      }
+      quote = q.getText()[0];
+    }
+    auto end = args.end();
+    for (;ap != end; ++ap) {
+      ss << doQuote(quote, ap->getText());
+    }
+    break;
+  }
   }
   return ss.str();
 }
