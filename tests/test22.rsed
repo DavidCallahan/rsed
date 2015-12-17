@@ -1,0 +1,5 @@
+$text = " a b c a "
+$new = replace "a" with "x" in $text
+print $new
+$new = replace all "a" with "x" in $text
+print $new

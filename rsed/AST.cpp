@@ -79,9 +79,9 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     auto r = static_cast<const Replace *>(node);
     indent(depth);
     OS << "replace ";
-    dumpExpr(r->getPattern());
+    dumpExpr(r->pattern);
     OS << ' ';
-    dumpExpr(r->getReplacement());
+    dumpExpr(r->replacement);
     OS << '\n';
     break;
   }

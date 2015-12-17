@@ -335,12 +335,15 @@ ResultCode State::interpretOne(Statement *stmt) {
   }
   case AST::ReplaceN: {
     auto r = (Replace *)stmt;
-    auto pattern = evalPattern(r->getPattern());
+    auto pattern = evalPattern(r->pattern);
+    if (r->optAll) {
+      pattern.setIsGlobal();
+    }
     auto index = regEx->setPattern(pattern);
     if (index < 0)
       return STOP_S;
 
-    auto target = eval(r->getReplacement());
+    auto target = eval(r->replacement);
     currentLine_ = regEx->replace(index, target, getCurrentLine());
     regEx->releasePattern(index);
     break;

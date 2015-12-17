@@ -61,6 +61,7 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
   int token;
   std::string * name;
   int integer;
+  bool boole;
 }
 
 %token <name>  STRING VARIABLE IDENTIFIER
@@ -74,6 +75,7 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
 %type <expr> stringTerm string variable optControl optTopExpr
 %type <expr>  predicate buffer optBuffer patternString topExpr
 %type <arg> optarglist arglist 
+%type <boole> optAll
 %start script
 
 %parse-param {Statement ** parseTree}
@@ -117,9 +119,12 @@ toPast: TO pattern  { $$ = AST::control(AST::StopAt, $2); }
       | PAST pattern { $$ = AST::control(AST::StopAfter, $2); }
       ;
 
-replace: REPLACE_TOK pattern WITH topExpr control NEWLINE { $$ = AST::replace($5,$2,$4); }
-       | REPLACE_TOK pattern WITH topExpr NEWLINE { $$ = AST::replaceOne($2,$4); }
+replace: REPLACE_TOK optAll pattern WITH topExpr control NEWLINE { $$ = AST::replace($6,$3,$5,$2,LINE); }
+       | REPLACE_TOK optAll pattern WITH topExpr NEWLINE { $$ = AST::replaceOne($3,$5,$2,LINE); }
        ;
+optAll: /* empty */ { $$ = false; } 
+      | ALL { $$ = true; }
+      ;
 
 
 split: SPLIT optTopExpr WITH pattern NEWLINE { $$ = new Split($4, $2, LINE); } ;
@@ -148,11 +153,11 @@ optBuffer: /* empty */ { $$ = AST::emptyExpr(); } | TO buffer { $$ = $2; };
 predicate: patternString;
 pattern: patternString { $$ = $1; checkPattern($1,scanner); };
 topExpr: patternString { $$ = $1; checkTopExpr($1,scanner); }
-       | REPLACE_TOK pattern WITH stringExpr IN stringExpr {
-         Arg *a = new Arg($6, nullptr, LINE);
-         a = new Arg($4, a, LINE);
-         a = new Arg($2, a, LINE);
-         $$ = call(new std::string("sub"),a, scanner);
+       | REPLACE_TOK optAll pattern WITH stringExpr IN stringExpr {
+         Arg *a = new Arg($7, nullptr, LINE);
+         a = new Arg($5, a, LINE);
+         a = new Arg($3, a, LINE);
+         $$ = call(new std::string($2 ? "suball" : "sub"),a, scanner);
        }
        ;
 

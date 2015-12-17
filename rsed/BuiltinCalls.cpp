@@ -17,27 +17,37 @@ using std::vector;
 #include <memory>
 
 namespace {
-enum Builtins { TRIM = 0, REPLACE, SHELL, LENGTH, JOIN, ESCAPE, QUOTE };
+enum Builtins {
+  TRIM = 0,
+  REPLACE,
+  REPLACE_ALL,
+  SHELL,
+  LENGTH,
+  JOIN,
+  ESCAPE,
+  QUOTE
+};
 typedef std::pair<unsigned, string> BuiltinName;
 vector<BuiltinName> builtins{{LENGTH, "length"},
                              {TRIM, "trim"},
                              {REPLACE, "substitue"},
                              {REPLACE, "sub"},
+                             {REPLACE_ALL, "suball"},
                              {JOIN, "join"},
                              {ESCAPE, "escape"},
                              {QUOTE, "quote"},
                              {SHELL, "shell"}};
-  
-string doQuote(char quote, const string & text) {
+
+string doQuote(char quote, const string &text) {
   string result;
-  result.append(1,quote);
+  result.append(1, quote);
   for (auto c : text) {
     if (c == quote) {
       result.append(1, '\\');
     }
-    result.append(1,c);
+    result.append(1, c);
   }
-  result.append(1,quote);
+  result.append(1, quote);
   return result;
 }
 }
@@ -73,6 +83,7 @@ bool shell(string cmd, vector<string> * lines) {
 string evalCall(unsigned int id, const vector<StringRef> &args,
                 EvalState *state) {
   std::stringstream ss;
+  bool replaceAll = false;
   switch (id) {
   case TRIM: {
     const std::string &delimiters = " \f\n\r\t\v";
@@ -84,13 +95,24 @@ string evalCall(unsigned int id, const vector<StringRef> &args,
     }
     break;
   }
+  case REPLACE_ALL:
+    replaceAll = true;
+  /*FALLTHROUGH*/
   case REPLACE: {
     if (args.size() < 3) {
       state->error() << "Two few arguments to replace()\n";
       return "";
     }
     auto regEx = state->getRegEx();
-    int r = regEx->setPattern(args[0]);
+    int r ;
+    if (replaceAll) {
+      auto p = args[0];
+      p.setIsGlobal();
+      r = regEx->setPattern(p);
+    }
+    else {
+      r = regEx->setPattern(args[0]);
+    }
     if (r < 0) {
       state->error() << "Error parsing regular expression: " << args[0] << '\n';
       return "";
@@ -130,20 +152,20 @@ string evalCall(unsigned int id, const vector<StringRef> &args,
       ss << state->getRegEx()->escape(str.getText());
     }
     break;
-  
+
   case QUOTE: {
     char quote = '"';
     auto ap = args.begin();
     if (args.size() > 1) {
-      auto & q = *ap++;
+      auto &q = *ap++;
       if (q.getText().empty()) {
-        state->error() << "empty quote specification in quote()\n" ;
-        return "" ;
+        state->error() << "empty quote specification in quote()\n";
+        return "";
       }
       quote = q.getText()[0];
     }
     auto end = args.end();
-    for (;ap != end; ++ap) {
+    for (; ap != end; ++ap) {
       ss << doQuote(quote, ap->getText());
     }
     break;

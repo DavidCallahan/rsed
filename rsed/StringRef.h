@@ -40,6 +40,7 @@ public:
 
   bool isRaw() const { return flags & RAW_STRING; }
   void setIsRaw() { flags |= RAW_STRING; }
+  void setIsGlobal() { flags |= GLOBAL; }
 
   static StringRef processEscapes(const StringRef &r);
 };

@@ -40,8 +40,10 @@ public:
   static Statement *skip();
   static Statement *skipOne(Expression *pattern);
   static Statement *replace(Expression *control, Expression *pattern,
-                            Expression *replacement, int sourceLine = 0);
-  static Statement *replaceOne(Expression *pattern, Expression *replacement);
+                            Expression *replacement, bool replaceAll,
+                            int sourceLine);
+  static Statement *replaceOne(Expression *pattern, Expression *replacement,
+                               bool replaceAll, int sourceLine);
   static Statement *ifStmt(Expression *pattern, Statement *thenStmts,
                            Statement *elseStmts);
   static Statement *ifGuard(Expression *pattern, Statement *stmt);
@@ -243,32 +245,30 @@ inline Statement *AST::skip(Expression *control, int sourceLine) {
 }
 
 class Replace : public Statement {
+public:
   Expression *pattern;
   Expression *replacement;
-
-public:
-  Replace(Expression *pattern, Expression *replacement)
-      : pattern(pattern), replacement(replacement) {}
+  bool optAll;
+  Replace(Expression *pattern, Expression *replacement, bool optAll,
+          int sourceLine)
+      : Statement(sourceLine), pattern(pattern), replacement(replacement),
+        optAll(optAll) {}
   static StmtKind typeKind() { return ReplaceN; }
   StmtKind kind() const override { return typeKind(); }
-  Expression *getPattern() const { return pattern; }
-  void setPattern(Expression *pattern) { this->pattern = pattern; }
-  Expression *getReplacement() const { return replacement; }
-  void setReplacement(Expression *replacement) {
-    this->replacement = replacement;
-  }
+
 };
 inline Statement *AST::replace(Expression *control, Expression *pattern,
-                               Expression *replacement, int sourceLine) {
-  Statement *body = new Replace(pattern, replacement);
+                               Expression *replacement, bool optAll,
+                               int sourceLine) {
+  Statement *body = new Replace(pattern, replacement, optAll, sourceLine);
 #ifndef IMPLICIT_FOREACH_COPY
   body = Statement::list<Statement>(body, new Copy());
 #endif
   return new Foreach(control, body, sourceLine);
 }
-inline Statement *AST::replaceOne(Expression *pattern,
-                                  Expression *replacement) {
-  return new Replace(pattern, replacement);
+inline Statement *AST::replaceOne(Expression *pattern, Expression *replacement,
+                                  bool optAll, int sourceLine) {
+  return new Replace(pattern, replacement, optAll, sourceLine);
 }
 class Split : public Statement {
 public:
@@ -561,10 +561,10 @@ AST::WalkResult Statement::walkExprs(const ACTION &a) {
   case SkipN:
     break;
   case ReplaceN:
-    rc = ((Replace *)this)->getPattern()->walkDown(a);
+    rc = ((Replace *)this)->pattern->walkDown(a);
     if (rc != ContinueW)
       return rc;
-    rc = ((Replace *)this)->getReplacement()->walkDown(a);
+    rc = ((Replace *)this)->replacement->walkDown(a);
     break;
   case SplitN:
     if ((Split *)this->pattern) {
@@ -629,8 +629,11 @@ template <typename ACTION>
 AST::WalkResult Expression::walkDown(const ACTION &a) {
   Expression *e = this;
   WalkResult rc = a(e);
-  if (rc != ContinueW)
+  if (rc != ContinueW) {
+    if (rc == SkipChildrenW)
+      rc = ContinueW;
     return rc;
+  }
 
   switch (e->kind()) {
   case ControlN:
