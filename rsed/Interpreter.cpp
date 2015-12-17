@@ -189,9 +189,23 @@ StringRef State::evalPattern(Expression *ast) {
     case AST::CallN:
       s << evalCall((Call *)e);
       return AST::SkipChildrenW;
-    case AST::BinaryN:
-      assert(BinaryP(e)->op == Binary::CONCAT);
+    case AST::BinaryN: {
+      auto b = BinaryP(e);
+      switch (b->op) {
+        case AST::CONCAT:
+          break ;
+        case AST::LOOKUP: {
+          auto v = eval(b->right);
+          auto sym = Symbol::findSymbol(v);
+          s << sym->getValue();
+          return AST::SkipChildrenW;
+        }
+        default:
+          assert("unimplemented binary operator");
+          break;
+      }
       break;
+    }
     case AST::BufferN:
     case AST::ControlN:
     case AST::ArgN:

@@ -120,7 +120,8 @@ public:
     GT,
     NOT,
     AND,
-    OR
+    OR,
+    LOOKUP,
   };
   static const char *opName(Operators op);
   enum WalkResult { StopW, ContinueW, SkipChildrenW, SkipExpressionsW };
@@ -255,7 +256,6 @@ public:
         optAll(optAll) {}
   static StmtKind typeKind() { return ReplaceN; }
   StmtKind kind() const override { return typeKind(); }
-
 };
 inline Statement *AST::replace(Expression *control, Expression *pattern,
                                Expression *replacement, bool optAll,
@@ -642,9 +642,11 @@ AST::WalkResult Expression::walkDown(const ACTION &a) {
       return rc;
     break;
   case BinaryN:
-    rc = BinaryP(e)->left->walkDown(a);
-    if (rc != ContinueW)
-      return rc;
+    if (auto left = BinaryP(e)->left) {
+      rc = left->walkDown(a);
+      if (rc != ContinueW)
+        return rc;
+    }
     rc = BinaryP(e)->right->walkDown(a);
     if (rc != ContinueW)
       return rc;

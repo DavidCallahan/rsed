@@ -1,0 +1,7 @@
+x="a"
+a="A"
+b="B"
+ab="AB"
+print $($x)
+print $($x "b")
+

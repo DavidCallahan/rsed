@@ -1,6 +1,7 @@
 #!/bin/bash
-# set -e 
+set -e 
 (mkdir -p build && cd build && cmake ../rsed && make -j 8)
+set +e
 
 cd tests
 RSED=../build/rsed
