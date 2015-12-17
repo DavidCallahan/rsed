@@ -25,6 +25,24 @@ do
     fi
     rm $base.test-out
 done
+
+echo "test1 from stdin"
+base=test1
+cat $base.rsed | $RSED -script_in -input=$base.in > $base.test-out
+if [ $? != 0 ]
+then
+    echo "non zero exit"
+    failed=1
+fi
+diff $base.test-out $base.out
+if [ $? != 0 ]
+then
+    failed=1
+fi
+rm $base.test-out
+
+
+
 set +e
 for test in err*.rsed
 do
@@ -43,6 +61,7 @@ do
     fi
     rm $base.test-out
 done
+
 
 
 if [ $failed != 0 ]

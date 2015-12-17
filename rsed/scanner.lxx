@@ -6,10 +6,14 @@
 #include "Scanner.h" 
 
 int Scanner::init(const char * source) {
-    auto in = new std::ifstream;
-    in->open(source);
-    yyin = in ; 
-    return in->is_open();
+    if (*source) {
+        auto in = new std::ifstream;
+    	in->open(source);
+    	yyin = in ; 
+    	return in->is_open();
+    }
+    yyin = &std::cin;
+    return 1;
 }
 
 static std::string * makeString(const char * text) {
