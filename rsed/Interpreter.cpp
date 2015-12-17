@@ -89,7 +89,7 @@ public:
   ResultCode interpret(Split *split);
   string eval(Expression *ast);
   string expandVariables(string text);
-  StringRef evalPattern(Expression *ast, bool escapeRegex=true);
+  StringRef evalPattern(Expression *ast);
   string evalCall(Call *);
   // evaluate match control against current linke
   MatchKind matchPattern(AST &);
@@ -161,28 +161,20 @@ bool ForeachControl::initialize(Control *c) {
   return true;
 }
 
-string State::eval(Expression *e) {
-  return evalPattern(e,false).getText();
-}
+string State::eval(Expression *e) { return evalPattern(e).getText(); }
 
 // this expression is:
-StringRef State::evalPattern(Expression *ast, bool escapeRegex) {
+StringRef State::evalPattern(Expression *ast) {
   stringstream s;
   unsigned flags = 0;
-  ast->walkDown([&s, &flags, escapeRegex, this](Expression *e) {
+  ast->walkDown([&s, &flags, this](Expression *e) {
     switch (e->kind()) {
     case AST::StringConstN: {
       const auto &sc = ((StringConst *)e)->getConstant();
       const auto &text = sc.getText();
       if (sc.isRaw()) {
-        if (escapeRegex) {
-          s << regEx->escape(text);
-        }
-        else {
-          s << text;
-        }
-      }
-      else {
+        s << text;
+      } else {
         s << expandVariables(text);
       }
       flags |= sc.getFlags();
@@ -463,7 +455,8 @@ ResultCode State::interpret(Columns *cols) {
 
 ResultCode State::interpret(Split *split) {
   auto sep = evalPattern(split->separator);
-  const string &target = (split->target ? eval(split->target) : getCurrentLine());
+  const string &target =
+      (split->target ? eval(split->target) : getCurrentLine());
   matchColumns = true;
   columns.clear();
   auto ok = regEx->split(sep, target, &columns);

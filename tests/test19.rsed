@@ -1,11 +1,18 @@
 $text = "foo $ bar"
-if $text =~ " $ "r then
+if $text =~ escape(" $ ") then
    print "match 1"
 end
 if $text =~ " \\\\$" then
    print "match 2"
 end
 $text = "foo bar"
-if $text =~ " $ "r then
-   print "match 3"
+if $text =~ escape(" $ "r) then
+   print "not match 3"
 end
+$raw = "$\.*+?()[]{}"r
+$text = "foo $raw bar"
+print $text
+if $text =~ escape($raw) then
+   print "match 4"
+end
+ 

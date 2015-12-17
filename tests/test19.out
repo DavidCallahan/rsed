@@ -1,2 +1,4 @@
 match 1
 match 2
+foo $\.*+?()[]{} bar
+match 4

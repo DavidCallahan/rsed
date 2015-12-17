@@ -17,13 +17,14 @@ using std::vector;
 #include <memory>
 
 namespace {
-enum Builtins { TRIM = 0, REPLACE, SHELL, LENGTH, JOIN };
+enum Builtins { TRIM = 0, REPLACE, SHELL, LENGTH, JOIN, ESCAPE };
 typedef std::pair<unsigned, string> BuiltinName;
 vector<BuiltinName> builtins{{LENGTH, "length"},
                              {TRIM, "trim"},
                              {REPLACE, "substitue"},
                              {REPLACE, "sub"},
                              {JOIN, "join"},
+                             {ESCAPE, "escape"},
                              {SHELL, "shell"}};
 }
 // TODO -- length, substring
@@ -108,7 +109,13 @@ string evalCall(unsigned int id, const vector<StringRef> &args,
       ss << args[i].getText();
       size += args[i].getText().length();
     }
+    break;
   }
+  case ESCAPE:
+    for (auto &str : args) {
+      ss << state->getRegEx()->escape(str.getText());
+    }
+    break;
   }
   return ss.str();
 }

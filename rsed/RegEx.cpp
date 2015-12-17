@@ -102,8 +102,9 @@ void RegEx::setDefaultRegEx() {
 
 // maybe thos should not be in C14RegEx but rather used
 // to select which implementation to use
+// Needed for: ^ $ \ . * + ? ( ) [ ] { }
 int C14RegEx::setStyle(const std::string &style) {
-  const char *list = "[]()+$.?^{}";
+  const char *list = R"(^$\.*+?()[]{})";
   memset(specials, false, sizeof(specials));
   while (*list) {
     specials[(int)*list] = true;
