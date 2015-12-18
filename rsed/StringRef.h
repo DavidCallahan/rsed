@@ -45,5 +45,9 @@ public:
   static StringRef processEscapes(const StringRef &r);
 };
 std::ostream &operator<<(std::ostream &, const StringRef &);
+inline std::string operator+(std::string left, StringRef right) {
+  return left + right.getText();
+}
+
 
 #endif

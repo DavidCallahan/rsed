@@ -18,6 +18,7 @@
 #include "RegEx.h"
 #include "BuiltinCalls.h"
 #include "EvalState.h"
+#include "Exception.h"
 
 using std::vector;
 using std::string;
@@ -32,6 +33,7 @@ enum ResultCode {
 enum MatchKind { NoMatchK, StopAtK, StopAfterK };
 
 class State : public EvalState {
+  LineBuffer *inputBuffer;
 
 public:
   bool firstLine = true;
@@ -48,6 +50,8 @@ public:
     }
     return currentLine_;
   }
+  // todo, move input state to line buffer...
+  LineBuffer *getInputBuffer() const { return inputBuffer; }
 
   string match(unsigned i) {
     if (matchColumns) {
@@ -59,7 +63,6 @@ public:
       return regEx->getSubMatch(i);
     }
   }
-  LineBuffer *inputBuffer;
   bool inputEof_ = false;
   bool getInputEof() {
     if (firstLine) {
@@ -78,6 +81,14 @@ public:
     }
   }
   unsigned getLineno() const override { return inputBuffer->getLineno(); }
+  void resetInput(LineBuffer *newBuffer) {
+    firstLine = true;
+    currentLine_ = "";
+    inputLine = "";
+    inputEof_ = false;
+    inputBuffer = newBuffer;
+  }
+
   LineBuffer *outputBuffer;
 
   ResultCode interpret(Statement *stmtList);
@@ -220,7 +231,7 @@ StringRef State::evalPattern(Expression *ast) {
 
 static std::regex variable(R"((\\\$)|(\$[0-9a-zA-Z_]+))");
 
-string State::expandVariables(const string & text) {
+string State::expandVariables(const string &text) {
 
   const char *ctext = text.c_str();
   size_t len = text.length();
@@ -381,10 +392,16 @@ ResultCode State::interpretOne(Statement *stmt) {
     outputBuffer = LineBuffer::findInputBuffer(fileName);
     break;
   }
-  case AST::RewindN:
-    assert(!"not yet implemented");
-    return STOP_S;
-
+  case AST::RewindN: {
+    auto io = (Input *)stmt;
+    auto fileName = eval(io->buffer);
+    resetInput(LineBuffer::findInputBuffer(fileName));
+    if (!inputBuffer->rewind()) {
+      throw Exception("unable to rewrind input file: " + fileName, stmt,
+                      getInputBuffer());
+    }
+    break;
+  }
   case AST::RequiredN: {
     auto r = (Required *)stmt;
     if (r->predicate) {
@@ -528,11 +545,11 @@ string State::evalCall(Call *c) {
 
 void Interpreter::initialize() {
   state = new State;
-  state->inputBuffer = makeInBuffer(&std::cin);
-  state->outputBuffer = makeOutBuffer(&std::cout);
+  state->resetInput(makeInBuffer(&std::cin, "<stdin>"));
+  state->outputBuffer = makeOutBuffer(&std::cout, "<stdout>");
   state->setRegEx(RegEx::regEx);
   Symbol::defineSymbol(makeSymbol("LINE", [this]() {
-    auto line = state->inputBuffer->getLineno();
+    auto line = state->getLineno();
     stringstream buf;
     buf << line;
     string result = buf.str();
@@ -559,7 +576,7 @@ bool Interpreter::setInput(const string &fileName) {
     std::cerr << "unable to open: " << fileName << '\n';
     return false;
   }
-  state->inputBuffer = makeInBuffer(f);
+  state->resetInput(makeInBuffer(f, fileName));
   return true;
 }
 

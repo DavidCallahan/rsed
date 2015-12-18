@@ -12,6 +12,7 @@
 #include "Parser.h"
 #include "Scanner.h"
 #include "RegEx.h"
+#include "Exception.h"
 #include "Interpreter.h"
 #include "gflags/gflags.h"
 #include "Optimize.h"
@@ -79,11 +80,17 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  {
+  int rc = 0;
+  try {
     LineBufferCloser closer;
     interp.interpret(ast);
+    rc = interp.getReturnCode();
   }
-  exit(interp.getReturnCode());
+  catch (Exception & e) {
+    std::cerr << "error: " << e.message << '\n';
+    rc = 1;
+  }
+  exit(rc);
 }
 
 void breakPoint() { std::cout << "at break\n"; }

@@ -7,8 +7,9 @@
 //
 
 #include "LineBuffer.h"
-#include <unordered_map>
+#include "Exception.h"
 #include <string>
+#include <unordered_map>
 using std::string;
 using std::ifstream;
 using std::ofstream;
@@ -48,7 +49,7 @@ LineBuffer *LineBuffer::findOutputBuffer(const std::string &name) {
       error += name;
       throw error;
     }
-    b.output = new StreamOutBuffer<ofstream>(f);
+    b.output = new StreamOutBuffer<ofstream>(f,name);
   }
   return b.output;
 }
@@ -64,11 +65,17 @@ LineBuffer *LineBuffer::findInputBuffer(const std::string &name) {
   if (!b.input) {
     auto f = new ifstream(name);
     if (!f->is_open()) {
-      string error("unable to open file: ") ;
+      string error ="unable to open file: " ;
       error += name;
-      throw error;
+      throw Exception(error);
     }
-    b.input = new StreamInBuffer<ifstream>(f);
+    b.input = new StreamInBuffer<ifstream>(f,name);
   }
-  return b.output;
+  return b.input;
+}
+
+template<> bool StreamInBuffer<ifstream>::rewind() {
+  stream->seekg(0);
+  lineno = 0;
+  return !stream->fail();
 }

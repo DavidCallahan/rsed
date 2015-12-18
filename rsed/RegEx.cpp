@@ -11,8 +11,10 @@
 #include <regex>
 #include <string>
 #include <cstring>
+#include <exception>
 #include "StringRef.h"
 #include "RegEx.h"
+#include "Exception.h"
 
 using namespace std::regex_constants;
 using std::vector;
@@ -46,15 +48,29 @@ public:
 };
 
 syntax_option_type C14RegEx::regExOptions = basic;
+
+std::regex createRegex(const StringRef &str) {
+  try {
+    std::regex temp(str.getText());
+    return temp;
+  }
+  catch (std::exception &) {
+    std::string message = "invalid regular expression: ";
+    message += str.getText();
+    throw Exception(message);
+  }
 }
+}
+
 bool C14RegEx::specials[256];
 RegEx *RegEx::regEx = nullptr;
 std::string RegEx::styleName;
 
 int C14RegEx::match(const StringRef &pattern, const std::string &target) {
 
-  if (debug) std::cout << "regex: " << pattern.getText() << '\n';
-  std::regex rx(pattern.getText());
+  if (debug)
+    std::cout << "regex: " << pattern.getText() << '\n';
+  std::regex rx = createRegex(pattern);
   lastTarget = target;
   return std::regex_search(lastTarget, matches, rx);
 }
@@ -73,9 +89,9 @@ std::string C14RegEx::getSubMatch(unsigned int i) {
 
 int C14RegEx::setPattern(const StringRef &pattern) {
   int r = (int)patterns.size();
-  if (debug) std::cout << "regex: " << pattern.getText() << '\n';
-  std::regex temp(pattern.getText());
-  patterns.emplace_back(std::move(temp), pattern.getFlags());
+  if (debug)
+    std::cout << "regex: " << pattern.getText() << '\n';
+  patterns.emplace_back(createRegex(pattern), pattern.getFlags());
   return r;
 }
 
@@ -143,8 +159,7 @@ std::string C14RegEx::replace(int pattern, const std::string &replacement,
 bool C14RegEx::split(const StringRef &pattern, const std::string &target,
                      std::vector<std::string> *words) {
   std::regex rgx(pattern.getText());
-  std::sregex_token_iterator iter(target.begin(),
-                                  target.end(), rgx, -1);
+  std::sregex_token_iterator iter(target.begin(), target.end(), rgx, -1);
   std::sregex_token_iterator end;
   for (; iter != end; ++iter) {
     words->emplace_back(*iter);
