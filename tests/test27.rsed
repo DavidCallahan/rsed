@@ -1,0 +1,10 @@
+foo = "bar"
+print << END
+line 1 $foo
+line 2
+END
+print "line 3"
+print << "END"r
+line 3 $foo
+line 4
+END

@@ -14,4 +14,6 @@ public:
     sawError = true;
     return std::cerr << lineno() << "; ";
   }
+  
+  std::string * multilineString();
 };

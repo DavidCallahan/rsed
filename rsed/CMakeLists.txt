@@ -19,7 +19,7 @@ ASTWalk.h
 add_executable(rsed
 AST.cpp			Optimize.cpp		Symbol.cpp
 BuiltinCalls.cpp	Parser.cpp		main.cpp
-Interpreter.cpp		RegEx.cpp
+Interpreter.cpp		RegEx.cpp		ScannerSupport.cpp
 LineBuffer.cpp		StringRef.cpp
 ${FLEX_RSED_OUTPUTS} ${BISON_RSED_OUTPUTS}
 ${headers}

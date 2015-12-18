@@ -5,17 +5,6 @@
 #include "grammar.tab.hpp"
 #include "Scanner.h" 
 
-int Scanner::init(const char * source) {
-    if (*source) {
-        auto in = new std::ifstream;
-    	in->open(source);
-    	yyin = in ; 
-    	return in->is_open();
-    }
-    yyin = &std::cin;
-    return 1;
-}
-
 static std::string * makeString(const char * text) {
     return new std::string(text);
 }
@@ -76,6 +65,7 @@ rewind	    return REWIND;
 	    	   
 #.*         /* comment */
 [ \t]+          /* eat up whitespace */
+"<<"        { yylval.name = multilineString(); unput('\n'); return STRING; }
 
 \n([ \t]*(#.*)?\n)* return NEWLINE;
 
