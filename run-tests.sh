@@ -13,7 +13,12 @@ for test in test*.rsed
 do
     base=`basename $test .rsed`
     echo $test
-    $RSED $test < $base.in > $base.test-out
+    if [ -e "$base.in" ] 
+    then
+	$RSED $test < $base.in > $base.test-out
+    else
+	$RSED $test < /dev/null > $base.test-out
+    fi
     if [ $? != 0 ]
     then
 	echo "non zero exit"

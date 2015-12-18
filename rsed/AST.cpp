@@ -55,6 +55,7 @@ void Dumper::end(int depth, int id) {
 
 void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
   OS << std::setw(3) << node->getId() << ' ';
+  OS << std::setw(3) << node->getSourceLine() << ' ';
   switch (node->kind()) {
   case AST::ForeachN: {
     auto f = static_cast<const Foreach *>(node);
