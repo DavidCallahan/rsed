@@ -68,11 +68,11 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
 %token <token> FOREACH COPY SKIP TO PAST END NEWLINE REPLACE_TOK FOR SPLIT
 %token <token> THEN ELSE IF NOT_TOK PRINT MATCH_TOK STYLE 
 %token <token> COLUMNS IN LOOKUP_START REQUIRED
-%token <integer> NUMBER INPUT OUTPUT ERROR ALL WITH
+%token <integer> NUMBER INPUT OUTPUT REWIND ERROR ALL WITH
 %type <stmt> stmtlist stmt foreach copy skip replace 
 %type <stmt> split print columns required
 %type <expr> control toPast stringExpr pattern call lookup
-%type <stmt> ifstmt elsestmt set input output errorStmt 
+%type <stmt> ifstmt elsestmt set input output rewind errorStmt 
 %type <expr> stringTerm string variable optControl optTopExpr
 %type <expr>  predicate buffer optBuffer patternString topExpr
 %type <arg> optarglist arglist 
@@ -97,7 +97,7 @@ optStyle: /* empty */ | STYLE IDENTIFIER NEWLINE { set_style($2, scanner); } ;
 stmtlist: { $$ = AST::emptyStmt(); } | stmt stmtlist { $$ = Statement::list($1, $2); } ;
 
 stmt: foreach | copy | skip | replace | ifstmt | split
-    | set | print | input | output | errorStmt | columns | required
+    | set | print | input | output | rewind | errorStmt | columns | required
     ;
 
 foreach : FOREACH lineno optControl NEWLINE stmtlist END NEWLINE
@@ -210,6 +210,5 @@ arglist: stringExpr { $$ = new Arg($1, nullptr ,LINE); }
 
 input: INPUT lineno buffer NEWLINE { $$ = new Input($3,$2); }
 output: OUTPUT lineno buffer NEWLINE { $$ = new Output($3,$2); }
-buffer: stringExpr { $$ = AST::fileBuffer($1); } ;
-
-%%
+rewind: REWIND lineno buffer NEWLINE { $$ = new Rewind($3,$2); }
+buffer: stringExpr;

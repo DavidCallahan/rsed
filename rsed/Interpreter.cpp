@@ -209,7 +209,6 @@ StringRef State::evalPattern(Expression *ast) {
       }
       break;
     }
-    case AST::BufferN:
     case AST::ControlN:
     case AST::ArgN:
       assert(!"invalid expresion in pattern");
@@ -372,6 +371,7 @@ ResultCode State::interpretOne(Statement *stmt) {
   }
   case AST::InputN:
   case AST::OutputN:
+    case AST::RewindN:
     assert(!"not yet implemented");
     return STOP_S;
 
@@ -460,7 +460,6 @@ ResultCode State::interpret(Columns *cols) {
       assert(BinaryP(e)->op == Binary::CONCAT);
       break;
     case AST::ArgN:
-    case AST::BufferN:
     case AST::ControlN:
       assert(!"invalid expresion in pattern");
     }

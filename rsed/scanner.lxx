@@ -58,6 +58,7 @@ to	    return TO;
 with	    return WITH;
 split	    return SPLIT;
 required    return REQUIRED;
+rewind	    return REWIND;
 
 {ID}	    yylval.name = new std::string(yytext);   return IDENTIFIER;
 \${ID}	    yylval.name = new std::string(yytext+1); return VARIABLE;

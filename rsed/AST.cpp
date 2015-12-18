@@ -147,11 +147,15 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     OS << '\n';
     break;
   }
+  case AST::RewindN:
   case AST::InputN:
   case AST::OutputN: {
-    auto i = static_cast<const Input *>(node);
+    auto i = static_cast<const IOStmt *>(node);
     indent(depth);
-    OS << (node->kind() == AST::InputN ? "input " : "output ");
+    
+    OS << (isa<Input>(i) ? "input " :
+           isa<Output>(i) ? "output " :
+           "rewind ");
     dumpExpr(i->buffer);
     OS << '\n';
     break;
@@ -274,15 +278,6 @@ void Dumper::dumpExpr(const Expression *node) {
   }
   case AST::VariableN: {
     OS << '$' << static_cast<const Variable *>(node)->getName();
-    break;
-  }
-  case AST::BufferN: {
-    auto b = static_cast<const Buffer *>(node);
-    if (auto f = b->getFileName()) {
-      dumpExpr(f);
-    } else {
-      OS << b->getBufferName();
-    }
     break;
   }
   case AST::CallN: {

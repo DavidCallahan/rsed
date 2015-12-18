@@ -54,9 +54,9 @@ AST::WalkResult Statement::walkExprs(const ACTION &a) {
     case ControlN:
       return ((Control *)this)->pattern->walkDown(a);
     case InputN:
-      return ((Input *)this)->buffer->walkDown(a);
+    case RewindN:
     case OutputN:
-      return ((Output *)this)->buffer->walkDown(a);
+      return ((IOStmt *)this)->buffer->walkDown(a);
     case PrintN:
       rc = ((Print *)this)->text->walkDown(a);
       if (rc == ContinueW) {

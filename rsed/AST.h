@@ -82,13 +82,13 @@ public:
     ErrorN,
     InputN,
     OutputN,
+    RewindN,
     RequiredN,
   };
   enum ExprKind {
     ControlN,
     VariableN,
     IntegerN,
-    BufferN,
     StringConstN,
     CallN,
     ArgN,
@@ -388,43 +388,31 @@ public:
   StmtKind kind() const override { return typeKind(); }
 };
 
-class Buffer : public Expression {
-  Expression *fileName;
-  std::string *bufferName;
+class IOStmt : public Statement {
+protected:
+  IOStmt(Expression *buffer, int sourceLine)
+      : Statement(sourceLine), buffer(buffer) {}
 
-public:
-  Buffer(Expression *fileName) : fileName(fileName), bufferName(nullptr) {}
-  Buffer(std::string *bufferName) : fileName(nullptr), bufferName(bufferName) {}
-  ExprKind kind() const override { return BufferN; }
-  Expression *getFileName() const { return fileName; }
-  void setFileName(Expression *fileName) { this->fileName = fileName; }
-  const std::string &getBufferName() const { return *bufferName; }
-  bool isFile() const { return getFileName(); }
-};
-inline Expression *AST::fileBuffer(Expression *name) {
-  return new Buffer(name);
-}
-inline Expression *AST::memoryBuffer(std::string *name) {
-  return new Buffer(name);
-}
-
-class Input : public Statement {
 public:
   Expression *buffer;
+};
 
-  Input(Expression *buffer, int sourceLine)
-      : Statement(sourceLine), buffer(buffer) {}
+class Input : public IOStmt {
+public:
+  Input(Expression *buffer, int sourceLine) : IOStmt(buffer, sourceLine) {}
   static StmtKind typeKind() { return InputN; }
   StmtKind kind() const override { return typeKind(); }
 };
-
-class Output : public Statement {
-
+class Output : public IOStmt {
 public:
-  Expression *buffer;
-  Output(Expression *buffer, int sourceLine)
-      : Statement(sourceLine), buffer(buffer) {}
+  Output(Expression *buffer, int sourceLine) : IOStmt(buffer, sourceLine) {}
   static StmtKind typeKind() { return OutputN; }
+  StmtKind kind() const override { return typeKind(); }
+};
+class Rewind : public IOStmt {
+public:
+  Rewind(Expression *buffer, int sourceLine) : IOStmt(buffer, sourceLine) {}
+  static StmtKind typeKind() { return RewindN; }
   StmtKind kind() const override { return typeKind(); }
 };
 
@@ -454,6 +442,9 @@ public:
 typedef Call *CallP;
 
 template <typename T> T *isa(Statement *stmt) {
+  return (stmt->kind() == T::typeKind() ? (T *)stmt : nullptr);
+}
+template <typename T> const T *isa(const Statement *stmt) {
   return (stmt->kind() == T::typeKind() ? (T *)stmt : nullptr);
 }
 
