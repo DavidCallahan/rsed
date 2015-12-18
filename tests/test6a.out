@@ -1,0 +1,12 @@
+admarket/asx/common/test/BUCK:cpp_benchmark(
+admarket/asx/common/test/BUCK-    name='ngram_bench',
+admarket/asx/common/test/BUCK-    srcs=[
+--
+admarket/cpe/common/tests/BUCK:cpp_benchmark(
+admarket/cpe/common/tests/BUCK-    name='cpe_laser_client_benchmark_test',
+admarket/cpe/common/tests/BUCK-    srcs=[
+admarket/lib/cache/BUCK:cpp_benchmark(
+admarket/lib/cache/BUCK-  name = "generic_lru_cache_benchmark",
+admarket/lib/cache/BUCK-  srcs = [ "GenericLruCacheBenchmark.cpp" ],
+--
+admarket/lib/data/BUCK:cpp_benchmark (

@@ -13,13 +13,13 @@
 
 class EvalState {
 protected:
-  bool sawError = false;
   RegEx *regEx = nullptr;
 
 public:
+  bool sawError = false;
   std::ostream &error() {
     sawError = true;
-    return std::cerr << getLineno() << ": ";
+    return std::cerr << "input " << getLineno() << ": ";
   }
   virtual unsigned getLineno() const = 0;
   RegEx *getRegEx() const { return regEx; }

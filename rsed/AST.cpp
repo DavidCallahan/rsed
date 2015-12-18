@@ -156,6 +156,18 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     OS << '\n';
     break;
   }
+    case AST::RequiredN: {
+      auto r = static_cast<const Required*>(node);
+      indent(depth);
+      OS << "require " ;
+      if(r->predicate) {
+        dumpExpr(r->predicate);
+      }
+      else {
+        OS << r->getCount();
+      }
+      OS << '\n';
+    }
   }
 }
 

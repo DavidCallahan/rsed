@@ -94,6 +94,11 @@ AST::WalkResult Statement::walkExprs(const ACTION &a) {
     case ColumnsN:
       rc = ((Columns *)this)->columns->walkDown(a);
       break;
+    case RequiredN:
+      if (auto p = ((Required*)this)->predicate) {
+        rc = p->walkDown(a);
+      }
+      break;
   }
   
   return rc;

@@ -27,27 +27,23 @@ public:
   void processStrings();
   int getId() const { return id; }
   enum StopKind { StopAfter, StopAt };
+  int getSourceLine() const { return sourceLine; }
 
-  AST(int sourceLine = 0) : id(++next_id), sourceLine(sourceLine) {}
+  AST(int sourceLine) : id(++next_id), sourceLine(sourceLine) {}
 
   static inline Statement *emptyStmt() { return nullptr; }
   static inline Expression *emptyExpr() { return nullptr; }
 
   static Statement *foreach (Expression *control, Statement * body,
                              int sourceLine);
-  static Statement *copy(Expression *control, int sourceLine = 0);
-  static Statement *skip(Expression *control, int sourceLine = 0);
+  static Statement *copy(Expression *control, int sourceLine);
+  static Statement *skip(Expression *control, int sourceLine);
   static Statement *skipOne(Expression *pattern, int sourceLine);
   static Statement *replace(Expression *control, Expression *pattern,
                             Expression *replacement, bool replaceAll,
                             int sourceLine);
   static Statement *replaceOne(Expression *pattern, Expression *replacement,
                                bool replaceAll, int sourceLine);
-  static Statement *print(Expression *text, Expression *buffer);
-  static Statement *error(Expression *text);
-  static Statement *input(Expression *buffer);
-  static Statement *output(Expression *buffer);
-
   static Expression *limit(int number, Expression *control);
   static Expression *limit(int number, int sourceLine);
   static Expression *pattern(std::string *pattern);
@@ -86,6 +82,7 @@ public:
     ErrorN,
     InputN,
     OutputN,
+    RequiredN,
   };
   enum ExprKind {
     ControlN,
@@ -104,7 +101,7 @@ class Statement : public AST {
   Statement *next = nullptr;
 
 protected:
-  Statement(int sourceLine = 0) : AST(sourceLine) {}
+  Statement(int sourceLine) : AST(sourceLine) {}
 
 public:
   bool isStatement() const override { return true; }
@@ -196,17 +193,19 @@ typedef Foreach *ForeachP;
 class Control : public Expression {
   StopKind stopKind;
   int limit;
+  bool required;
 
 public:
   Expression *pattern;
 
   enum { NO_LIMIT = -1 };
-  Control(StopKind stopKind, Expression *pattern, int sourceLine)
-      : stopKind(stopKind), limit(NO_LIMIT), pattern(pattern) {}
+  Control(StopKind stopKind, Expression *pattern, bool required, int sourceLine)
+      : stopKind(stopKind), limit(NO_LIMIT), required(required),
+        pattern(pattern) {}
   void setLimit(int num) { limit = num; }
   bool hasLimit() const { return limit > 0; }
   ExprKind kind() const override { return ControlN; }
-
+  bool getReuired() const { return required; }
   int getLimit() const { return limit; }
   StopKind getStopKind() const { return stopKind; }
 };
@@ -215,7 +214,7 @@ inline Expression *AST::limit(int number, Expression *control) {
   return control;
 }
 inline Expression *AST::limit(int number, int sourceLine) {
-  auto c = new Control(StopAfter, nullptr, sourceLine);
+  auto c = new Control(StopAfter, nullptr, false, sourceLine);
   c->setLimit(number);
   return c;
 }
@@ -301,7 +300,7 @@ public:
   Expression *columns;
   Expression *inExpr;
   Columns(Expression *columns, Expression *inExpr, int sourceLine)
-      : columns(columns), inExpr(inExpr) {}
+      : Statement(sourceLine), columns(columns), inExpr(inExpr) {}
   static StmtKind typeKind() { return ColumnsN; }
   StmtKind kind() const override { return typeKind(); }
 };
@@ -320,6 +319,18 @@ inline Expression *AST::variable(std::string *var) {
   delete var;
   return v;
 }
+
+class Required : public Statement {
+  int count;
+
+public:
+  Expression *predicate;
+  Required(int count, Expression *predicate, int sourceLine)
+      : Statement(sourceLine), count(count), predicate(predicate) {}
+  static StmtKind typeKind() { return RequiredN; }
+  StmtKind kind() const override { return typeKind(); }
+  int getCount() const { return count; }
+};
 
 class StringConst : public Expression {
   StringRef constant;
@@ -361,24 +372,21 @@ public:
   Expression *text;
   Expression *buffer;
 
-  Print(Expression *text, Expression *buffer) : text(text), buffer(buffer) {}
+  Print(Expression *text, Expression *buffer, int sourceLine)
+      : Statement(sourceLine), text(text), buffer(buffer) {}
   static StmtKind typeKind() { return PrintN; }
   StmtKind kind() const override { return typeKind(); }
 };
-inline Statement *AST::print(Expression *text, Expression *buffer) {
-  return new Print(text, buffer);
-}
 
 class Error : public Statement {
 
 public:
   Expression *text;
 
-  Error(Expression *text) : text(text) {}
+  Error(Expression *text, int sourceLine) : Statement(sourceLine), text(text) {}
   static StmtKind typeKind() { return ErrorN; }
   StmtKind kind() const override { return typeKind(); }
 };
-inline Statement *AST::error(Expression *text) { return new Error(text); }
 
 class Buffer : public Expression {
   Expression *fileName;
@@ -404,21 +412,21 @@ class Input : public Statement {
 public:
   Expression *buffer;
 
-  Input(Expression *buffer) : buffer(buffer) {}
+  Input(Expression *buffer, int sourceLine)
+      : Statement(sourceLine), buffer(buffer) {}
   static StmtKind typeKind() { return InputN; }
   StmtKind kind() const override { return typeKind(); }
 };
-inline Statement *AST::input(Expression *buffer) { return new Input(buffer); }
 
 class Output : public Statement {
 
 public:
   Expression *buffer;
-  Output(Expression *buffer) : buffer(buffer) {}
+  Output(Expression *buffer, int sourceLine)
+      : Statement(sourceLine), buffer(buffer) {}
   static StmtKind typeKind() { return OutputN; }
   StmtKind kind() const override { return typeKind(); }
 };
-inline Statement *AST::output(Expression *buffer) { return new Output(buffer); }
 
 class Arg : public Expression {
 public:

@@ -35,7 +35,6 @@ class State : public EvalState {
 
 public:
   bool firstLine = true;
-  bool sawError = false;
 
   // use columns are match for $1, $2,...
   bool matchColumns = true;
@@ -88,6 +87,9 @@ public:
   ResultCode interpret(Set *set);
   ResultCode interpret(Columns *cols);
   ResultCode interpret(Split *split);
+  bool interprettPredicate(Expression *predicate);
+  bool interpretMatch(const StringRef &pattern, const string &target);
+
   string eval(Expression *ast);
   string expandVariables(string text);
   StringRef evalPattern(Expression *ast);
@@ -151,7 +153,7 @@ bool ForeachControl::initialize(Control *c) {
   }
   matchKind = (c->getStopKind() == AST::StopAt ? StopAtK : StopAfterK);
   regIndex = -1;
-  if (auto p = c->pattern ) {
+  if (auto p = c->pattern) {
     if (p->isOp(Expression::NOT)) {
       negate = true;
       p = BinaryP(p)->left;
@@ -193,17 +195,17 @@ StringRef State::evalPattern(Expression *ast) {
     case AST::BinaryN: {
       auto b = BinaryP(e);
       switch (b->op) {
-        case Expression::CONCAT:
-          break ;
-        case Expression::LOOKUP: {
-          auto v = eval(b->right);
-          auto sym = Symbol::findSymbol(v);
-          s << sym->getValue();
-          return AST::SkipChildrenW;
-        }
-        default:
-          assert("unimplemented binary operator");
-          break;
+      case Expression::CONCAT:
+        break;
+      case Expression::LOOKUP: {
+        auto v = eval(b->right);
+        auto sym = Symbol::findSymbol(v);
+        s << sym->getValue();
+        return AST::SkipChildrenW;
+      }
+      default:
+        assert("unimplemented binary operator");
+        break;
       }
       break;
     }
@@ -271,6 +273,12 @@ ResultCode State::interpret(Foreach *foreach) {
     string *line = nullptr;
     if (fc.needsInput()) {
       if (getInputEof()) {
+        if (c && c->getReuired()) {
+          error() << foreach->getSourceLine()
+                  << ": end of input reached before required pattern seen: "
+                  << eval(c->pattern) << '\n';
+          return STOP_S;
+        }
         break;
       }
       line = &getCurrentLine();
@@ -298,27 +306,10 @@ ResultCode State::interpret(Foreach *foreach) {
 }
 
 ResultCode State::interpret(IfStatement *ifstmt) {
-  auto p = ifstmt->predicate;
-  int rc;
-  bool negate = p->isOp(p->NOT);
-  if (negate) {
-    p = BinaryP(p)->right;
-  }
-  if (p->isOp(p->MATCH)) {
-    auto m = (Binary *)p;
-    StringRef pattern = evalPattern(m->right);
-    string target = eval(m->left);
-    rc = regEx->match(pattern, target);
-    matchColumns = false;
-  } else {
-    StringRef pattern = evalPattern(p);
-    rc = regEx->match(pattern, getCurrentLine());
-    matchColumns = false;
-  }
-  if (rc < 0) {
-    return STOP_S;
-  }
-  if (bool(rc) ^ negate) { // true
+
+  if (interprettPredicate(ifstmt->predicate)) { // true
+    if (sawError)
+      return STOP_S;
     return interpret(ifstmt->thenStmts);
   }
   if (auto e = ifstmt->elseStmts) {
@@ -383,6 +374,28 @@ ResultCode State::interpretOne(Statement *stmt) {
   case AST::OutputN:
     assert(!"not yet implemented");
     return STOP_S;
+
+  case AST::RequiredN: {
+    auto r = (Required *)stmt;
+    if (r->predicate) {
+      auto pred = r->predicate;
+      if (interprettPredicate(pred)) {
+        return OK_S;
+      }
+      const char * msg = ": failed required pattern: ";
+      if (auto b = pred->isOp(Expression::NOT)) {
+        msg = ": failed forbidde pattern: " ;
+        pred = b->right;
+      }
+      error() << " source " << stmt->getSourceLine() << msg << eval(pred) << '\n';
+    } else {
+      if (matchColumns && columns.size() >= r->getCount()) {
+        return OK_S;
+      }
+      error() << "failed required column count: " << r->getCount() << '\n';
+    }
+    return STOP_S;
+  }
   }
   return OK_S;
 }
@@ -391,15 +404,13 @@ ResultCode State::interpret(Set *set) {
   auto rhs = eval(set->rhs);
   auto lhs = set->lhs;
   if (lhs->kind() == AST::VariableN) {
-    ((Variable*)lhs)->getSymbol().setValue(rhs);
-  }
-  else if (lhs->isOp(lhs->LOOKUP)) {
+    ((Variable *)lhs)->getSymbol().setValue(rhs);
+  } else if (lhs->isOp(lhs->LOOKUP)) {
     auto b = BinaryP(lhs);
     auto name = eval(b->right);
     auto symbol = Symbol::findSymbol(name);
     symbol->setValue(rhs);
-  }
-  else {
+  } else {
     assert("not yet implemented non variable lhs");
   }
   return OK_S;
@@ -540,6 +551,25 @@ bool Interpreter::setInput(const string &fileName) {
   }
   state->inputBuffer = makeInBuffer(f);
   return true;
+}
+
+bool State::interprettPredicate(Expression *predicate) {
+  if (auto b = predicate->isOp(Expression::NOT)) {
+    return !interprettPredicate(b->right);
+  }
+  if (auto m = predicate->isOp(Expression::MATCH)) {
+    return interpretMatch(evalPattern(m->right), eval(m->left));
+  }
+  return interpretMatch(evalPattern(predicate), getCurrentLine());
+}
+bool State::interpretMatch(const StringRef &pattern, const string &target) {
+  matchColumns = false;
+  auto rc = regEx->match(pattern, target);
+  if (rc < 0) {
+    error() << "invalid regular expression: " << pattern.getFlags() << '\n';
+    return false;
+  }
+  return (rc > 0);
 }
 
 void Interpreter::interpret(Statement *script) { state->interpret(script); }
