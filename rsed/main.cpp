@@ -15,6 +15,8 @@
 #include "Interpreter.h"
 #include "gflags/gflags.h"
 #include "Optimize.h"
+#include "LineBuffer.h"
+
 using std::string;
 int debug;
 extern int yydebug;
@@ -49,8 +51,7 @@ void parseOptions(int argc, char *argv[]) {
   } else if (argc < 2) {
     std::cerr << argv[0] << ": missing script parameter\n";
     exit(1);
-  }
-  else {
+  } else {
     script = argv[1];
   }
 }
@@ -77,7 +78,11 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
   }
-  interp.interpret(ast);
+
+  {
+    LineBufferCloser closer;
+    interp.interpret(ast);
+  }
   exit(interp.getReturnCode());
 }
 

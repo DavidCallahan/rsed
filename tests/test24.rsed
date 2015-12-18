@@ -1,0 +1,5 @@
+template='($user, $date)'r
+$user='david'
+$date='new'
+print $template
+print expand($template " again")

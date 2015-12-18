@@ -7,7 +7,6 @@
 //
 
 #include "BuiltinCalls.h"
-#include "EvalState.h"
 using std::string;
 #include <vector>
 using std::vector;
@@ -15,6 +14,10 @@ using std::vector;
 #include <iostream>
 #include <cstdio>
 #include <memory>
+#include <stdlib.h>
+#include "EvalState.h"
+#include "LineBuffer.h"
+#include "RegEx.h"
 
 namespace {
 enum Builtins {
@@ -25,6 +28,8 @@ enum Builtins {
   LENGTH,
   JOIN,
   ESCAPE,
+  MKTEMP,
+  EXPAND,
   QUOTE
 };
 typedef std::pair<unsigned, string> BuiltinName;
@@ -36,6 +41,8 @@ vector<BuiltinName> builtins{{LENGTH, "length"},
                              {JOIN, "join"},
                              {ESCAPE, "escape"},
                              {QUOTE, "quote"},
+                             {MKTEMP, "mktemp"},
+                             {EXPAND, "expand"},
                              {SHELL, "shell"}};
 
 string doQuote(char quote, const string &text) {
@@ -104,13 +111,12 @@ string evalCall(unsigned int id, const vector<StringRef> &args,
       return "";
     }
     auto regEx = state->getRegEx();
-    int r ;
+    int r;
     if (replaceAll) {
       auto p = args[0];
       p.setIsGlobal();
       r = regEx->setPattern(p);
-    }
-    else {
+    } else {
       r = regEx->setPattern(args[0]);
     }
     if (r < 0) {
@@ -170,6 +176,18 @@ string evalCall(unsigned int id, const vector<StringRef> &args,
     }
     break;
   }
+  case MKTEMP: {
+    static char buffer[] = "rsedXXXXXX";
+    auto t = ::mktemp(buffer);
+    LineBuffer::tempFileNames.emplace_back(t);
+    ss << t;
+    break;
+  }
+  case EXPAND:
+    for (auto a : args) {
+      ss << state->expandVariables(a.getText());
+    }
+    break;
   }
   return ss.str();
 }

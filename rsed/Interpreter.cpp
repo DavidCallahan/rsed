@@ -91,7 +91,7 @@ public:
   bool interpretMatch(const StringRef &pattern, const string &target);
 
   string eval(Expression *ast);
-  string expandVariables(string text);
+  string expandVariables(const string &text) override;
   StringRef evalPattern(Expression *ast);
   string evalCall(Call *);
   // evaluate match control against current linke
@@ -220,7 +220,7 @@ StringRef State::evalPattern(Expression *ast) {
 
 static std::regex variable(R"((\\\$)|(\$[0-9a-zA-Z_]+))");
 
-string State::expandVariables(string text) {
+string State::expandVariables(const string & text) {
 
   const char *ctext = text.c_str();
   size_t len = text.length();
@@ -369,9 +369,19 @@ ResultCode State::interpretOne(Statement *stmt) {
     error() << msg << '\n';
     return NEXT_S;
   }
-  case AST::InputN:
-  case AST::OutputN:
-    case AST::RewindN:
+  case AST::InputN: {
+    auto io = (Input *)stmt;
+    auto fileName = eval(io->buffer);
+    inputBuffer = LineBuffer::findInputBuffer(fileName);
+    break;
+  }
+  case AST::OutputN: {
+    auto io = (Output *)stmt;
+    auto fileName = eval(io->buffer);
+    outputBuffer = LineBuffer::findInputBuffer(fileName);
+    break;
+  }
+  case AST::RewindN:
     assert(!"not yet implemented");
     return STOP_S;
 
@@ -382,12 +392,13 @@ ResultCode State::interpretOne(Statement *stmt) {
       if (interprettPredicate(pred)) {
         return OK_S;
       }
-      const char * msg = ": failed required pattern: ";
+      const char *msg = ": failed required pattern: ";
       if (auto b = pred->isOp(Expression::NOT)) {
-        msg = ": failed forbidde pattern: " ;
+        msg = ": failed forbidde pattern: ";
         pred = b->right;
       }
-      error() << " source " << stmt->getSourceLine() << msg << eval(pred) << '\n';
+      error() << " source " << stmt->getSourceLine() << msg << eval(pred)
+              << '\n';
     } else {
       if (matchColumns && columns.size() >= r->getCount()) {
         return OK_S;

@@ -11,7 +11,7 @@
 #include <assert.h>
 #include <fstream>
 #include <string>
-
+#include <vector>
 class LineBuffer {
 protected:
   int lineno;
@@ -27,6 +27,13 @@ public:
 
   static LineBuffer *findOutputBuffer(const std::string &);
   static LineBuffer *findInputBuffer(const std::string &);
+  static void removeTempFiles(const std::vector<std::string> & names);
+  static std::vector<std::string> tempFileNames;
+};
+
+class LineBufferCloser {
+public:
+  ~LineBufferCloser();
 };
 
 template <typename Stream> class StreamInBuffer : public LineBuffer {
@@ -87,13 +94,5 @@ inline StreamOutBuffer<Stream> *makeOutBuffer(Stream *stream) {
   return new StreamOutBuffer<Stream>(stream);
 }
 
-class MemoryLineBuffer : public LineBuffer {
-public:
-  MemoryLineBuffer();
-  int open(const std::string &);
-  bool getLine(std::string &) override;
-  void append(const std::string &line) override;
-  void close() override;
-};
 
 #endif /* defined(__rsed__LineBuffer__) */
