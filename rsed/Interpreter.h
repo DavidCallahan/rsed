@@ -8,6 +8,7 @@
 
 #ifndef __rsed__Interpreter__
 #define __rsed__Interpreter__
+#include <string>
 
 class State;
 

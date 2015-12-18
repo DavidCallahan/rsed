@@ -29,7 +29,7 @@ public:
   StringRef(std::string *asScanned);
 
   void append(const std::string &r) { text.append(r); }
-  void append(const StringRef &r) { append(r.text); }
+  void append(const StringRef &r) { append(r.getText()); }
   void append(int n) {
     std::stringstream ss;
     ss << n;

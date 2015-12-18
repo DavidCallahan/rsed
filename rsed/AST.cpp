@@ -6,12 +6,13 @@
 //  Copyright (c) 2015 David Callahan. All rights reserved.
 //
 
+#include "AST.h"
 #include <iostream>
 #include <iomanip>
-#include "RegEx.h"
-#include "AST.h"
-#include "BuiltinCalls.h"
 #include <assert.h>
+#include "ASTWalk.h"
+#include "RegEx.h"
+#include "BuiltinCalls.h"
 
 namespace {
 class Dumper {
@@ -101,7 +102,7 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     auto i = static_cast<const IfStatement *>(node);
     indent(depth);
     OS << (elseIf ? "else if " : "if ");
-    dumpExpr(i->getPattern());
+    dumpExpr(i->predicate);
     OS << " then\n";
     break;
   }
@@ -118,8 +119,8 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     auto p = static_cast<const Print *>(node);
     indent(depth);
     OS << "print ";
-    dumpExpr(p->getText());
-    if (auto b = p->getBuffer()) {
+    dumpExpr(p->text);
+    if (auto b = p->buffer) {
       OS << " to ";
       dumpExpr(b);
     }
@@ -130,7 +131,7 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     auto e = static_cast<const Error *>(node);
     indent(depth);
     OS << "error ";
-    dumpExpr(e->getText());
+    dumpExpr(e->text);
     OS << '\n';
     break;
   }
@@ -138,10 +139,10 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     auto c = static_cast<const Columns *>(node);
     indent(depth);
     OS << "columns ";
-    dumpExpr(c->getColumns());
-    if (c->getInExpr()) {
+    dumpExpr(c->columns);
+    if (c->inExpr) {
       OS << " in ";
-      dumpExpr(c->getInExpr());
+      dumpExpr(c->inExpr);
     }
     OS << '\n';
     break;
@@ -151,7 +152,7 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     auto i = static_cast<const Input *>(node);
     indent(depth);
     OS << (node->kind() == AST::InputN ? "input " : "output ");
-    dumpExpr(i->getBuffer());
+    dumpExpr(i->buffer);
     OS << '\n';
     break;
   }
@@ -180,7 +181,7 @@ void Dumper::dump(int depth, const Statement *node) {
   } while (node);
 }
 
-const char *AST::opName(AST::Operators op) {
+const char *Expression::opName(Operators op) {
   switch (op) {
   case ADD:
     return "+";
@@ -244,7 +245,7 @@ void Dumper::dumpExpr(const Expression *node) {
       OS << c->getLimit();
       OS << ' ';
     }
-    if (auto p = c->getPattern()) {
+    if (auto p = c->pattern) {
       OS << (c->getStopKind() == AST::StopAt ? "to " : "past ");
       dumpExpr(p);
     }
@@ -294,8 +295,8 @@ void Dumper::dumpExpr(const Expression *node) {
 void Dumper::ifstmt(int depth, const IfStatement *i) {
   auto id = i->getId();
   for (;;) {
-    dump(depth + 1, i->getThenStmts());
-    auto e = static_cast<const Statement *>(i->getElseStmts());
+    dump(depth + 1, i->thenStmts);
+    auto e = static_cast<const Statement *>(i->elseStmts);
     if (!e) {
       break;
     }
@@ -322,7 +323,7 @@ void Dumper::indent(int depth) {
 std::string AST::checkPattern(Expression *pattern) {
   std::string msg;
   pattern->walkDown([&msg](Expression *e) {
-    if (e->isOp(MATCH)) {
+    if (e->isOp(e->MATCH)) {
       msg = "invalid =~ in expression";
       return StopW;
     }
@@ -333,10 +334,10 @@ std::string AST::checkPattern(Expression *pattern) {
 std::string AST::checkTopExpression(Expression *pattern) {
   std::string msg;
   pattern->walkDown([&msg](Expression *e) {
-    if (e->isOp(NOT)) {
+    if (e->isOp(e->NOT)) {
       msg = "invalid NOT in expression";
       return StopW;
-    } else if (e->isOp(MATCH)) {
+    } else if (e->isOp(e->MATCH)) {
       msg = "invalid MATCH in expression";
       return StopW;
     }

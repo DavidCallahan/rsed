@@ -6,13 +6,14 @@
 //  Copyright (c) 2015 David Callahan. All rights reserved.
 //
 
+#include "Interpreter.h"
 #include <assert.h>
 #include <sstream>
 #include <iostream>
 #include <vector>
 #include "Symbol.h"
 #include "AST.h"
-#include "Interpreter.h"
+#include "ASTWalk.h"
 #include "LineBuffer.h"
 #include "RegEx.h"
 #include "BuiltinCalls.h"
@@ -150,8 +151,8 @@ bool ForeachControl::initialize(Control *c) {
   }
   matchKind = (c->getStopKind() == AST::StopAt ? StopAtK : StopAfterK);
   regIndex = -1;
-  if (auto p = c->getPattern()) {
-    if (p->isOp(AST::NOT)) {
+  if (auto p = c->pattern ) {
+    if (p->isOp(Expression::NOT)) {
       negate = true;
       p = BinaryP(p)->left;
     }
@@ -192,9 +193,9 @@ StringRef State::evalPattern(Expression *ast) {
     case AST::BinaryN: {
       auto b = BinaryP(e);
       switch (b->op) {
-        case AST::CONCAT:
+        case Expression::CONCAT:
           break ;
-        case AST::LOOKUP: {
+        case Expression::LOOKUP: {
           auto v = eval(b->right);
           auto sym = Symbol::findSymbol(v);
           s << sym->getValue();
@@ -297,7 +298,7 @@ ResultCode State::interpret(Foreach *foreach) {
 }
 
 ResultCode State::interpret(IfStatement *ifstmt) {
-  auto p = ifstmt->getPattern();
+  auto p = ifstmt->predicate;
   int rc;
   bool negate = p->isOp(p->NOT);
   if (negate) {
@@ -318,9 +319,9 @@ ResultCode State::interpret(IfStatement *ifstmt) {
     return STOP_S;
   }
   if (bool(rc) ^ negate) { // true
-    return interpret(ifstmt->getThenStmts());
+    return interpret(ifstmt->thenStmts);
   }
-  if (auto e = ifstmt->getElseStmts()) {
+  if (auto e = ifstmt->elseStmts) {
     return interpret(e);
   }
   return OK_S;
@@ -340,8 +341,8 @@ ResultCode State::interpretOne(Statement *stmt) {
   case AST::PrintN: {
     auto p = (Print *)stmt;
     LineBuffer *out = outputBuffer;
-    string value = eval(p->getText());
-    if (auto b = p->getBuffer()) {
+    string value = eval(p->text);
+    if (auto b = p->buffer) {
       out = LineBuffer::findOutputBuffer(eval(b));
     }
     out->append(value);
@@ -374,7 +375,7 @@ ResultCode State::interpretOne(Statement *stmt) {
     return interpret((Split *)stmt);
   case AST::ErrorN: {
     auto e = (Error *)stmt;
-    auto msg = eval(e->getText());
+    auto msg = eval(e->text);
     error() << msg << '\n';
     return NEXT_S;
   }
@@ -392,7 +393,7 @@ ResultCode State::interpret(Set *set) {
   if (lhs->kind() == AST::VariableN) {
     ((Variable*)lhs)->getSymbol().setValue(rhs);
   }
-  else if (lhs->isOp(AST::LOOKUP)) {
+  else if (lhs->isOp(lhs->LOOKUP)) {
     auto b = BinaryP(lhs);
     auto name = eval(b->right);
     auto symbol = Symbol::findSymbol(name);
@@ -424,7 +425,7 @@ ResultCode State::interpret(Columns *cols) {
     }
   };
 
-  cols->getColumns()->walkDown([&process, &nums, this](Expression *e) {
+  cols->columns->walkDown([&process, &nums, this](Expression *e) {
     switch (e->kind()) {
     case AST::StringConstN:
       process(((StringConst *)e)->getConstant().getText());
@@ -468,8 +469,8 @@ ResultCode State::interpret(Columns *cols) {
   }
 
   unsigned lastC = 0;
-  string inExpr = (cols->getInExpr() ? eval(cols->getInExpr()) : string(""));
-  auto &current = (cols->getInExpr() ? inExpr : getCurrentLine());
+  string inExpr = (cols->inExpr ? eval(cols->inExpr) : string(""));
+  auto &current = (cols->inExpr ? inExpr : getCurrentLine());
   for (auto c : nums) {
     if (c > current.length()) {
       c = (unsigned)current.length();

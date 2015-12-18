@@ -37,25 +37,19 @@ public:
                              int sourceLine);
   static Statement *copy(Expression *control, int sourceLine = 0);
   static Statement *skip(Expression *control, int sourceLine = 0);
-  static Statement *skip();
-  static Statement *skipOne(Expression *pattern);
+  static Statement *skipOne(Expression *pattern, int sourceLine);
   static Statement *replace(Expression *control, Expression *pattern,
                             Expression *replacement, bool replaceAll,
                             int sourceLine);
   static Statement *replaceOne(Expression *pattern, Expression *replacement,
                                bool replaceAll, int sourceLine);
-  static Statement *ifStmt(Expression *pattern, Statement *thenStmts,
-                           Statement *elseStmts);
-  static Statement *ifGuard(Expression *pattern, Statement *stmt);
   static Statement *print(Expression *text, Expression *buffer);
   static Statement *error(Expression *text);
   static Statement *input(Expression *buffer);
   static Statement *output(Expression *buffer);
-  static Statement *columns(Expression *cols, Expression *inExpr);
 
   static Expression *limit(int number, Expression *control);
-  static Expression *limit(int number);
-  static Expression *control(StopKind stopKind, Expression *pattern);
+  static Expression *limit(int number, int sourceLine);
   static Expression *pattern(std::string *pattern);
   static Expression *notExpr(Expression *pattern);
   static Statement *set(std::string *lhs, Expression *stringExpr);
@@ -103,6 +97,41 @@ public:
     ArgN,
     BinaryN,
   };
+  enum WalkResult { StopW, ContinueW, SkipChildrenW, SkipExpressionsW };
+};
+
+class Statement : public AST {
+  Statement *next = nullptr;
+
+protected:
+  Statement(int sourceLine = 0) : AST(sourceLine) {}
+
+public:
+  bool isStatement() const override { return true; }
+  virtual StmtKind kind() const = 0;
+  Statement *getNext() const { return next; }
+  void setNext(Statement *next) { this->next = next; }
+  void dumpOne();
+
+  template <typename ACTION> WalkResult walk(const ACTION &a);
+  template <typename ACTION> WalkResult walkExprs(const ACTION &a);
+  template <typename T> static T *list(T *car, T *cdr) {
+    if (!car)
+      return cdr;
+    T *tail = car;
+    while (tail->next)
+      tail = (T *)tail->next;
+    tail->next = cdr;
+    return car;
+  }
+};
+
+typedef class Binary *BinaryP;
+class Expression : public AST {
+protected:
+  Expression(int sourceLine = 0) : AST(sourceLine) {}
+
+public:
   enum Operators {
     ADD,
     SUB,
@@ -123,39 +152,7 @@ public:
     OR,
     LOOKUP,
   };
-  static const char *opName(Operators op);
-  enum WalkResult { StopW, ContinueW, SkipChildrenW, SkipExpressionsW };
-};
 
-class Statement : public AST {
-  Statement *next = nullptr;
-
-public:
-  Statement(int sourceLine = 0) : AST(sourceLine) {}
-  bool isStatement() const override { return true; }
-  virtual StmtKind kind() const = 0;
-  Statement *getNext() const { return next; }
-  void setNext(Statement *next) { this->next = next; }
-  void dumpOne();
-
-  template <typename ACTION> WalkResult walk(const ACTION &a);
-  template <typename ACTION> WalkResult walkExprs(const ACTION &a);
-  template <typename T> static T *list(T *car, T *cdr) {
-    if (!car)
-      return cdr;
-    T *tail = car;
-    while (tail->next)
-      tail = (T *)tail->next;
-    tail->next = cdr;
-    return car;
-  }
-};
-
-class Expression : public AST {
-protected:
-  Expression(int sourceLine = 0) : AST(sourceLine) {}
-
-public:
   bool isStatement() const override { return false; }
   virtual ExprKind kind() const = 0;
   //  Expression *getNext() const { return (Expression *)next; }
@@ -163,7 +160,8 @@ public:
 
   template <typename ACTION> WalkResult walkDown(const ACTION &a);
   template <typename ACTION> WalkResult walkUp(const ACTION &a);
-  bool isOp(AST::Operators op);
+  BinaryP isOp(Operators op);
+  static const char *opName(Operators op);
 };
 
 class Binary : public Expression {
@@ -178,9 +176,11 @@ public:
   bool isOp(Operators op) { return op == this->op; }
 };
 typedef Binary *BinaryP;
-inline bool Expression::isOp(AST::Operators op) {
-  return kind() == BinaryN && BinaryP(this)->isOp(op);
+inline BinaryP Expression::isOp(Operators op) {
+  return (kind() == BinaryN && BinaryP(this)->isOp(op) ? BinaryP(this)
+                                                       : nullptr);
 }
+
 class Foreach : public Statement {
 public:
   Expression *control;
@@ -195,54 +195,53 @@ typedef Foreach *ForeachP;
 
 class Control : public Expression {
   StopKind stopKind;
-  Expression *pattern;
   int limit;
 
 public:
+  Expression *pattern;
+
   enum { NO_LIMIT = -1 };
-  Control(StopKind stopKind, Expression *pattern)
-      : stopKind(stopKind), pattern(pattern), limit(NO_LIMIT) {}
+  Control(StopKind stopKind, Expression *pattern, int sourceLine)
+      : stopKind(stopKind), limit(NO_LIMIT), pattern(pattern) {}
   void setLimit(int num) { limit = num; }
   bool hasLimit() const { return limit > 0; }
   ExprKind kind() const override { return ControlN; }
 
   int getLimit() const { return limit; }
   StopKind getStopKind() const { return stopKind; }
-  Expression *getPattern() const { return pattern; }
-  void setPattern(Expression *pattern) { this->pattern = pattern; }
 };
-inline Expression *AST::control(AST::StopKind stopKind, Expression *pattern) {
-  return new Control(stopKind, pattern);
-}
 inline Expression *AST::limit(int number, Expression *control) {
   ((Control *)control)->setLimit(number);
   return control;
 }
-inline Expression *AST::limit(int number) {
-  auto c = new Control(StopAfter, nullptr);
+inline Expression *AST::limit(int number, int sourceLine) {
+  auto c = new Control(StopAfter, nullptr, sourceLine);
   c->setLimit(number);
   return c;
 }
 
 class CopySkip : public Statement {
-public:
+protected:
+  CopySkip(int sourceLine) : Statement(sourceLine) {}
 };
 class Copy : public CopySkip {
 public:
+  Copy(int souceLine) : CopySkip(sourceLine) {}
   static StmtKind typeKind() { return CopyN; }
   StmtKind kind() const override { return typeKind(); }
 };
 inline Statement *AST::copy(Expression *control, int sourceLine) {
-  return new Foreach(control, new Copy(), sourceLine);
+  return new Foreach(control, new Copy(sourceLine), sourceLine);
 }
 
 class Skip : public CopySkip {
 public:
+  Skip(int sourceLine) : CopySkip(sourceLine) {}
   static StmtKind typeKind() { return SkipN; }
   StmtKind kind() const override { return typeKind(); }
 };
 inline Statement *AST::skip(Expression *control, int sourceLine) {
-  return new Foreach(control, new Skip(), sourceLine);
+  return new Foreach(control, new Skip(sourceLine), sourceLine);
 }
 
 class Replace : public Statement {
@@ -262,7 +261,7 @@ inline Statement *AST::replace(Expression *control, Expression *pattern,
                                int sourceLine) {
   Statement *body = new Replace(pattern, replacement, optAll, sourceLine);
 #ifndef IMPLICIT_FOREACH_COPY
-  body = Statement::list<Statement>(body, new Copy());
+  body = Statement::list<Statement>(body, new Copy(sourceLine));
 #endif
   return new Foreach(control, body, sourceLine);
 }
@@ -281,51 +280,31 @@ public:
 };
 
 class IfStatement : public Statement {
-  Expression *pattern; // TODO rename predicate
+public:
+  Expression *predicate; // TODO rename predicate
   Statement *thenStmts;
   Statement *elseStmts;
 
-public:
-  IfStatement(Expression *pattern, Statement *thenStmts, Statement *elseStmts)
-      : pattern(pattern), thenStmts(thenStmts), elseStmts(elseStmts) {}
+  IfStatement(Expression *predicate, Statement *thenStmts, Statement *elseStmts,
+              int sourceLine)
+      : Statement(sourceLine), predicate(predicate), thenStmts(thenStmts),
+        elseStmts(elseStmts) {}
   static StmtKind typeKind() { return IfStmtN; }
   StmtKind kind() const override { return typeKind(); }
-  Expression *getPattern() const { return pattern; }
-  void setPattern(Expression *pattern) { this->pattern = pattern; }
-  Statement *getThenStmts() const { return thenStmts; }
-  void setThenStmts(Statement *thenStmts) { this->thenStmts = thenStmts; }
-  Statement *getElseStmts() const { return elseStmts; }
-  void setElseStmts(Statement *elseStmts) { this->elseStmts = elseStmts; }
 };
-inline Statement *AST::ifStmt(Expression *pattern, Statement *thenStmts,
-                              Statement *elseStmts) {
-  return new IfStatement(pattern, thenStmts, elseStmts);
+inline Statement *AST::skipOne(Expression *pattern, int sourceLine) {
+  return new IfStatement(pattern, new Skip(sourceLine), nullptr, sourceLine);
 }
-inline Statement *AST::ifGuard(Expression *pattern, Statement *stmt) {
-  return new IfStatement(pattern, stmt, nullptr);
-}
-inline Statement *AST::skipOne(Expression *pattern) {
-  return new IfStatement(pattern, new Skip(), nullptr);
-}
-inline Statement *AST::skip() { return new Skip(); }
 
 class Columns : public Statement {
+public:
   Expression *columns;
   Expression *inExpr;
-
-public:
-  Columns(Expression *columns, Expression *inExpr)
+  Columns(Expression *columns, Expression *inExpr, int sourceLine)
       : columns(columns), inExpr(inExpr) {}
   static StmtKind typeKind() { return ColumnsN; }
   StmtKind kind() const override { return typeKind(); }
-  Expression *getColumns() const { return columns; }
-  void setColumns(Expression *columns) { this->columns = columns; }
-  Expression *getInExpr() const { return inExpr; }
-  void setInExpr(Expression *inExpr) { this->inExpr = inExpr; }
 };
-inline Statement *AST::columns(Expression *cols, Expression *inExpr) {
-  return new Columns(cols, inExpr);
-}
 
 class Variable : public Expression {
   Symbol &symbol;
@@ -349,6 +328,7 @@ public:
   StringConst(std::string *constant) : constant(constant) {}
   ExprKind kind() const override { return StringConstN; }
   const StringRef &getConstant() const { return constant; }
+  void setConstant(StringRef constant) { this->constant = constant; }
 };
 inline Expression *AST::stringConst(std::string *constant) {
   return new StringConst(constant);
@@ -368,39 +348,35 @@ class Set : public Statement {
 public:
   Expression *rhs;
   Expression *lhs;
-  
-  Set(Expression *lhs, Expression *rhs, int sourceLine) : rhs(rhs), lhs(lhs) {}
+
+  Set(Expression *lhs, Expression *rhs, int sourceLine)
+      : Statement(sourceLine), rhs(rhs), lhs(lhs) {}
 
   static StmtKind typeKind() { return SetN; }
   StmtKind kind() const override { return typeKind(); }
 };
 
 class Print : public Statement {
+public:
   Expression *text;
   Expression *buffer;
 
-public:
   Print(Expression *text, Expression *buffer) : text(text), buffer(buffer) {}
   static StmtKind typeKind() { return PrintN; }
   StmtKind kind() const override { return typeKind(); }
-  Expression *getText() const { return text; }
-  void setText(Expression *text) { this->text = text; }
-  Expression *getBuffer() const { return buffer; }
-  void setBuffer(Expression *buffer) { this->buffer = buffer; }
 };
 inline Statement *AST::print(Expression *text, Expression *buffer) {
   return new Print(text, buffer);
 }
 
 class Error : public Statement {
-  Expression *text;
 
 public:
+  Expression *text;
+
   Error(Expression *text) : text(text) {}
   static StmtKind typeKind() { return ErrorN; }
   StmtKind kind() const override { return typeKind(); }
-  Expression *getText() const { return text; }
-  void setText(Expression *text) { this->text = text; }
 };
 inline Statement *AST::error(Expression *text) { return new Error(text); }
 
@@ -425,24 +401,22 @@ inline Expression *AST::memoryBuffer(std::string *name) {
 }
 
 class Input : public Statement {
+public:
   Expression *buffer;
 
-public:
   Input(Expression *buffer) : buffer(buffer) {}
   static StmtKind typeKind() { return InputN; }
   StmtKind kind() const override { return typeKind(); }
-  Expression *getBuffer() const { return buffer; }
 };
 inline Statement *AST::input(Expression *buffer) { return new Input(buffer); }
 
 class Output : public Statement {
-  Expression *buffer;
 
 public:
+  Expression *buffer;
   Output(Expression *buffer) : buffer(buffer) {}
   static StmtKind typeKind() { return OutputN; }
   StmtKind kind() const override { return typeKind(); }
-  Expression *getBuffer() const { return buffer; }
 };
 inline Statement *AST::output(Expression *buffer) { return new Output(buffer); }
 
@@ -470,169 +444,6 @@ public:
   void setCallId(unsigned callId) { this->callId = callId; }
 };
 typedef Call *CallP;
-
-template <typename ACTION> AST::WalkResult Statement::walk(const ACTION &a) {
-  Statement *s = this;
-  for (; s; s = s->getNext()) {
-    auto rc = a(s);
-    if (rc == StopW)
-      return rc;
-    if (rc == SkipChildrenW)
-      continue;
-
-    switch (s->kind()) {
-    case ForeachN: {
-      rc = ForeachP(s)->body->walk(a);
-      if (rc == StopW)
-        return rc;
-      break;
-    }
-
-    case IfStmtN: {
-      auto ifs = (IfStatement *)s;
-      rc = ifs->getThenStmts()->walk(a);
-      if (rc == StopW)
-        return rc;
-      if (rc == ContinueW) {
-        if (auto elseStmts = ifs->getElseStmts()) {
-          rc = elseStmts->walk(a);
-          if (rc == StopW)
-            return rc;
-        }
-      }
-    }
-    default:
-      break;
-    }
-  }
-  return ContinueW;
-}
-
-template <typename ACTION>
-AST::WalkResult Statement::walkExprs(const ACTION &a) {
-  auto rc = ContinueW;
-  switch (kind()) {
-  case ControlN:
-    return ((Control *)this)->getPattern()->walkDown(a);
-  case InputN:
-    return ((Input *)this)->getBuffer()->walkDown(a);
-  case OutputN:
-    return ((Output *)this)->getBuffer()->walkDown(a);
-  case PrintN:
-    rc = ((Print *)this)->getText()->walkDown(a);
-    if (rc == ContinueW) {
-      if (auto buffer = ((Print *)this)->getBuffer()) {
-        rc = buffer->walkDown(a);
-      }
-    }
-    break;
-  case CopyN:
-  case SkipN:
-    break;
-  case ReplaceN:
-    rc = ((Replace *)this)->pattern->walkDown(a);
-    if (rc != ContinueW)
-      return rc;
-    rc = ((Replace *)this)->replacement->walkDown(a);
-    break;
-  case SplitN:
-    if ((Split *)this->pattern) {
-      rc = ((Split *)this)->separator->walkDown(a);
-      if (rc != ContinueW)
-        return rc;
-    }
-    rc = ((Split *)this)->separator->walkDown(a);
-    break;
-  case SetN:
-    rc = ((Set *)this)->rhs->walkDown(a);
-    break;
-  case IfStmtN:
-    rc = ((IfStatement *)this)->getPattern()->walkDown(a);
-    break;
-  case ErrorN:
-    rc = ((Error *)this)->getText()->walkDown(a);
-    break;
-  case ColumnsN:
-    rc = ((Columns *)this)->getColumns()->walkDown(a);
-    break;
-  }
-
-  return rc;
-}
-
-template <typename ACTION> AST::WalkResult Expression::walkUp(const ACTION &a) {
-  Expression *e = this;
-  WalkResult rc = ContinueW;
-  switch (e->kind()) {
-  case ControlN:
-    rc = ((Control *)e)->getPattern()->walkUp(a);
-    break;
-  case BinaryN:
-    if (BinaryP(e)->left) {
-      rc = walkUp(BinaryP(e)->left);
-      if (rc != ContinueW)
-        return rc;
-    }
-    rc = walkUp(BinaryP(e)->right);
-    break;
-  case CallN:
-    for (auto arg = CallP(e)->args; arg; arg = arg->nextArg) {
-      rc = arg->value->walkUp(a);
-      if (rc != ContinueW)
-        return rc;
-    }
-    break;
-  default:
-    rc = ContinueW;
-    break;
-  }
-  if (rc != ContinueW)
-    return rc;
-  rc = a(e);
-  if (rc != ContinueW)
-    return rc;
-  return ContinueW;
-}
-
-template <typename ACTION>
-AST::WalkResult Expression::walkDown(const ACTION &a) {
-  Expression *e = this;
-  WalkResult rc = a(e);
-  if (rc != ContinueW) {
-    if (rc == SkipChildrenW)
-      rc = ContinueW;
-    return rc;
-  }
-
-  switch (e->kind()) {
-  case ControlN:
-    rc = ((Control *)e)->getPattern()->walkDown(a);
-    if (rc != ContinueW)
-      return rc;
-    break;
-  case BinaryN:
-    if (auto left = BinaryP(e)->left) {
-      rc = left->walkDown(a);
-      if (rc != ContinueW)
-        return rc;
-    }
-    rc = BinaryP(e)->right->walkDown(a);
-    if (rc != ContinueW)
-      return rc;
-    break;
-  case CallN:
-    for (auto arg = CallP(e)->args; arg; arg = arg->nextArg) {
-      rc = arg->value->walkDown(a);
-      if (rc != ContinueW)
-        return rc;
-    }
-    break;
-
-  default:
-    break;
-  }
-  return ContinueW;
-}
 
 template <typename T> T *isa(Statement *stmt) {
   return (stmt->kind() == T::typeKind() ? (T *)stmt : nullptr);

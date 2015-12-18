@@ -109,14 +109,14 @@ StringRef StringRef::processEscapes(const StringRef &r) {
   StringRef s;
   s.flags = r.flags;
   if (r.flags & r.RAW_STRING) {
-    s.text = r.text;
+    s.text = r.getText();
   } else {
-    for (unsigned i = 0; i < r.text.length(); i++) {
-      auto c = r.text[i];
+    for (unsigned i = 0; i < r.getText().length(); i++) {
+      auto c = r.getText()[i];
       if (c != '\\') {
         s.text.append(1, c);
       } else {
-        c = r.text[++i];
+        c = r.getText()[++i];
         switch (c) {
         case '\\':
           s.text.append(1, '\\');

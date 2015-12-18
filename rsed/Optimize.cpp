@@ -17,6 +17,7 @@ using std::unordered_set;
 
 DEFINE_bool(optimize, false, "enable optimizer");
 
+#if 0
 namespace {
 
 typedef std::pair<bool, unsigned> HoistInfo;
@@ -53,19 +54,24 @@ public:
   Statement *optimize(Statement *input);
 };
 }
+#endif
 
 namespace Optimize {
 Statement *optimize(Statement *input) {
+#if 0
   if (!FLAGS_optimize) {
     return input;
   }
   Optimizer opt;
   return opt.optimize(input);
+#else
+  return input;
+#endif
 }
 }
 
+#if 0
 Statement *Optimizer::optimize(Statement *input) {
-
   if (!input) {
     return input;
   }
@@ -82,15 +88,14 @@ Statement *Optimizer::optimize(Statement *input) {
     return foreach;
   }
   if (auto ifstmt = isa<IfStatement>(input)) {
-    ifstmt->setThenStmts(optimize(ifstmt->getThenStmts()));
-    ifstmt->setElseStmts(optimize(ifstmt->getElseStmts()));
+    ifstmt->setThenStmts(optimize(ifstmt->thenStmts));
+    ifstmt->setElseStmts(optimize(ifstmt->elseStmts));
     return ifstmt;
   }
   return input;
 }
 
 void Optimizer::noteSetVariables(Statement *body) {
-#if 0
   setInLoop.clear();
   body->walk([this](Statement *stmt) {
     if (auto set = isa<Set>(stmt)) {
@@ -98,7 +103,6 @@ void Optimizer::noteSetVariables(Statement *body) {
     }
     return AST::ContinueW;
   });
-#endif
 }
 
 #define APPLY(T, F, A, x) ((T *)x)->set##F(A(((T *)x)->get##F()))
@@ -269,3 +273,4 @@ HoistInfo Optimizer::checkHoistTerm(Expression *expr) {
 }
 
 Expression *Optimizer::hoist(Expression *expr) { return expr; }
+#endif
