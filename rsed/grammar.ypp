@@ -88,7 +88,7 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
 
 %%
 
-script: optNewline optStyle stmtlist { *parseTree = $3 } ;
+script: optNewline optStyle stmtlist optNewline { *parseTree = $3 } ;
 
 // todo -- allow empty lines in more places
 optNewline: /* empty*/ | NEWLINE ;

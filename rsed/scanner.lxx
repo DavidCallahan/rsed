@@ -82,6 +82,7 @@ rewind	    return REWIND;
 \"([^"]|\\\")*\"[rig]*  yylval.name = makeString(yytext); return STRING;
 \'([^']|\\\')*\'[rig]*  yylval.name = makeString(yytext); return STRING;
 
+<<EOF>>     { static int seen = 0; return (seen++ ? 0 : NEWLINE); }
 
 .           printf( "Unrecognized character: %s\n", yytext );
 
