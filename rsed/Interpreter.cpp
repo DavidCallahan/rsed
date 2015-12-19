@@ -19,6 +19,7 @@
 #include "BuiltinCalls.h"
 #include "EvalState.h"
 #include "Exception.h"
+#include "Value.h"
 
 using std::vector;
 using std::string;
@@ -98,8 +99,10 @@ public:
   ResultCode interpret(Set *set);
   ResultCode interpret(Columns *cols);
   ResultCode interpret(Split *split);
+
   bool interprettPredicate(Expression *predicate);
   bool interpretMatch(const StringRef &pattern, const string &target);
+  Value *interpret(Expression *);
 
   string eval(Expression *ast);
   string expandVariables(const string &text) override;
@@ -581,13 +584,11 @@ bool Interpreter::setInput(const string &fileName) {
 }
 
 bool State::interprettPredicate(Expression *predicate) {
-  if (auto b = predicate->isOp(Expression::NOT)) {
-    return !interprettPredicate(b->right);
+  auto v = interpret(predicate);
+  if (v->isString()) {
+    return interpretMatch(v->asString(), getCurrentLine());
   }
-  if (auto m = predicate->isOp(Expression::MATCH)) {
-    return interpretMatch(evalPattern(m->right), eval(m->left));
-  }
-  return interpretMatch(evalPattern(predicate), getCurrentLine());
+  return v->asLogical();
 }
 bool State::interpretMatch(const StringRef &pattern, const string &target) {
   matchColumns = false;
@@ -602,3 +603,88 @@ bool State::interpretMatch(const StringRef &pattern, const string &target) {
 void Interpreter::interpret(Statement *script) { state->interpret(script); }
 
 int Interpreter::getReturnCode() const { return state ? state->sawError : 0; }
+
+Value *State::interpret(Expression *e) {
+  switch (e->kind()) {
+  case AST::ArgN:
+    assert("unexpected arg");
+    break;
+  case AST::ControlN:
+    assert("internal error: unexpected control");
+    break;
+  case AST::VariableN: {
+    e->set(((Variable *)e)->getSymbol().getValue());
+    break;
+  }
+  case AST::IntegerN: {
+    e->set(double(((Integer *)e)->getValue()));
+    break;
+  }
+  case AST::StringConstN: {
+    const auto &sc = ((StringConst *)e)->getConstant();
+    if (sc.isRaw()) {
+      e->set(sc);
+    } else {
+      e->set(expandVariables(sc.getText()));
+    }
+    break;
+  }
+  case AST::CallN: {
+    auto c = (Call *)e;
+    vector<StringRef> args;
+    for (auto a = c->args; a; a = a->nextArg) {
+      args.emplace_back(interpret(a->value)->asString());
+    }
+    e->set(BuiltinCalls::evalCall(c->getCallId(), args, this));
+    break;
+  }
+  case AST::BinaryN: {
+    auto b = (Binary *)e;
+    switch (b->op) {
+    case Binary::NOT: {
+      auto v = interpret(b->right);
+      if (v->isString()) {
+        e->set(! interpretMatch(v->asString(), getCurrentLine()));
+      }
+      else {
+        e->set(! v->asLogical());
+      }
+      break;
+    }
+    case Binary::LOOKUP:
+      e->set(Symbol::findSymbol(interpret(b->right)->asString().getText()));
+      break;
+    case Binary::CONCAT: {
+      auto str = interpret(b->left)->asString();
+      str.append(interpret(b->right)->asString());
+      e->set(str);
+      break;
+    }
+    case Binary::MATCH: {
+      auto pattern = interpret(b->right)->asString();
+      auto target = interpret(b->left)->asString().getText();
+      e->set(interpretMatch(pattern, target));
+      break;
+    }
+    case Binary::REPLACE:
+    case Binary::ADD:
+    case Binary::SUB:
+    case Binary::MUL:
+    case Binary::DIV:
+    case Binary::NEG:
+    case Binary::LT:
+    case Binary::LE:
+    case Binary::EQ:
+    case Binary::NE:
+    case Binary::GE:
+    case Binary::GT:
+    case Binary::AND:
+    case Binary::OR:
+      assert("binary operator not yet implemented");
+      break;
+    }
+    }
+    break;
+  }
+    return e;
+  }

@@ -12,6 +12,7 @@
 #include <regex>
 #include "Symbol.h"
 #include "StringRef.h"
+#include "Value.h"
 
 class Statement;
 class Expression;
@@ -48,7 +49,6 @@ public:
   static Expression *limit(int number, int sourceLine);
   static Expression *pattern(std::string *pattern);
   static Expression *notExpr(Expression *pattern);
-  static Statement *set(std::string *lhs, Expression *stringExpr);
   static Expression *integer(int value);
   static Expression *variable(std::string *var);
   static Expression *stringConst(std::string *constant);
@@ -124,7 +124,7 @@ public:
 };
 
 typedef class Binary *BinaryP;
-class Expression : public AST {
+class Expression : public AST, public Value {
 protected:
   Expression(int sourceLine = 0) : AST(sourceLine) {}
 
@@ -451,15 +451,13 @@ template <typename T> const T *isa(const Statement *stmt) {
 // TODO arithmetic ---  comparisons, booleans, (+ - * /)
 // TODO -- optimization pass to pull string cmoparison and regular expression
 //    compilation out of loops.
+//    optimize join reductions
 // TODO -- add better error handlings by tagging operations with line numbers
 //    and reporting source script line (and maybe variable values mentioned in
 //    the line?)
-// TODO work in input/output. Add "tempfile() to support
-//        $temp = tempfile()
-//        output $temp
-//        ...
-//        input $temp
-//       don't worry about in-memory buffering
-// TODO add "columns .... in expr"
+// TODO -- add foreeach split ...
+// TODO --
+//    think about passing a stringstream/file to "eval" ...
+//
 
 #endif /* defined(__rsed__AST__) */

@@ -249,7 +249,7 @@ void Dumper::dumpExpr(const Expression *node) {
     if (b->left) {
       dumpExpr(b->left);
     }
-    OS << b->opName(b->op);
+    OS << ' ' << b->opName(b->op) << ' ' ;
     dumpExpr(b->right);
     if (b->op == b->LOOKUP) {
       OS << ")";

@@ -13,14 +13,14 @@ set (headers
 AST.h		Interpreter.h	Parser.h	StringRef.h
 BuiltinCalls.h	LineBuffer.h	RegEx.h		Symbol.h
 EvalState.h	Optimize.h	Scanner.h	rsed.h
-ASTWalk.h
+ASTWalk.h Value.h
 )
 
 add_executable(rsed
 AST.cpp			Optimize.cpp		Symbol.cpp
 BuiltinCalls.cpp	Parser.cpp		main.cpp
 Interpreter.cpp		RegEx.cpp		ScannerSupport.cpp
-LineBuffer.cpp		StringRef.cpp
+LineBuffer.cpp		StringRef.cpp		Value.cpp
 ${FLEX_RSED_OUTPUTS} ${BISON_RSED_OUTPUTS}
 ${headers}
 		     )
