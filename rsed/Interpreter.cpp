@@ -26,31 +26,33 @@ using std::string;
 using std::stringstream;
 extern int debug;
 
+namespace {
 enum ResultCode {
   OK_S,   // continue
   NEXT_S, // skip to next line
-  STOP_S, // stop processing
 };
 enum MatchKind { NoMatchK, StopAtK, StopAfterK };
+}
 
 class State : public EvalState {
   LineBuffer *inputBuffer;
 
 public:
-  bool firstLine = true;
-  
+
   // use columns are match for $1, $2,...
   bool matchColumns = true;
   vector<string> columns;
 
   string inputLine;
   string currentLine_;
+  bool firstLine = true;
   string &getCurrentLine() {
     if (firstLine) {
       nextLine();
     }
     return currentLine_;
   }
+  
   // todo, move input state to line buffer...
   LineBuffer *getInputBuffer() const { return inputBuffer; }
 
@@ -94,11 +96,11 @@ public:
 
   ResultCode interpret(Statement *stmtList);
   ResultCode interpretOne(Statement *stmt);
-  ResultCode interpret(Foreach *foreach);
+  void interpret(Foreach *foreach);
   ResultCode interpret(IfStatement *ifstmt);
-  ResultCode interpret(Set *set);
-  ResultCode interpret(Columns *cols);
-  ResultCode interpret(Split *split);
+  void interpret(Set *set);
+  void interpret(Columns *cols);
+  void interpret(Split *split);
 
   bool interprettPredicate(Expression *predicate);
   bool interpretMatch(const StringRef &pattern, const string &target);
@@ -123,7 +125,7 @@ public:
   ForeachControl(State *state)
       : state(state), regIndex(-1), negate(false), matchKind(NoMatchK),
         hasCount(true), count(0), all(false) {}
-  bool initialize(Control *c);
+  void initialize(Control *c);
   MatchKind eval(const string *line);
   void release() {
     if (regIndex >= 0) {
@@ -154,10 +156,10 @@ MatchKind ForeachControl::eval(const string *line) {
   return NoMatchK;
 }
 
-bool ForeachControl::initialize(Control *c) {
+void ForeachControl::initialize(Control *c) {
   if (!c) {
     all = true;
-    return true;
+    return;
   }
   hasCount = c->hasLimit();
   if (hasCount) {
@@ -177,7 +179,6 @@ bool ForeachControl::initialize(Control *c) {
     }
     regIndex = state->getRegEx()->setPattern(v->asString());
   }
-  return true;
 }
 
 static std::regex variable(R"((\\\$)|(\$[0-9a-zA-Z_]+))");
@@ -218,9 +219,8 @@ ResultCode State::interpret(Statement *stmtList) {
   stmtList->walk([this, &rc](Statement *stmt) {
     try {
       rc = interpretOne(stmt);
-    }
-    catch (Exception & e) {
-      e.setStatement(stmt,inputBuffer);
+    } catch (Exception &e) {
+      e.setStatement(stmt, inputBuffer);
       throw;
     }
     return (rc == OK_S ? AST::SkipChildrenW : AST::StopW);
@@ -228,12 +228,10 @@ ResultCode State::interpret(Statement *stmtList) {
   return rc;
 }
 
-ResultCode State::interpret(Foreach *foreach) {
+void State::interpret(Foreach *foreach) {
   auto c = (Control *)foreach->control;
   ForeachControl fc(this);
-  if (!fc.initialize(c)) {
-    return STOP_S;
-  }
+  fc.initialize(c);
 
   auto b = foreach->body;
   for (;;) {
@@ -253,22 +251,12 @@ ResultCode State::interpret(Foreach *foreach) {
     if (mk == StopAtK) {
       break;
     }
-    auto rc = interpret(b);
-    if (rc == STOP_S) {
-      return STOP_S;
-    }
-#ifdef IMPLICIT_FOREACH_COPY
-    // should there be an implicit copy or no?
-    if (rc != NEXT_S) {
-      outputBuffer->append(getCurrentLine());
-    }
-#endif
+    interpret(b);
     nextLine();
     if (mk == StopAfterK) {
       break;
     }
   }
-  return OK_S;
 }
 
 ResultCode State::interpret(IfStatement *ifstmt) {
@@ -314,24 +302,25 @@ ResultCode State::interpretOne(Statement *stmt) {
       pattern.setIsGlobal();
     }
     auto index = regEx->setPattern(pattern);
-    if (index < 0)
-      return STOP_S;
-
     auto target = interpret(r->replacement)->asString().getText();
     currentLine_ = regEx->replace(index, target, getCurrentLine());
     regEx->releasePattern(index);
     break;
   }
   case AST::ForeachN:
-    return interpret((Foreach *)stmt);
+    interpret((Foreach *)stmt);
+    break;
   case AST::IfStmtN:
     return interpret((IfStatement *)stmt);
   case AST::SetN:
-    return interpret((Set *)stmt);
+    interpret((Set *)stmt);
+    break;
   case AST::ColumnsN:
-    return interpret((Columns *)stmt);
+    interpret((Columns *)stmt);
+    break;
   case AST::SplitN:
-    return interpret((Split *)stmt);
+    interpret((Split *)stmt);
+    break;
   case AST::ErrorN: {
     // TODO add test cases
     auto e = (Error *)stmt;
@@ -379,13 +368,12 @@ ResultCode State::interpretOne(Statement *stmt) {
       }
       throw Exception("failed required column count", stmt, inputBuffer);
     }
-    return STOP_S;
   }
   }
   return OK_S;
 }
 
-ResultCode State::interpret(Set *set) {
+void State::interpret(Set *set) {
   auto rhs = interpret(set->rhs)->asString().getText();
   auto lhs = set->lhs;
   if (lhs->kind() == AST::VariableN) {
@@ -402,10 +390,9 @@ ResultCode State::interpret(Set *set) {
   } else {
     assert("not yet implemented non variable lhs");
   }
-  return OK_S;
 }
 
-ResultCode State::interpret(Columns *cols) {
+void State::interpret(Columns *cols) {
   matchColumns = true;
   columns.clear();
   vector<unsigned> nums;
@@ -416,21 +403,21 @@ ResultCode State::interpret(Columns *cols) {
 
   int lastC = 0;
   int max = current.length();
-  auto addCol = [this, &lastC, max, cols, current](Expression * e) {
+  auto addCol = [this, &lastC, max, cols, current](Expression *e) {
     auto v = interpret(e);
     auto i = int(v->asNumber());
     if (i < lastC) {
       throw Exception("column numbers must be positive and non-decreasing: " +
-                      v->asString(),
+                          v->asString(),
                       cols, inputBuffer);
     }
     i = std::min(i, max);
     columns.push_back(current.substr(lastC, (i - lastC)));
     lastC = i;
   };
-  
+
   auto c = cols->columns;
-  for ( ; c->isOp(c->CONCAT); c = BinaryP(c)->right) {
+  for (; c->isOp(c->CONCAT); c = BinaryP(c)->right) {
     addCol(BinaryP(c)->left);
   }
   addCol(c);
@@ -440,18 +427,16 @@ ResultCode State::interpret(Columns *cols) {
   } else {
     columns.push_back("");
   }
-  return OK_S;
 }
 
-ResultCode State::interpret(Split *split) {
+void State::interpret(Split *split) {
   auto sep = interpret(split->separator)->asString().getText();
   const string &target =
       (split->target ? interpret(split->target)->asString().getText()
                      : getCurrentLine());
   matchColumns = true;
   columns.clear();
-  auto ok = regEx->split(sep, target, &columns);
-  return (ok ? OK_S : STOP_S);
+  regEx->split(sep, target, &columns);
 }
 
 string State::evalCall(Call *c) {
@@ -508,11 +493,7 @@ bool State::interprettPredicate(Expression *predicate) {
 }
 bool State::interpretMatch(const StringRef &pattern, const string &target) {
   matchColumns = false;
-  auto rc = regEx->match(pattern, target);
-  if (rc < 0) {
-    throw Exception("invalid regular expression: " + pattern.getText());
-  }
-  return (rc > 0);
+  return regEx->match(pattern, target);
 }
 
 void Interpreter::interpret(Statement *script) { state->interpret(script); }

@@ -29,10 +29,9 @@ public:
   virtual std::string replace(int pattern, const std::string &replacement,
                               const std::string &line) = 0;
   virtual bool match(int pattern, const std::string &line) = 0;
-  // < 0 for error, > 0 for match
-  virtual int match(const StringRef &pattern, const std::string &target) = 0;
+  virtual bool match(const StringRef &pattern, const std::string &target) = 0;
   
-  virtual bool split(const StringRef &pattern,
+  virtual void split(const StringRef &pattern,
                      const std::string & target,
                      std::vector<std::string> * words) = 0;
 

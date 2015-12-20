@@ -35,11 +35,11 @@ public:
   virtual int setPattern(const StringRef &pattern) override;
   virtual void releasePattern(int) override;
 
-  virtual int match(const StringRef &pattern,
+  virtual bool match(const StringRef &pattern,
                     const std::string &target) override;
 
   virtual bool match(int pattern, const std::string &line) override;
-  virtual bool split(const StringRef &pattern, const std::string &target,
+  virtual void split(const StringRef &pattern, const std::string &target,
                      std::vector<std::string> *words) override;
   virtual std::string escape(const std::string &text) override;
   virtual std::string getSubMatch(unsigned i) override;
@@ -64,7 +64,7 @@ bool C14RegEx::specials[256];
 RegEx *RegEx::regEx = nullptr;
 std::string RegEx::styleName;
 
-int C14RegEx::match(const StringRef &pattern, const std::string &target) {
+bool C14RegEx::match(const StringRef &pattern, const std::string &target) {
 
   if (debug)
     std::cout << "regex: " << pattern.getText() << '\n';
@@ -154,13 +154,12 @@ std::string C14RegEx::replace(int pattern, const std::string &replacement,
   return std::regex_replace(line, re, replacement, format_first_only);
 }
 
-bool C14RegEx::split(const StringRef &pattern, const std::string &target,
+void C14RegEx::split(const StringRef &pattern, const std::string &target,
                      std::vector<std::string> *words) {
-  std::regex rgx(pattern.getText());
+  std::regex rgx = createRegex(pattern.getText());
   std::sregex_token_iterator iter(target.begin(), target.end(), rgx, -1);
   std::sregex_token_iterator end;
   for (; iter != end; ++iter) {
     words->emplace_back(*iter);
   }
-  return true;
 }
