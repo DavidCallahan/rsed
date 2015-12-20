@@ -23,9 +23,11 @@ public:
       : statement(statement), message(message) {}
   Exception(std::string message, const Statement *statement, LineBuffer * input)
   : statement(statement), input(input), message(message) {}
-  void setStatement(Statement *s) {
+  void setStatement(Statement *s, LineBuffer *i) {
     if (!statement)
       statement = s;
+    if (!input)
+      input = i;
   }
 };
 

@@ -38,7 +38,7 @@ class State : public EvalState {
 
 public:
   bool firstLine = true;
-
+  
   // use columns are match for $1, $2,...
   bool matchColumns = true;
   vector<string> columns;
@@ -104,9 +104,7 @@ public:
   bool interpretMatch(const StringRef &pattern, const string &target);
   Value *interpret(Expression *);
 
-  string eval(Expression *ast);
   string expandVariables(const string &text) override;
-  StringRef evalPattern(Expression *ast);
   string evalCall(Call *);
   // evaluate match control against current linke
   MatchKind matchPattern(AST &);
@@ -172,64 +170,14 @@ bool ForeachControl::initialize(Control *c) {
       negate = true;
       p = BinaryP(p)->left;
     }
-    StringRef pattern = state->evalPattern(p);
-    regIndex = state->getRegEx()->setPattern(pattern);
+    auto v = state->interpret(p);
+    if (!v->isString()) {
+      // TODO -- support more general preducates
+      throw Exception("unsupported expression in foreach");
+    }
+    regIndex = state->getRegEx()->setPattern(v->asString());
   }
   return true;
-}
-
-string State::eval(Expression *e) { return evalPattern(e).getText(); }
-
-// this expression is:
-StringRef State::evalPattern(Expression *ast) {
-  stringstream s;
-  unsigned flags = 0;
-  ast->walkDown([&s, &flags, this](Expression *e) {
-    switch (e->kind()) {
-    case AST::StringConstN: {
-      const auto &sc = ((StringConst *)e)->getConstant();
-      const auto &text = sc.getText();
-      if (sc.isRaw()) {
-        s << text;
-      } else {
-        s << expandVariables(text);
-      }
-      flags |= sc.getFlags();
-      break;
-    }
-    case AST::VariableN:
-      s << ((Variable *)e)->getSymbol().getValue();
-      break;
-    case AST::IntegerN:
-      s << ((Integer *)e)->getValue();
-      break;
-    case AST::CallN:
-      s << evalCall((Call *)e);
-      return AST::SkipChildrenW;
-    case AST::BinaryN: {
-      auto b = BinaryP(e);
-      switch (b->op) {
-      case Expression::CONCAT:
-        break;
-      case Expression::LOOKUP: {
-        auto v = eval(b->right);
-        auto sym = Symbol::findSymbol(v);
-        s << sym->getValue();
-        return AST::SkipChildrenW;
-      }
-      default:
-        assert("unimplemented binary operator");
-        break;
-      }
-      break;
-    }
-    case AST::ControlN:
-    case AST::ArgN:
-      assert(!"invalid expresion in pattern");
-    }
-    return AST::ContinueW;
-  });
-  return StringRef(s.str(), flags);
 }
 
 static std::regex variable(R"((\\\$)|(\$[0-9a-zA-Z_]+))");
@@ -268,10 +216,16 @@ string State::expandVariables(const string &text) {
 ResultCode State::interpret(Statement *stmtList) {
   ResultCode rc = OK_S;
   stmtList->walk([this, &rc](Statement *stmt) {
-    rc = interpretOne(stmt);
-    return (rc == OK_S && !sawError ? AST::SkipChildrenW : AST::StopW);
+    try {
+      rc = interpretOne(stmt);
+    }
+    catch (Exception & e) {
+      e.setStatement(stmt,inputBuffer);
+      throw;
+    }
+    return (rc == OK_S ? AST::SkipChildrenW : AST::StopW);
   });
-  return (sawError ? STOP_S : rc);
+  return rc;
 }
 
 ResultCode State::interpret(Foreach *foreach) {
@@ -287,10 +241,9 @@ ResultCode State::interpret(Foreach *foreach) {
     if (fc.needsInput()) {
       if (getInputEof()) {
         if (c && c->getReuired()) {
-          error() << foreach->getSourceLine()
-                  << ": end of input reached before required pattern seen: "
-                  << eval(c->pattern) << '\n';
-          return STOP_S;
+          // TODO add test case
+          throw Exception("end of input reached before required pattern seen",
+                          foreach, inputBuffer);
         }
         break;
       }
@@ -321,8 +274,6 @@ ResultCode State::interpret(Foreach *foreach) {
 ResultCode State::interpret(IfStatement *ifstmt) {
 
   if (interprettPredicate(ifstmt->predicate)) { // true
-    if (sawError)
-      return STOP_S;
     return interpret(ifstmt->thenStmts);
   }
   if (auto e = ifstmt->elseStmts) {
@@ -345,16 +296,20 @@ ResultCode State::interpretOne(Statement *stmt) {
   case AST::PrintN: {
     auto p = (Print *)stmt;
     LineBuffer *out = outputBuffer;
-    string value = eval(p->text);
+    string value = interpret(p->text)->asString().getText();
     if (auto b = p->buffer) {
-      out = LineBuffer::findOutputBuffer(eval(b));
+      auto v = interpret(b);
+      if (!v->isString()) {
+        throw Exception("invalid file name" + v->asString(), stmt, inputBuffer);
+      }
+      out = LineBuffer::findOutputBuffer(v->asString().getText());
     }
     out->append(value);
     break;
   }
   case AST::ReplaceN: {
     auto r = (Replace *)stmt;
-    auto pattern = evalPattern(r->pattern);
+    auto pattern = interpret(r->pattern)->asString();
     if (r->optAll) {
       pattern.setIsGlobal();
     }
@@ -362,7 +317,7 @@ ResultCode State::interpretOne(Statement *stmt) {
     if (index < 0)
       return STOP_S;
 
-    auto target = eval(r->replacement);
+    auto target = interpret(r->replacement)->asString().getText();
     currentLine_ = regEx->replace(index, target, getCurrentLine());
     regEx->releasePattern(index);
     break;
@@ -378,26 +333,26 @@ ResultCode State::interpretOne(Statement *stmt) {
   case AST::SplitN:
     return interpret((Split *)stmt);
   case AST::ErrorN: {
+    // TODO add test cases
     auto e = (Error *)stmt;
-    auto msg = eval(e->text);
-    error() << msg << '\n';
-    return NEXT_S;
+    auto msg = interpret(e->text)->asString().getText();
+    throw Exception(msg, stmt, inputBuffer);
   }
   case AST::InputN: {
     auto io = (Input *)stmt;
-    auto fileName = eval(io->buffer);
+    auto fileName = interpret(io->buffer)->asString().getText();
     inputBuffer = LineBuffer::findInputBuffer(fileName);
     break;
   }
   case AST::OutputN: {
     auto io = (Output *)stmt;
-    auto fileName = eval(io->buffer);
+    auto fileName = interpret(io->buffer)->asString().getText();
     outputBuffer = LineBuffer::findInputBuffer(fileName);
     break;
   }
   case AST::RewindN: {
     auto io = (Input *)stmt;
-    auto fileName = eval(io->buffer);
+    auto fileName = interpret(io->buffer)->asString().getText();
     resetInput(LineBuffer::findInputBuffer(fileName));
     if (!inputBuffer->rewind()) {
       throw Exception("unable to rewrind input file: " + fileName, stmt,
@@ -412,18 +367,17 @@ ResultCode State::interpretOne(Statement *stmt) {
       if (interprettPredicate(pred)) {
         return OK_S;
       }
-      const char *msg = ": failed required pattern: ";
+      const char *msg = "failed required pattern: ";
       if (auto b = pred->isOp(Expression::NOT)) {
-        msg = ": failed forbidde pattern: ";
+        msg = "failed forbidden pattern: ";
         pred = b->right;
       }
-      error() << " source " << stmt->getSourceLine() << msg << eval(pred)
-              << '\n';
+      throw Exception(msg, stmt, inputBuffer);
     } else {
       if (matchColumns && columns.size() >= r->getCount()) {
         return OK_S;
       }
-      error() << "failed required column count: " << r->getCount() << '\n';
+      throw Exception("failed required column count", stmt, inputBuffer);
     }
     return STOP_S;
   }
@@ -432,14 +386,18 @@ ResultCode State::interpretOne(Statement *stmt) {
 }
 
 ResultCode State::interpret(Set *set) {
-  auto rhs = eval(set->rhs);
+  auto rhs = interpret(set->rhs)->asString().getText();
   auto lhs = set->lhs;
   if (lhs->kind() == AST::VariableN) {
     ((Variable *)lhs)->getSymbol().setValue(rhs);
   } else if (lhs->isOp(lhs->LOOKUP)) {
     auto b = BinaryP(lhs);
-    auto name = eval(b->right);
-    auto symbol = Symbol::findSymbol(name);
+    auto name = interpret(b->right);
+    if (!name->isString()) {
+      throw Exception("invalid symbol name " + name->asString(), set,
+                      inputBuffer);
+    }
+    auto symbol = Symbol::findSymbol(name->asString().getText());
     symbol->setValue(rhs);
   } else {
     assert("not yet implemented non variable lhs");
@@ -447,81 +405,38 @@ ResultCode State::interpret(Set *set) {
   return OK_S;
 }
 
-static bool getUnsigned(const string &str, unsigned *u) {
-  stringstream ss(str);
-  ss >> *u;
-  return !ss.fail();
-}
-
 ResultCode State::interpret(Columns *cols) {
   matchColumns = true;
   columns.clear();
   vector<unsigned> nums;
 
-  auto process = [this, &nums](const string &text) {
-    unsigned u;
-    if (getUnsigned(text, &u)) {
-      nums.push_back(u);
-    } else {
-      error() << "number expected for column: " << text << '\n';
-    }
-  };
-
-  cols->columns->walkDown([&process, &nums, this](Expression *e) {
-    switch (e->kind()) {
-    case AST::StringConstN:
-      process(((StringConst *)e)->getConstant().getText());
-      break;
-    case AST::VariableN:
-      process(((Variable *)e)->getSymbol().getValue());
-      break;
-    case AST::IntegerN: {
-      auto u = ((Integer *)e)->getValue();
-      if (u < 0) {
-        error() << "negative value invalid as column: " << u << '\n';
-      } else {
-        nums.push_back(u);
-      }
-      break;
-    }
-    case AST::CallN:
-      process(evalCall((Call *)e));
-      break;
-    case AST::BinaryN:
-      assert(BinaryP(e)->op == Binary::CONCAT);
-      break;
-    case AST::ArgN:
-    case AST::ControlN:
-      assert(!"invalid expresion in pattern");
-    }
-    return AST::ContinueW;
-
-  });
-  if (sawError)
-    return STOP_S;
-
-  int last = -1;
-  for (auto c : nums) {
-    if (int(c) < last) {
-      error() << "column values must be non-decreasing " << c;
-      return STOP_S;
-    }
-    last = c;
-  }
-
-  unsigned lastC = 0;
-  string inExpr = (cols->inExpr ? eval(cols->inExpr) : string(""));
+  string inExpr =
+      (cols->inExpr ? interpret(cols->inExpr)->asString().getText() : "");
   auto &current = (cols->inExpr ? inExpr : getCurrentLine());
-  for (auto c : nums) {
-    if (c > current.length()) {
-      c = (unsigned)current.length();
+
+  int lastC = 0;
+  int max = current.length();
+  auto addCol = [this, &lastC, max, cols, current](Expression * e) {
+    auto v = interpret(e);
+    auto i = int(v->asNumber());
+    if (i < lastC) {
+      throw Exception("column numbers must be positive and non-decreasing: " +
+                      v->asString(),
+                      cols, inputBuffer);
     }
-    columns.push_back(current.substr(lastC, (c - lastC)));
-    // std::cout << (columns.size() -1) << " " << columns.back() << '\n';
-    lastC = c;
+    i = std::min(i, max);
+    columns.push_back(current.substr(lastC, (i - lastC)));
+    lastC = i;
+  };
+  
+  auto c = cols->columns;
+  for ( ; c->isOp(c->CONCAT); c = BinaryP(c)->right) {
+    addCol(BinaryP(c)->left);
   }
-  if (last < current.length()) {
-    columns.push_back(current.substr(last));
+  addCol(c);
+
+  if (lastC < current.length()) {
+    columns.push_back(current.substr(lastC));
   } else {
     columns.push_back("");
   }
@@ -529,9 +444,10 @@ ResultCode State::interpret(Columns *cols) {
 }
 
 ResultCode State::interpret(Split *split) {
-  auto sep = evalPattern(split->separator);
+  auto sep = interpret(split->separator)->asString().getText();
   const string &target =
-      (split->target ? eval(split->target) : getCurrentLine());
+      (split->target ? interpret(split->target)->asString().getText()
+                     : getCurrentLine());
   matchColumns = true;
   columns.clear();
   auto ok = regEx->split(sep, target, &columns);
@@ -541,7 +457,7 @@ ResultCode State::interpret(Split *split) {
 string State::evalCall(Call *c) {
   vector<StringRef> args;
   for (auto a = c->args; a; a = a->nextArg) {
-    args.emplace_back(evalPattern(a->value));
+    args.emplace_back(interpret(a->value)->asString());
   }
   return BuiltinCalls::evalCall(c->getCallId(), args, this);
 }
@@ -594,15 +510,12 @@ bool State::interpretMatch(const StringRef &pattern, const string &target) {
   matchColumns = false;
   auto rc = regEx->match(pattern, target);
   if (rc < 0) {
-    error() << "invalid regular expression: " << pattern.getFlags() << '\n';
-    return false;
+    throw Exception("invalid regular expression: " + pattern.getText());
   }
   return (rc > 0);
 }
 
 void Interpreter::interpret(Statement *script) { state->interpret(script); }
-
-int Interpreter::getReturnCode() const { return state ? state->sawError : 0; }
 
 Value *State::interpret(Expression *e) {
   switch (e->kind()) {
@@ -644,16 +557,17 @@ Value *State::interpret(Expression *e) {
     case Binary::NOT: {
       auto v = interpret(b->right);
       if (v->isString()) {
-        e->set(! interpretMatch(v->asString(), getCurrentLine()));
-      }
-      else {
-        e->set(! v->asLogical());
+        e->set(!interpretMatch(v->asString(), getCurrentLine()));
+      } else {
+        e->set(!v->asLogical());
       }
       break;
     }
-    case Binary::LOOKUP:
-      e->set(Symbol::findSymbol(interpret(b->right)->asString().getText()));
+    case Binary::LOOKUP: {
+      auto sym = Symbol::findSymbol(interpret(b->right)->asString().getText());
+      e->set(sym->getValue());
       break;
+    }
     case Binary::CONCAT: {
       auto str = interpret(b->left)->asString();
       str.append(interpret(b->right)->asString());
@@ -683,8 +597,7 @@ Value *State::interpret(Expression *e) {
       assert("binary operator not yet implemented");
       break;
     }
-    }
-    break;
+  } break;
   }
-    return e;
-  }
+  return e;
+}

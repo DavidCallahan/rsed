@@ -55,9 +55,7 @@ std::regex createRegex(const StringRef &str) {
     return temp;
   }
   catch (std::exception &) {
-    std::string message = "invalid regular expression: ";
-    message += str.getText();
-    throw Exception(message);
+    throw Exception("invalid regular expression: " + str.getText());
   }
 }
 }

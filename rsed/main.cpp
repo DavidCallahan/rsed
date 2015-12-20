@@ -84,10 +84,15 @@ int main(int argc, char *argv[]) {
   try {
     LineBufferCloser closer;
     interp.interpret(ast);
-    rc = interp.getReturnCode();
   }
   catch (Exception & e) {
-    std::cerr << "error: " << e.message << '\n';
+    if (e.input && e.input->getLineno() > 0) {
+      std::cerr << "input " << e.input->getLineno() << ": ";
+    }
+    if (e.statement) {
+      std::cerr << "script " << e.statement->getSourceLine() << ": ";
+    }
+    std::cerr << e.message << '\n';
     rc = 1;
   }
   exit(rc);

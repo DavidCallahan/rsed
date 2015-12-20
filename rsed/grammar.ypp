@@ -181,7 +181,7 @@ patternString: stringExpr
        ; 
 
 stringExpr: stringTerm
-	  | stringExpr  stringTerm  { $$ = BINARY(CONCAT,$1,$2); }
+	  | stringTerm stringExpr  { $$ = BINARY(CONCAT,$1,$2); }
 	  ;
 
 stringTerm: variable

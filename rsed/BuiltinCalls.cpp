@@ -18,6 +18,7 @@ using std::vector;
 #include "EvalState.h"
 #include "LineBuffer.h"
 #include "RegEx.h"
+#include "Exception.h"
 
 namespace {
 enum Builtins {
@@ -107,8 +108,7 @@ string evalCall(unsigned int id, const vector<StringRef> &args,
   /*FALLTHROUGH*/
   case REPLACE: {
     if (args.size() < 3) {
-      state->error() << "Two few arguments to replace()\n";
-      return "";
+      throw  Exception( "Two few arguments to replace()");
     }
     auto regEx = state->getRegEx();
     int r;
@@ -120,8 +120,7 @@ string evalCall(unsigned int id, const vector<StringRef> &args,
       r = regEx->setPattern(args[0]);
     }
     if (r < 0) {
-      state->error() << "Error parsing regular expression: " << args[0] << '\n';
-      return "";
+      throw Exception("Error parsing regular expression: " + args[0]);
     }
     auto &replaceText = args[1].getText();
     auto last = args.end();
@@ -165,7 +164,7 @@ string evalCall(unsigned int id, const vector<StringRef> &args,
     if (args.size() > 1) {
       auto &q = *ap++;
       if (q.getText().empty()) {
-        state->error() << "empty quote specification in quote()\n";
+        throw Exception("empty quote specification in quote()");
         return "";
       }
       quote = q.getText()[0];
