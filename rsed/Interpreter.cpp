@@ -38,7 +38,6 @@ class State : public EvalState {
   LineBuffer *inputBuffer;
 
 public:
-
   // use columns are match for $1, $2,...
   bool matchColumns = true;
   vector<string> columns;
@@ -52,7 +51,7 @@ public:
     }
     return currentLine_;
   }
-  
+
   // todo, move input state to line buffer...
   LineBuffer *getInputBuffer() const { return inputBuffer; }
 
@@ -561,7 +560,21 @@ Value *State::interpret(Expression *e) {
       e->set(interpretMatch(pattern, target));
       break;
     }
-    case Binary::REPLACE:
+    case Binary::REPLACE_ALL:
+    case Binary::REPLACE: {
+      auto m = (Binary *)b->left;
+      assert(m->isOp(m->MATCH));
+      auto pattern = interpret(m->right)->asString();
+      if (e->isOp(e->REPLACE_ALL)) {
+        pattern.setIsGlobal();
+      }
+      auto index = regEx->setPattern(pattern);
+      auto input = interpret(m->left)->asString().getText();
+      auto replacement = interpret(b->right)->asString().getText();
+      b->set(regEx->replace(index, replacement, input));
+      regEx->releasePattern(index);
+      break;
+    }
     case Binary::ADD:
     case Binary::SUB:
     case Binary::MUL:
@@ -575,8 +588,7 @@ Value *State::interpret(Expression *e) {
     case Binary::GT:
     case Binary::AND:
     case Binary::OR:
-      assert("binary operator not yet implemented");
-      break;
+      throw Exception("binary operator not yet implemented");
     }
   } break;
   }

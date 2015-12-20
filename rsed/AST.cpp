@@ -153,26 +153,23 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
   case AST::OutputN: {
     auto i = static_cast<const IOStmt *>(node);
     indent(depth);
-    
-    OS << (isa<Input>(i) ? "input " :
-           isa<Output>(i) ? "output " :
-           "rewind ");
+
+    OS << (isa<Input>(i) ? "input " : isa<Output>(i) ? "output " : "rewind ");
     dumpExpr(i->buffer);
     OS << '\n';
     break;
   }
-    case AST::RequiredN: {
-      auto r = static_cast<const Required*>(node);
-      indent(depth);
-      OS << "require " ;
-      if(r->predicate) {
-        dumpExpr(r->predicate);
-      }
-      else {
-        OS << r->getCount();
-      }
-      OS << '\n';
+  case AST::RequiredN: {
+    auto r = static_cast<const Required *>(node);
+    indent(depth);
+    OS << "require ";
+    if (r->predicate) {
+      dumpExpr(r->predicate);
+    } else {
+      OS << r->getCount();
     }
+    OS << '\n';
+  }
   }
 }
 
@@ -213,6 +210,8 @@ const char *Expression::opName(Operators op) {
     return "=~";
   case REPLACE:
     return "replace";
+  case REPLACE_ALL:
+    return "replace all";
   case CONCAT:
     return " ";
   case LT:
@@ -249,7 +248,7 @@ void Dumper::dumpExpr(const Expression *node) {
     if (b->left) {
       dumpExpr(b->left);
     }
-    OS << ' ' << b->opName(b->op) << ' ' ;
+    OS << ' ' << b->opName(b->op) << ' ';
     dumpExpr(b->right);
     if (b->op == b->LOOKUP) {
       OS << ")";

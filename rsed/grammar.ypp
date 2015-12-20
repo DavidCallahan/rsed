@@ -66,46 +66,57 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
 
 %token <name>  STRING VARIABLE IDENTIFIER
 %token <token> FOREACH COPY SKIP TO PAST END NEWLINE REPLACE_TOK FOR SPLIT
-%token <token> THEN ELSE IF NOT_TOK PRINT MATCH_TOK STYLE 
+%token <token> THEN ELSE IF NOT_TOK PRINT MATCH_TOK STYLE MATCH_KW
 %token <token> COLUMNS IN LOOKUP_START REQUIRED
 %token <integer> NUMBER INPUT OUTPUT REWIND ERROR ALL WITH
+%type <token> EQ_TOK NE_TOK OR_TOK AND_TOK LE_TOK GE_TOK
+%type <integer> lineno
 %type <stmt> stmtlist stmt foreach copy skip replace 
 %type <stmt> split print columns required
-%type <expr> control toPast stringExpr pattern call lookup
 %type <stmt> ifstmt elsestmt set input output rewind errorStmt 
-%type <expr> stringTerm string variable optControl optTopExpr
-%type <expr>  predicate buffer optBuffer patternString topExpr
-%type <arg> optarglist arglist 
 %type <boole> optAll optRequired
-%type <expr> name
-%type <integer> lineno
+%type <expr> control toPast  
+%type <expr> optControl optExpr optIn
+%type <expr>  buffer optBuffer 
+%type <arg> optarglist arglist 
+%type <expr> name expr primitive string variable call lookup replaceExpr
 %start script
 
 %parse-param {Statement ** parseTree}
 %parse-param {Scanner * scanner}
 %lex-param {Scanner * scanner}
-%nonassoc MATCH_TOK REPLACE_TOK
 
+%nonassoc '='
+%left REPLACE_TOK MATCH_KW WITH
+%nonassoc IN
+%left OR_TOK
+%left AND_TOK
+%left NOT_TOK
+%nonassoc '<' LE_TOK EQ_TOK NE_TOK GE_TOK '>'
+%nonassoc MATCH_TOK 
+%left '+' '-'
+%left '*' '/'
+%left UMINUS
 %%
 
-script: optNewline optStyle stmtlist optNewline { *parseTree = $3 } ;
+script: optNewline optStyle stmtlist { *parseTree = $3 } ;
 
 // todo -- allow empty lines in more places
 optNewline: /* empty*/ | NEWLINE ;
 optStyle: /* empty */ | STYLE IDENTIFIER NEWLINE { set_style($2, scanner); } ;
 
-stmtlist: { $$ = AST::emptyStmt(); } | stmt stmtlist { $$ = Statement::list($1, $2); } ;
+stmtlist: { $$ = AST::emptyStmt(); } | stmt optNewline stmtlist { $$ = Statement::list($1, $3); } ;
 
 stmt: foreach | copy | skip | replace | ifstmt | split
     | set | print | input | output | rewind | errorStmt | columns | required
     ;
+lineno:     /*empty*/  { $$ = LINE; };
 
 foreach : FOREACH lineno optControl NEWLINE stmtlist END NEWLINE
                 { $$ = new Foreach($3, $5, $2) ; }
-optControl: /*empty*/ { $$ =AST::emptyExpr(); } | control ;
-lineno: /* empty */ { $$ = LINE; };
+optControl: /*empty*/  { $$ =AST::emptyExpr(); } | control ;
 
-set: name '=' topExpr NEWLINE { $$ = new Set($1,$3,LINE); };
+set: name '=' expr NEWLINE { $$ = new Set($1,$3,LINE); };
 name: variable 
     | lookup
     | IDENTIFIER { $$ = AST::variable($1); }
@@ -114,7 +125,7 @@ name: variable
 copy: COPY lineno control NEWLINE { $$ = AST::copy($3,$2); } ;
 
 skip: SKIP lineno control NEWLINE { $$ = AST::skip($3,$2); }
-    | SKIP lineno IF pattern NEWLINE  { $$ = AST::skipOne($4, $2); }    // to end of foreach
+    | SKIP lineno IF expr NEWLINE  { $$ = AST::skipOne($4, $2); }    // to end of foreach
     | SKIP NEWLINE { $$ = new Skip(LINE); } ;  // skip 1
 
 control: FOR NUMBER toPast  { $$ = AST::limit($2,$3); }
@@ -123,92 +134,92 @@ control: FOR NUMBER toPast  { $$ = AST::limit($2,$3); }
        | ALL { $$ = AST::all(); }
        ;
 
-toPast: TO optRequired pattern  { $$ = new Control(AST::StopAt, $3, $2,  LINE); }
-      | PAST optRequired pattern { $$ = new Control(AST::StopAfter, $3,  $2, LINE); }
+toPast: TO optRequired expr  { $$ = new Control(AST::StopAt, $3, $2,  LINE); }
+      | PAST optRequired expr { $$ = new Control(AST::StopAfter, $3,  $2, LINE); }
       ;
 optRequired: /* empty */  { $$ = false; } 
            | REQUIRED  { $$ = true; }
 	   ;
 
-replace: REPLACE_TOK optAll pattern WITH topExpr control NEWLINE { $$ = AST::replace($6,$3,$5,$2,LINE); }
-       | REPLACE_TOK optAll pattern WITH topExpr NEWLINE { $$ = AST::replaceOne($3,$5,$2,LINE); }
+replace: REPLACE_TOK optAll expr WITH expr control NEWLINE { $$ = AST::replace($6,$3,$5,$2,LINE); }
+       | REPLACE_TOK optAll expr WITH expr NEWLINE { $$ = AST::replaceOne($3,$5,$2,LINE); }
        ;
 optAll: /* empty */ { $$ = false; } 
       | ALL { $$ = true; }
       ;
 
 
-split: SPLIT optTopExpr WITH pattern NEWLINE { $$ = new Split($4, $2, LINE); } ;
-columns: SPLIT optTopExpr COLUMNS stringExpr NEWLINE { $$ = new Columns($4, $2, LINE); }
-optTopExpr: /* empty */ { $$ = nullptr; }
-	  | topExpr     
+split: SPLIT optExpr WITH expr NEWLINE { $$ = new Split($4, $2, LINE); } ;
+columns: SPLIT optExpr COLUMNS expr NEWLINE { $$ = new Columns($4, $2, LINE); }
+optExpr: /* empty */ { $$ = nullptr; }
+	  | expr     
           ;
 
 // for use insode of foreach loops
-ifstmt: IF predicate optThen NEWLINE stmtlist elsestmt END NEWLINE 
+ifstmt: IF expr optThen NEWLINE stmtlist elsestmt END NEWLINE 
 	{ $$ = new IfStatement($2, $5, $6, LINE);}
-	| IF stringExpr stmt { $$ = new IfStatement($2,$3, nullptr, LINE); }
-	;
+      | IF expr stmt { $$ = new IfStatement($2,$3, nullptr, LINE); }
+      ;
 optThen: /* empty */ | THEN  ;
 
 elsestmt: /* empty */ { $$ = AST::emptyStmt() ; }
-	| ELSE IF NEWLINE predicate optThen NEWLINE stmtlist elsestmt 
-	  { $$ = new IfStatement($4, $7, $8, LINE); }
+	| ELSE IF expr optThen NEWLINE stmtlist elsestmt 
+	  { $$ = new IfStatement($3, $6, $7, LINE); }
 	| ELSE NEWLINE stmtlist
 	  { $$ = $3; } ;
 
-print: PRINT lineno topExpr optBuffer NEWLINE { $$ = new Print($3,$4, $2); };
-errorStmt: ERROR lineno topExpr NEWLINE { $$ = new Error($3,$2); };
-optBuffer: /* empty */ { $$ = AST::emptyExpr(); } | TO buffer { $$ = $2; };
+print: PRINT lineno expr optBuffer NEWLINE { $$ = new Print($3,$4, $2); };
+errorStmt: ERROR lineno expr NEWLINE { $$ = new Error($3,$2); };
+optBuffer: /* empty */ { $$ = AST::emptyExpr(); } 
+         | TO buffer { $$ = $2; }
+         ;
 
-required: REQUIRED lineno predicate NEWLINE { $$ = new Required(0, $3,$2); }
+required: REQUIRED lineno expr NEWLINE { $$ = new Required(0, $3,$2); }
 
-predicate: patternString;
-pattern: patternString { $$ = $1; checkPattern($1,scanner); };
-topExpr: patternString { $$ = $1; checkTopExpr($1,scanner); }
-       | REPLACE_TOK optAll pattern WITH stringExpr IN stringExpr {
-         Arg *a = new Arg($7, nullptr, LINE);
-         a = new Arg($5, a, LINE);
-         a = new Arg($3, a, LINE);
-         $$ = call(new std::string($2 ? "suball" : "sub"),a, scanner);
-       }
-       ;
-
-
-patternString: stringExpr
-       | stringExpr MATCH_TOK stringExpr { $$ = BINARY(MATCH, $1,$3); } 
-       | NOT_TOK patternString { $$ = UNARY(NOT,$2); }
-       ; 
-
-stringExpr: stringTerm
-	  | stringTerm stringExpr  { $$ = BINARY(CONCAT,$1,$2); }
-	  ;
-
-stringTerm: variable
-	  | string
-	  | lookup
-	  | call
-	  | NUMBER { $$ = AST::integer($1); }	  
-	  | '(' patternString ')' { $$ = $2; }
-	  ;
-lookup: LOOKUP_START patternString ')' { $$ = UNARY(LOOKUP, $2); };
-
-variable: VARIABLE { $$ = AST::variable($1); };
-string:	  STRING   { $$ = AST::stringConst($1); };
-
-call: IDENTIFIER '(' optarglist ')' { $$ = call($1, $3, scanner); }  
+expr:  expr MATCH_TOK expr { $$ = BINARY(MATCH, $1,$3); }
+    |  expr NE_TOK expr { $$ = BINARY(NE, $1, $3); } 
+    |  expr EQ_TOK expr { $$ = BINARY(EQ, $1,$3);} 
+    |  NOT_TOK expr { $$ = UNARY(NOT, $2); }
+    |  MATCH_KW expr  { $$ = BINARY(MATCH, $2, nullptr) }
+    |  replaceExpr
+    |  string
     ;
 
+string: primitive        {} 
+      | primitive string { $$ = BINARY(CONCAT, $1, $2); } 
+      ;
 
-     
+primitive: lookup
+	 | STRING   { $$ = AST::stringConst($1); };
+	 | variable
+         | call
+	 | NUMBER { $$ = AST::integer($1); }	  
+         | '(' expr ')' { $$ = $2; }
+         ;
+
+variable: VARIABLE { $$ = AST::variable($1); };
+lookup:  LOOKUP_START expr ')' { $$ = UNARY(LOOKUP, $2); }; 
+call: IDENTIFIER '(' optarglist ')' { $$ = call($1, $3, scanner); }  ;
 optarglist: /*empty*/ { $$ = nullptr; }
           | arglist 
 	  ;
-arglist: stringExpr { $$ = new Arg($1, nullptr ,LINE); }
-       | stringExpr ',' arglist { $$ = new Arg($1, $3, LINE); }
+arglist: expr { $$ = new Arg($1, nullptr ,LINE); }
+       | expr ',' arglist { $$ = new Arg($1, $3, LINE); }
        ;
+
+replaceExpr: REPLACE_TOK optAll expr WITH expr optIn  %prec REPLACE_TOK
+       { 
+         auto m = BINARY(MATCH, $6, $3);
+         $$ = new Binary($2 ? Binary::REPLACE_ALL : Binary::REPLACE, m, $5, LINE);
+       } 
+       ;
+optIn: /*empty*/  { $$ = nullptr; }
+     | IN expr    { $$ = $2; }
+     ;
+
+
 
 input: INPUT lineno buffer NEWLINE { $$ = new Input($3,$2); }
 output: OUTPUT lineno buffer NEWLINE { $$ = new Output($3,$2); }
 rewind: REWIND lineno buffer NEWLINE { $$ = new Rewind($3,$2); }
-buffer: stringExpr;
+buffer: expr;

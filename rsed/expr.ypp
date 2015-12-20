@@ -67,7 +67,7 @@ expr:  expr '+' expr  { $$ = BINARY(ADD); }
 
 
 string: primitive  {} 
-      | string primitive { $$ = new AST::binary(AST::CONCAT, $1,$2, LINE); } 
+      | primitive string { $$ = new AST::binary(AST::CONCAT, $1,$2, LINE); } 
       ;
 
 primitive: VARIABLE { } 

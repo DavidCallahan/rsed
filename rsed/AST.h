@@ -137,6 +137,7 @@ public:
     NEG,
     MATCH,
     REPLACE,
+    REPLACE_ALL,
     CONCAT,
     LT,
     LE,

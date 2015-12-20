@@ -48,6 +48,7 @@ with	    return WITH;
 split	    return SPLIT;
 required    return REQUIRED;
 rewind	    return REWIND;
+match	    return MATCH_KW;
 
 {ID}	    yylval.name = new std::string(yytext);   return IDENTIFIER;
 \${ID}	    yylval.name = new std::string(yytext+1); return VARIABLE;
@@ -62,6 +63,9 @@ rewind	    return REWIND;
 ,	    return ',';
 ;	    return NEWLINE;
 &.*\n	    /* comment */
+"=="	    return EQ_TOK;
+"!="	    return NE_TOK;
+"<>"	    return NE_TOK;
 	    	   
 #.*         /* comment */
 [ \t]+          /* eat up whitespace */
