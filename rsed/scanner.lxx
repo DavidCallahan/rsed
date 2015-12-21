@@ -66,6 +66,14 @@ match	    return MATCH_KW;
 "=="	    return EQ_TOK;
 "!="	    return NE_TOK;
 "<>"	    return NE_TOK;
+"<"	    return '<';
+">"	    return '>';
+"<="	    return LE_TOK;
+">="	    return GE_TOK;
+"+"	    return '+';
+"-"	    return '-';
+"*"	    return '*';
+"/"	    return '/';
 	    	   
 #.*         /* comment */
 [ \t]+          /* eat up whitespace */

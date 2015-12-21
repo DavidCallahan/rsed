@@ -439,9 +439,9 @@ void State::interpret(Split *split) {
 }
 
 string State::evalCall(Call *c) {
-  vector<StringRef> args;
+  vector<Value*> args;
   for (auto a = c->args; a; a = a->nextArg) {
-    args.emplace_back(interpret(a->value)->asString());
+    args.emplace_back(interpret(a->value));
   }
   return BuiltinCalls::evalCall(c->getCallId(), args, this);
 }
@@ -524,9 +524,9 @@ Value *State::interpret(Expression *e) {
   }
   case AST::CallN: {
     auto c = (Call *)e;
-    vector<StringRef> args;
+    vector<Value*> args;
     for (auto a = c->args; a; a = a->nextArg) {
-      args.emplace_back(interpret(a->value)->asString());
+      args.emplace_back(interpret(a->value));
     }
     e->set(BuiltinCalls::evalCall(c->getCallId(), args, this));
     break;
@@ -575,20 +575,47 @@ Value *State::interpret(Expression *e) {
       regEx->releasePattern(index);
       break;
     }
-    case Binary::ADD:
-    case Binary::SUB:
-    case Binary::MUL:
-    case Binary::DIV:
-    case Binary::NEG:
-    case Binary::LT:
-    case Binary::LE:
     case Binary::EQ:
+      b->set(compare(interpret(b->left), interpret(b->right)) == 0);
+      break;
     case Binary::NE:
+      b->set(compare(interpret(b->left), interpret(b->right)) != 0);
+      break;
+    case Binary::LT:
+      b->set(compare(interpret(b->left), interpret(b->right)) < 0);
+      break;
+    case Binary::LE:
+      b->set(compare(interpret(b->left), interpret(b->right)) <= 0);
+      break;
     case Binary::GE:
+      b->set(compare(interpret(b->left), interpret(b->right)) >= 0);
+      break;
     case Binary::GT:
+      b->set(compare(interpret(b->left), interpret(b->right)) > 0);
+      break;
+    case Binary::ADD:
+      b->set(interpret(b->left)->asNumber() + interpret(b->right)->asNumber());
+      break;
+    case Binary::SUB:
+      b->set(interpret(b->left)->asNumber() - interpret(b->right)->asNumber());
+      break;
+    case Binary::MUL:
+      b->set(interpret(b->left)->asNumber() * interpret(b->right)->asNumber());
+      break;
+    case Binary::DIV:
+      b->set(interpret(b->left)->asNumber() / interpret(b->right)->asNumber());
+      break;
+    case Binary::NEG:
+      b->set(-interpret(b->right)->asNumber());
+      break;
     case Binary::AND:
+      b->set(interpret(b->left)->asLogical() &&
+             interpret(b->right)->asLogical());
+      break;
     case Binary::OR:
-      throw Exception("binary operator not yet implemented");
+      b->set(interpret(b->left)->asLogical() ||
+             interpret(b->right)->asLogical());
+      break;
     }
   } break;
   }

@@ -19,6 +19,7 @@ using std::vector;
 #include "LineBuffer.h"
 #include "RegEx.h"
 #include "Exception.h"
+#include "Value.h"
 
 namespace {
 enum Builtins {
@@ -88,15 +89,14 @@ bool shell(string cmd, vector<string> * lines) {
 }
 #endif
 
-string evalCall(unsigned int id, const vector<StringRef> &args,
-                EvalState *state) {
+string evalCall(unsigned int id, vector<Value *> &args, EvalState *state) {
   std::stringstream ss;
   bool replaceAll = false;
   switch (id) {
   case TRIM: {
     const std::string &delimiters = " \f\n\r\t\v";
     for (auto &sr : args) {
-      string s = sr.getText();
+      string s = sr->asString().getText();
       s.erase(s.find_last_not_of(delimiters) + 1);
       s.erase(0, s.find_first_not_of(delimiters));
       ss << s;
@@ -108,53 +108,54 @@ string evalCall(unsigned int id, const vector<StringRef> &args,
   /*FALLTHROUGH*/
   case REPLACE: {
     if (args.size() < 3) {
-      throw  Exception( "Two few arguments to replace()");
+      throw Exception("Two few arguments to replace()");
     }
     auto regEx = state->getRegEx();
     int r;
     if (replaceAll) {
-      auto p = args[0];
+      auto p = args[0]->asString();
       p.setIsGlobal();
       r = regEx->setPattern(p);
     } else {
-      r = regEx->setPattern(args[0]);
+      r = regEx->setPattern(args[0]->asString());
     }
     if (r < 0) {
-      throw Exception("Error parsing regular expression: " + args[0]);
+      throw Exception("Error parsing regular expression: " +
+                      args[0]->asString());
     }
-    auto &replaceText = args[1].getText();
+    auto &replaceText = args[1]->asString().getText();
     auto last = args.end();
     for (auto p = args.begin() + 2; p != last; ++p) {
-      auto rs = regEx->replace(r, replaceText, p->getText());
+      auto rs = regEx->replace(r, replaceText, (*p)->asString().getText());
       ss << rs;
     }
     regEx->releasePattern(r);
     break;
   }
   case LENGTH: {
-    ss << (args.size() > 0 ? args.front().getText().length() : 0);
+    ss << (args.size() > 0 ? args.front()->asString().getText().length() : 0);
     break;
   }
   case JOIN: {
     if (args.size() < 2) {
       break;
     }
-    auto sep = args[0].getText();
-    auto output = args[1].getText();
+    auto sep = args[0]->asString().getText();
+    auto output = args[1]->asString().getText();
     auto size = output.length();
     ss << output;
 
     for (auto i = 2; i < args.size(); i++) {
       if (size > 0)
         ss << sep;
-      ss << args[i].getText();
-      size += args[i].getText().length();
+      ss << args[i]->asString().getText();
+      size += args[i]->asString().getText().length();
     }
     break;
   }
   case ESCAPE:
     for (auto &str : args) {
-      ss << state->getRegEx()->escape(str.getText());
+      ss << state->getRegEx()->escape(str->asString().getText());
     }
     break;
 
@@ -163,15 +164,15 @@ string evalCall(unsigned int id, const vector<StringRef> &args,
     auto ap = args.begin();
     if (args.size() > 1) {
       auto &q = *ap++;
-      if (q.getText().empty()) {
+      if (q->asString().getText().empty()) {
         throw Exception("empty quote specification in quote()");
         return "";
       }
-      quote = q.getText()[0];
+      quote = q->asString().getText()[0];
     }
     auto end = args.end();
     for (; ap != end; ++ap) {
-      ss << doQuote(quote, ap->getText());
+      ss << doQuote(quote, (*ap)->asString().getText());
     }
     break;
   }
@@ -184,7 +185,7 @@ string evalCall(unsigned int id, const vector<StringRef> &args,
   }
   case EXPAND:
     for (auto a : args) {
-      ss << state->expandVariables(a.getText());
+      ss << state->expandVariables(a->asString().getText());
     }
     break;
   }

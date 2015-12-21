@@ -19,9 +19,9 @@ typedef class Value *ValueP;
 class Value {
 public:
   enum Kind {
-    String,
-    Number,
     Logical,
+    Number,
+    String,
   };
   Kind kind;
   StringRef sref;
@@ -44,6 +44,7 @@ public:
   void append(ValueP &);
 };
 std::ostream &operator<<(std::ostream &OS, const Value &value);
+int compare(Value * left, Value * right);
 
 template <typename T> ValueP makeValue(T &t) {
   ValueP v(new Value(t));

@@ -11,12 +11,11 @@
 #include <string>
 #include <vector>
 #include "StringRef.h"
+class Value;
 class EvalState;
 namespace BuiltinCalls {
 bool getCallId(const std::string &name, unsigned *);
-std::string evalCall(unsigned id, const std::vector<StringRef> &args,
-                     class EvalState *);
+std::string evalCall(unsigned id, std::vector<Value *> &args, EvalState *);
 }
-
 
 #endif /* BuiltinCalls_hpp */
