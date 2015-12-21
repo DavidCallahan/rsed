@@ -449,16 +449,13 @@ template <typename T> const T *isa(const Statement *stmt) {
   return (stmt->kind() == T::typeKind() ? (T *)stmt : nullptr);
 }
 
-// TODO arithmetic ---  comparisons, booleans, (+ - * /)
 // TODO -- optimization pass to pull string cmoparison and regular expression
 //    compilation out of loops.
 //    optimize join reductions
-// TODO -- add better error handlings by tagging operations with line numbers
-//    and reporting source script line (and maybe variable values mentioned in
-//    the line?)
 // TODO -- add foreeach split ...
+// TODO -- add foreach shell(....), after adding "shell()"
 // TODO --
-//    think about passing a stringstream/file to "eval" ...
+//    think about passing a stringstream/file to print...
 //
 
 #endif /* defined(__rsed__AST__) */

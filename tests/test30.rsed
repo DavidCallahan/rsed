@@ -1,0 +1,5 @@
+count=0
+foreach all
+    count= $count+1
+    print "$count: $CURRENT"
+end

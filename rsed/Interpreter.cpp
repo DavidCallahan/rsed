@@ -104,8 +104,11 @@ public:
   bool interprettPredicate(Expression *predicate);
   bool interpretMatch(const StringRef &pattern, const string &target);
   Value *interpret(Expression *);
+  stringstream &interpret(Expression *, stringstream &);
+  void print(Expression *, LineBuffer *);
 
-  string expandVariables(const string &text) override;
+  // string expandVariables(const string &text) override;
+  stringstream &expandVariables(const string &text, stringstream &str) override;
   // evaluate match control against current linke
   MatchKind matchPattern(AST &);
 };
@@ -181,33 +184,33 @@ void ForeachControl::initialize(Control *c) {
 
 static std::regex variable(R"((\\\$)|(\$[0-9a-zA-Z_]+))");
 
-string State::expandVariables(const string &text) {
+stringstream &State::expandVariables(const string &text, stringstream &str) {
 
   const char *ctext = text.c_str();
   size_t len = text.length();
   auto vars_begin = std::cregex_iterator(ctext, ctext + len, variable);
   auto vars_end = std::cregex_iterator();
   if (vars_begin == vars_end) {
-    return text;
+    str << text;
+    return str;
   }
 
-  stringstream result;
   const char *last = ctext;
   for (std::cregex_iterator vars = vars_begin; vars != vars_end; ++vars) {
     auto match = (*vars)[0];
     const char *cvar = match.first;
-    result.write(last, cvar - last);
+    str.write(last, cvar - last);
 
     if (*cvar == '\\') {
-      result << '$';
+      str << '$';
     } else {
-      result << Symbol::findSymbol(string(cvar + 1, match.second - cvar - 1))
-                    ->getValue();
+      str << Symbol::findSymbol(string(cvar + 1, match.second - cvar - 1))
+                 ->getValue();
     }
     last = match.second;
   }
-  result.write(last, len - (last - ctext));
-  return result.str();
+  str.write(last, len - (last - ctext));
+  return str;
 }
 
 /// interpret all statements on a list until an error
@@ -371,6 +374,15 @@ ResultCode State::interpretOne(Statement *stmt) {
   return OK_S;
 }
 
+void State::print(Expression *e, LineBuffer *out) {
+  while (auto b = e->isOp(e->CONCAT)) {
+    print(b->left, out);
+    e = b->right;
+  }
+  auto v = interpret(e);
+  out->append(v->asString().getText());
+}
+
 void State::interpret(Set *set) {
   auto rhs = interpret(set->rhs)->asString().getText();
   auto lhs = set->lhs;
@@ -509,13 +521,14 @@ Value *State::interpret(Expression *e) {
     if (sc.isRaw()) {
       e->set(sc);
     } else {
-      e->set(expandVariables(sc.getText()));
+      stringstream str;
+      e->set(expandVariables(sc.getText(), str).str());
     }
     break;
   }
   case AST::CallN: {
     auto c = (Call *)e;
-    vector<Value*> args;
+    vector<Value *> args;
     for (auto a = c->args; a; a = a->nextArg) {
       args.emplace_back(interpret(a->value));
     }
@@ -540,9 +553,8 @@ Value *State::interpret(Expression *e) {
       break;
     }
     case Binary::CONCAT: {
-      auto str = interpret(b->left)->asString();
-      str.append(interpret(b->right)->asString());
-      e->set(str);
+      stringstream str;
+      e->set(interpret(e, str).str());
       break;
     }
     case Binary::MATCH: {
@@ -611,4 +623,33 @@ Value *State::interpret(Expression *e) {
   } break;
   }
   return e;
+}
+
+stringstream &State::interpret(Expression *e, stringstream &str) {
+  while (auto b = e->isOp(e->CONCAT)) {
+    interpret(b->left, str);
+    e = b->right;
+  }
+  switch (e->kind()) {
+  case AST::VariableN: {
+    str << ((Variable *)e)->getSymbol().getValue();
+    break;
+  }
+  case AST::IntegerN: {
+    str << ((Integer*)e)->getValue();
+    break;
+  }
+  case AST::StringConstN: {
+    const auto &sc = ((StringConst *)e)->getConstant();
+    if (sc.isRaw()) {
+      str << sc.getText();
+    } else {
+      expandVariables(sc.getText(), str);
+    }
+    break;
+  }
+  default:
+    str << interpret(e)->asString().getText();
+  }
+  return str;
 }

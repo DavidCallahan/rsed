@@ -186,7 +186,7 @@ void evalCall(unsigned int id, vector<Value *> &args, EvalState *state,
   }
   case EXPAND:
     for (auto a : args) {
-      ss << state->expandVariables(a->asString().getText());
+      state->expandVariables(a->asString().getText(), ss);
     }
     break;
   case SHELL:

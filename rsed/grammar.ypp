@@ -157,15 +157,14 @@ optExpr: /* empty */ { $$ = nullptr; }
           ;
 
 // for use insode of foreach loops
-ifstmt: IF expr optThen NEWLINE stmtlist elsestmt END NEWLINE 
-	{ $$ = new IfStatement($2, $5, $6, LINE);}
-      | IF expr stmt { $$ = new IfStatement($2,$3, nullptr, LINE); }
+ifstmt: IF lineno expr optThen NEWLINE stmtlist elsestmt END NEWLINE 
+	{ $$ = new IfStatement($3, $6, $7, $2);}
       ;
 optThen: /* empty */ | THEN  ;
 
 elsestmt: /* empty */ { $$ = AST::emptyStmt() ; }
-	| ELSE IF expr optThen NEWLINE stmtlist elsestmt 
-	  { $$ = new IfStatement($3, $6, $7, LINE); }
+	| ELSE IF lineno expr optThen NEWLINE stmtlist elsestmt 
+	  { $$ = new IfStatement($4, $7, $8, $3); }
 	| ELSE NEWLINE stmtlist
 	  { $$ = $3; } ;
 
