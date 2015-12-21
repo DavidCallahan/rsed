@@ -87,7 +87,6 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
 %lex-param {Scanner * scanner}
 
 %nonassoc '='
-%left CONCAT_TOK
 %left REPLACE_TOK MATCH_KW WITH
 %nonassoc IN
 %left OR_TOK
@@ -98,6 +97,7 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
 %left '+' '-'
 %left '*' '/'
 %left UMINUS
+%left CONCAT_TOK
 %%
 
 script: optNewline optStyle stmtlist { *parseTree = $3 } ;
@@ -178,10 +178,10 @@ optBuffer: /* empty */ { $$ = AST::emptyExpr(); }
 required: REQUIRED lineno expr NEWLINE { $$ = new Required(0, $3,$2); }
 
 expr: term ;
-    | term expr %prec CONCAT_TOK { $$ = BINARY(CONCAT,$1,$2); }
     ;
 
 term:  primitive
+    |  term term %prec CONCAT_TOK { $$ = BINARY(CONCAT,$1,$2); }
     |  MATCH_KW expr  { $$ = BINARY(MATCH, $2, nullptr) }
     |  replaceExpr
     |  term OR_TOK term  { $$ = BINARY(OR, $1,$3); }
@@ -198,6 +198,7 @@ term:  primitive
     |  term '-' term { $$ = BINARY(SUB, $1,$3);} 
     |  term '*' term { $$ = BINARY(MUL, $1,$3);} 
     |  term '/' term { $$ = BINARY(DIV, $1,$3);} 
+    |  '-' term %prec UMINUS { $$ = UNARY(NEG,$2); }
     ;
 
 primitive: lookup
@@ -206,7 +207,6 @@ primitive: lookup
          | call
 	 | NUMBER { $$ = AST::integer($1); }	  
          | '(' expr ')' { $$ = $2; }
-         | '(' '-' primitive ')' { $$ = UNARY(NEG,$3); }
          ;
 
 variable: VARIABLE { $$ = AST::variable($1); };
