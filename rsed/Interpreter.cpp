@@ -106,7 +106,6 @@ public:
   Value *interpret(Expression *);
 
   string expandVariables(const string &text) override;
-  string evalCall(Call *);
   // evaluate match control against current linke
   MatchKind matchPattern(AST &);
 };
@@ -438,14 +437,6 @@ void State::interpret(Split *split) {
   regEx->split(sep, target, &columns);
 }
 
-string State::evalCall(Call *c) {
-  vector<Value*> args;
-  for (auto a = c->args; a; a = a->nextArg) {
-    args.emplace_back(interpret(a->value));
-  }
-  return BuiltinCalls::evalCall(c->getCallId(), args, this);
-}
-
 void Interpreter::initialize() {
   state = new State;
   state->resetInput(makeInBuffer(&std::cin, "<stdin>"));
@@ -528,7 +519,7 @@ Value *State::interpret(Expression *e) {
     for (auto a = c->args; a; a = a->nextArg) {
       args.emplace_back(interpret(a->value));
     }
-    e->set(BuiltinCalls::evalCall(c->getCallId(), args, this));
+    BuiltinCalls::evalCall(c->getCallId(), args, this, e);
     break;
   }
   case AST::BinaryN: {

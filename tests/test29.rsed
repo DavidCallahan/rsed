@@ -1,0 +1,5 @@
+$text = "1234567"
+print substr($text,1)
+print substr($text,1,3)
+print substr($text,(-3))
+print substr($text,(-3),1)

@@ -32,19 +32,19 @@ enum Builtins {
   ESCAPE,
   MKTEMP,
   EXPAND,
+  SUBSTR,
   QUOTE
 };
 typedef std::pair<unsigned, string> BuiltinName;
 vector<BuiltinName> builtins{{LENGTH, "length"},
                              {TRIM, "trim"},
-                             {REPLACE, "substitue"},
-                             {REPLACE, "sub"},
-                             {REPLACE_ALL, "suball"},
                              {JOIN, "join"},
                              {ESCAPE, "escape"},
                              {QUOTE, "quote"},
                              {MKTEMP, "mktemp"},
                              {EXPAND, "expand"},
+                             {SUBSTR, "substr"},
+                             {SUBSTR, "substring"},
                              {SHELL, "shell"}};
 
 string doQuote(char quote, const string &text) {
@@ -89,10 +89,11 @@ bool shell(string cmd, vector<string> * lines) {
 }
 #endif
 
-string evalCall(unsigned int id, vector<Value *> &args, EvalState *state) {
+void evalCall(unsigned int id, vector<Value *> &args, EvalState *state,
+              Value *result) {
   std::stringstream ss;
   bool replaceAll = false;
-  switch (id) {
+  switch (Builtins(id)) {
   case TRIM: {
     const std::string &delimiters = " \f\n\r\t\v";
     for (auto &sr : args) {
@@ -133,8 +134,9 @@ string evalCall(unsigned int id, vector<Value *> &args, EvalState *state) {
     break;
   }
   case LENGTH: {
-    ss << (args.size() > 0 ? args.front()->asString().getText().length() : 0);
-    break;
+    result->set(double(
+        args.size() > 0 ? args.front()->asString().getText().length() : 0));
+    return;
   }
   case JOIN: {
     if (args.size() < 2) {
@@ -166,7 +168,6 @@ string evalCall(unsigned int id, vector<Value *> &args, EvalState *state) {
       auto &q = *ap++;
       if (q->asString().getText().empty()) {
         throw Exception("empty quote specification in quote()");
-        return "";
       }
       quote = q->asString().getText()[0];
     }
@@ -188,7 +189,33 @@ string evalCall(unsigned int id, vector<Value *> &args, EvalState *state) {
       ss << state->expandVariables(a->asString().getText());
     }
     break;
+  case SHELL:
+    throw Exception("shell function not yet implemented:");
+  case SUBSTR: {
+    auto n = args.size();
+    if (n == 0)
+      break;
+    if (n == 1) {
+      result->set(args[0]->asString());
+      return;
+    }
+    const auto &text = args[0]->asString().getText();
+    auto start = (int)args[1]->asNumber();
+    if (start < 0) {
+      start = std::max(0, int(text.length() + start));
+    }
+    if (n > 2) {
+      auto len = (int)args[2]->asNumber();
+      if (len < 0) {
+        throw Exception("negative length value for substring");
+      }
+      result->set(text.substr(start, len));
+      return;
+    }
+    result->set(text.substr(start));
+    return;
   }
-  return ss.str();
+  }
+  result->set(ss.str());
 }
 }

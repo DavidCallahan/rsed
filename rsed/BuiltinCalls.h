@@ -15,7 +15,8 @@ class Value;
 class EvalState;
 namespace BuiltinCalls {
 bool getCallId(const std::string &name, unsigned *);
-std::string evalCall(unsigned id, std::vector<Value *> &args, EvalState *);
+void evalCall(unsigned id, std::vector<Value *> &args, EvalState *,
+              Value *result);
 }
 
 #endif /* BuiltinCalls_hpp */
