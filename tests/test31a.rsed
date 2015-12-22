@@ -1,0 +1,10 @@
+counter="cnt"
+foreach all
+    if $($counter) == "" then
+       $($counter) = 1
+    else
+       $($counter) = $($counter) + 1
+    end
+    count=$($counter)
+    print "$count: $CURRENT"
+end

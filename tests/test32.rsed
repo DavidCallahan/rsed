@@ -1,0 +1,4 @@
+skip past required "Peak Optimization Flags"
+required "^[^,]+,(.*)$"
+$temp = replace '[",\' ]+'g with ' ' in $1
+print "peak_opts=" quote("'", $temp)

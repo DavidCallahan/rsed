@@ -1,0 +1,1 @@
+peak_opts=' -O3 -fno-strict-aliasing '

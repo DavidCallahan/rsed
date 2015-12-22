@@ -1,0 +1,9 @@
+print "#!/bin/bash -x"
+foreach all
+    if "^(.*)/TARGETS-" then
+       dir = $1
+       if "name\s*=\s*'(.*)'" then
+           print "./runbench.sh $dir:$1 _bin/$dir/$1"
+       end 
+    end
+end

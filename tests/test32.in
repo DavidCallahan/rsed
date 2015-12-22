@@ -1,0 +1,6 @@
+473.astar
+483.xalancbmk," -DSPEC_CPU_LINUX"
+
+"Peak Optimization Flags"
+400.perlbench," -O3"," -fno-strict-aliasing"
+401.bzip2," -O3"," -fno-strict-aliasing"

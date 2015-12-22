@@ -104,7 +104,7 @@ public:
   bool interprettPredicate(Expression *predicate);
   bool interpretMatch(const StringRef &pattern, const string &target);
   Value *interpret(Expression *);
-  stringstream &interpret(Expression *, stringstream &);
+  void interpret(Expression *, stringstream &, unsigned *flags);
   void print(Expression *, LineBuffer *);
 
   // string expandVariables(const string &text) override;
@@ -522,7 +522,8 @@ Value *State::interpret(Expression *e) {
       e->set(sc);
     } else {
       stringstream str;
-      e->set(expandVariables(sc.getText(), str).str());
+      e->set(
+          StringRef(expandVariables(sc.getText(), str).str(), sc.getFlags()));
     }
     break;
   }
@@ -554,7 +555,9 @@ Value *State::interpret(Expression *e) {
     }
     case Binary::CONCAT: {
       stringstream str;
-      e->set(interpret(e, str).str());
+      unsigned flags = 0;
+      interpret(e, str, &flags);
+      e->set(StringRef(str.str(), flags));
       break;
     }
     case Binary::MATCH: {
@@ -625,9 +628,9 @@ Value *State::interpret(Expression *e) {
   return e;
 }
 
-stringstream &State::interpret(Expression *e, stringstream &str) {
+void State::interpret(Expression *e, stringstream &str, unsigned *flags) {
   while (auto b = e->isOp(e->CONCAT)) {
-    interpret(b->left, str);
+    interpret(b->left, str, flags);
     e = b->right;
   }
   switch (e->kind()) {
@@ -636,7 +639,7 @@ stringstream &State::interpret(Expression *e, stringstream &str) {
     break;
   }
   case AST::IntegerN: {
-    str << ((Integer*)e)->getValue();
+    str << ((Integer *)e)->getValue();
     break;
   }
   case AST::StringConstN: {
@@ -646,10 +649,14 @@ stringstream &State::interpret(Expression *e, stringstream &str) {
     } else {
       expandVariables(sc.getText(), str);
     }
+    *flags |= sc.getFlags();
     break;
   }
-  default:
-    str << interpret(e)->asString().getText();
+  default: {
+    auto v = interpret(e);
+    str << v->asString().getText();
+    *flags |= v->asString().getFlags();
+    break;
   }
-  return str;
+  }
 }
