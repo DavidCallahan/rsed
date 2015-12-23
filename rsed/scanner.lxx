@@ -52,7 +52,7 @@ match	    return MATCH_KW;
 
 {ID}	    yylval.name = new std::string(yytext);   return IDENTIFIER;
 \${ID}	    yylval.name = new std::string(yytext+1); return VARIABLE;
-\${DIGIT}+  yylval.name = new std::string(yytext+1); return VARIABLE;
+\${DIGIT}+  yylval.integer = atoi(yytext+1); return DYN_VARIABLE;
 {DIGIT}+    yylval.integer = atoi(yytext) ; return NUMBER;
 \$\(	    return LOOKUP_START;
 

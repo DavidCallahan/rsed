@@ -89,6 +89,7 @@ public:
     ControlN,
     VariableN,
     IntegerN,
+    VarMatchN,
     StringConstN,
     CallN,
     ArgN,
@@ -281,7 +282,7 @@ public:
 
 class IfStatement : public Statement {
 public:
-  Expression *predicate; // TODO rename predicate
+  Expression *predicate;
   Statement *thenStmts;
   Statement *elseStmts;
 
@@ -355,6 +356,12 @@ public:
   int getValue() const { return value; }
 };
 inline Expression *AST::integer(int value) { return new Integer(value); }
+
+class VarMatch : public Integer {
+public:
+  VarMatch(int value) : Integer(value) {}
+  ExprKind kind() const override { return VarMatchN; }
+};
 
 class Set : public Statement {
 public:
@@ -454,8 +461,6 @@ template <typename T> const T *isa(const Statement *stmt) {
 //    optimize join reductions
 // TODO -- add foreeach split ...
 // TODO -- add foreach shell(....), after adding "shell()"
-// TODO --
-//    think about passing a stringstream/file to print...
 //
 
 #endif /* defined(__rsed__AST__) */

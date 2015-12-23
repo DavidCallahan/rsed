@@ -272,6 +272,11 @@ void Dumper::dumpExpr(const Expression *node) {
     OS << i->getValue();
     break;
   }
+  case AST::VarMatchN: {
+    auto i = static_cast<const VarMatch *>(node);
+    OS << '$' << i->getValue();
+    break;
+  }
   case AST::StringConstN: {
     OS << static_cast<const StringConst *>(node)->getConstant();
     break;

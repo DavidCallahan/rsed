@@ -16,6 +16,7 @@ class LineBuffer {
 protected:
   int lineno;
   std::string name;
+  std::string inputLine;
 public:
   LineBuffer(std::string name) : lineno(0), name(name) {}
   int getLineno() const { return lineno; }
@@ -26,6 +27,8 @@ public:
   const std::string &getName() const { return name; }
   virtual bool rewind() { return false; }
   virtual ~LineBuffer() {}
+  
+  const std::string & getInputLine() { return inputLine; }
 
   static LineBuffer *findOutputBuffer(const std::string &);
   static LineBuffer *findInputBuffer(const std::string &);
@@ -40,7 +43,6 @@ public:
 
 template <typename Stream> class StreamInBuffer : public LineBuffer {
   Stream *stream;
-
 public:
   StreamInBuffer(Stream *stream, std::string name)
       : LineBuffer(name), stream(stream) {}
@@ -54,6 +56,7 @@ public:
     if (eof() && line == "") {
       return false;
     }
+    inputLine = line;
     lineno += 1;
     return true;
   }

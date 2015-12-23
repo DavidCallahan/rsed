@@ -68,7 +68,7 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
 %token <token> FOREACH COPY SKIP TO PAST END NEWLINE REPLACE_TOK FOR SPLIT
 %token <token> THEN ELSE IF NOT_TOK PRINT MATCH_TOK STYLE MATCH_KW
 %token <token> COLUMNS IN LOOKUP_START REQUIRED
-%token <integer> NUMBER INPUT OUTPUT REWIND ERROR ALL WITH
+%token <integer> NUMBER INPUT OUTPUT REWIND ERROR ALL WITH DYN_VARIABLE
 %type <token> EQ_TOK NE_TOK OR_TOK AND_TOK LE_TOK GE_TOK
 %type <integer> lineno
 %type <stmt> stmtlist stmt foreach copy skip replace 
@@ -201,8 +201,9 @@ term:  primitive
     ;
 
 primitive: lookup
-	 | STRING   { $$ = AST::stringConst($1); };
+	 | STRING   { $$ = AST::stringConst($1); }
 	 | variable
+	 | DYN_VARIABLE { $$ = new VarMatch($1); }
          | call
 	 | NUMBER { $$ = AST::integer($1); }	  
          | '(' expr ')' { $$ = $2; }

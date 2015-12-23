@@ -42,7 +42,6 @@ public:
   bool matchColumns = true;
   vector<string> columns;
 
-  string inputLine;
   string currentLine_;
   bool firstLine = true;
   string &getCurrentLine() {
@@ -52,7 +51,6 @@ public:
     return currentLine_;
   }
 
-  // todo, move input state to line buffer...
   LineBuffer *getInputBuffer() const { return inputBuffer; }
 
   string match(unsigned i) {
@@ -72,10 +70,15 @@ public:
     }
     return inputEof_;
   }
+  const string &getInputLine() {
+    if (firstLine) {
+      nextLine();
+    }
+    return inputBuffer->getInputLine();
+  }
   void nextLine() {
     if (!inputEof_) {
-      inputEof_ = !inputBuffer->getLine(inputLine);
-      currentLine_ = inputLine;
+      inputEof_ = !inputBuffer->getLine(currentLine_);
       if (debug) {
         std::cout << "input: " << currentLine_ << "\n";
       }
@@ -86,7 +89,6 @@ public:
   void resetInput(LineBuffer *newBuffer) {
     firstLine = true;
     currentLine_ = "";
-    inputLine = "";
     inputEof_ = false;
     inputBuffer = newBuffer;
   }
@@ -111,6 +113,7 @@ public:
   stringstream &expandVariables(const string &text, stringstream &str) override;
   // evaluate match control against current linke
   MatchKind matchPattern(AST &);
+  bool isMatch(Expression *);
 };
 
 class ForeachControl {
@@ -121,6 +124,7 @@ class ForeachControl {
   bool hasCount;
   unsigned count;
   bool all;
+  Expression *predicate = nullptr;
 
 public:
   ForeachControl(State *state)
@@ -154,6 +158,12 @@ MatchKind ForeachControl::eval(const string *line) {
       return matchKind;
     }
   }
+  if (predicate) {
+    if (state->interprettPredicate(predicate)) {
+      return matchKind;
+    }
+    return NoMatchK;
+  }
   return NoMatchK;
 }
 
@@ -168,21 +178,26 @@ void ForeachControl::initialize(Control *c) {
   }
   matchKind = (c->getStopKind() == AST::StopAt ? StopAtK : StopAfterK);
   regIndex = -1;
+  predicate = nullptr;
   if (auto p = c->pattern) {
-    if (p->isOp(Expression::NOT)) {
-      negate = true;
-      p = BinaryP(p)->left;
+    if (state->isMatch(p)) {
+      if (p->isOp(Expression::NOT)) {
+        negate = true;
+        p = BinaryP(p)->left;
+      }
+      auto v = state->interpret(p);
+      if (!v->isString()) {
+        // TODO -- support more general preducates
+        throw Exception("unsupported expression in foreach");
+      }
+      regIndex = state->getRegEx()->setPattern(v->asString());
+    } else {
+      predicate = p;
     }
-    auto v = state->interpret(p);
-    if (!v->isString()) {
-      // TODO -- support more general preducates
-      throw Exception("unsupported expression in foreach");
-    }
-    regIndex = state->getRegEx()->setPattern(v->asString());
   }
 }
 
-static std::regex variable(R"((\\\$)|(\$[0-9a-zA-Z_]+))");
+static std::regex variable(R"((\\\$)|(\$[a-zA-Z][a-zA-Z0-9_]+)|(\$[0-9]+))");
 
 stringstream &State::expandVariables(const string &text, stringstream &str) {
 
@@ -203,6 +218,12 @@ stringstream &State::expandVariables(const string &text, stringstream &str) {
 
     if (*cvar == '\\') {
       str << '$';
+    } else if(isdigit(cvar[1])) {
+      stringstream temp;
+      temp.write(cvar+1, match.second-cvar-1);
+      unsigned i;
+      temp >> i;
+      str << State::match(i);
     } else {
       str << Symbol::findSymbol(string(cvar + 1, match.second - cvar - 1))
                  ->getValue();
@@ -466,14 +487,8 @@ void Interpreter::initialize() {
 
   Symbol::defineSymbol(makeSymbol("SOURCE", [this]() {
     state->getInputEof();
-    return state->inputLine;
+    return state->getInputLine();
   }));
-  for (unsigned i = 0; i < 10; i++) {
-    stringstream nameBuffer;
-    nameBuffer << i;
-    Symbol::defineSymbol(
-        makeSymbol(nameBuffer.str(), [this, i]() { return state->match(i); }));
-  }
 }
 
 bool Interpreter::setInput(const string &fileName) {
@@ -514,6 +529,10 @@ Value *State::interpret(Expression *e) {
   }
   case AST::IntegerN: {
     e->set(double(((Integer *)e)->getValue()));
+    break;
+  }
+  case AST::VarMatchN: {
+    e->set(match(((VarMatch *)e)->getValue()));
     break;
   }
   case AST::StringConstN: {
@@ -658,5 +677,27 @@ void State::interpret(Expression *e, stringstream &str, unsigned *flags) {
     *flags |= v->asString().getFlags();
     break;
   }
+  }
+}
+
+bool State::isMatch(Expression *e) {
+  if (e->kind() != e->BinaryN) {
+    return true;
+  }
+  auto b = (Binary *)e;
+  switch (b->op) {
+  case Binary::EQ:
+  case Binary::NE:
+  case Binary::LT:
+  case Binary::LE:
+  case Binary::GE:
+  case Binary::GT:
+  case Binary::AND:
+  case Binary::OR:
+    return false;
+  case Binary::NOT:
+    return isMatch(b->right);
+  default:
+    return true;
   }
 }
