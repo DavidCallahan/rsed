@@ -60,7 +60,7 @@ string doQuote(char quote, const string &text) {
   return result;
 }
 }
-// TODO -- length, substring
+
 namespace BuiltinCalls {
 
 bool getCallId(const string &name, unsigned *u) {

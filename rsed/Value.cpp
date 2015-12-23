@@ -87,7 +87,7 @@ void Value::set(StringRef s) {
 void Value::set(std::string s) { set(StringRef(s)); }
 
 template<typename T>
-static bool cmp(const T & left, const T & right) {
+static int cmp(const T & left, const T & right) {
   if (left < right) return -1;
   if (left == right) return 0;
   return 1;

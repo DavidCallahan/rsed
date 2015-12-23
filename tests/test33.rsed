@@ -1,0 +1,5 @@
+foreach all  
+    print $CURRENT
+    print length($CURRENT)
+    print length($CURRENT) < 3
+end
