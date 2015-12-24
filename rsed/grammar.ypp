@@ -94,7 +94,7 @@ script: optNewline optStyle stmtlist { *parseTree = $3 } ;
 optNewline: /* empty*/ | NEWLINE ;
 optStyle: /* empty */ | STYLE IDENTIFIER NEWLINE { set_style($2, scanner); } ;
 
-stmtlist: { $$ = AST::emptyStmt(); } | stmt optNewline stmtlist { $$ = Statement::list($1, $3); } ;
+stmtlist: { $$ = nullptr; } | stmt optNewline stmtlist { $$ = Statement::list($1, $3); } ;
 
 stmt: foreach | copy | skip | replace | ifstmt | split
     | set | print | input | output | rewind | errorStmt | columns | required
@@ -120,7 +120,7 @@ skip: SKIP lineno control NEWLINE { $$ = AST::skip($3,$2); }
 control: FOR NUMBER toPast  { $$ = AST::limit($2,$3); }
        | toPast  
        | FOR NUMBER	{ $$ = AST::limit($2, LINE); }
-       | ALL { $$ = AST::all(); }
+       | ALL { $$ = nullptr; }
        ;
 
 toPast: TO optRequired pattern  { $$ = new Control(AST::StopAt, $3, $2,  LINE); }
@@ -150,7 +150,7 @@ ifstmt: IF lineno pattern optThen NEWLINE stmtlist elsestmt END NEWLINE
       ;
 optThen: /* empty */ | THEN  ;
 
-elsestmt: /* empty */ { $$ = AST::emptyStmt() ; }
+elsestmt: /* empty */ { $$ = nullptr ; }
 	| ELSE IF lineno pattern optThen NEWLINE stmtlist elsestmt 
 	  { $$ = new IfStatement($4, $7, $8, $3); }
 	| ELSE NEWLINE stmtlist
@@ -158,7 +158,7 @@ elsestmt: /* empty */ { $$ = AST::emptyStmt() ; }
 
 print: PRINT lineno expr optBuffer NEWLINE { $$ = new Print($3,$4, $2); };
 errorStmt: ERROR lineno expr NEWLINE { $$ = new Error($3,$2); };
-optBuffer: /* empty */ { $$ = AST::emptyExpr(); } 
+optBuffer: /* empty */ { $$ = nullptr; }
          | TO buffer { $$ = $2; }
          ;
 
@@ -168,7 +168,7 @@ pattern: expr { $$ = AST::checkPattern($1); }
 expr: term ;
 
 term:  stringTerm
-    |  MATCH_KW expr  { $$ = BINARY(MATCH, $2, nullptr) }
+    |  MATCH_KW expr  { $$ = AST::match(AST::current(), $2, LINE); }
     |  replaceExpr
     |  term OR_TOK term  { $$ = BINARY(OR, $1,$3); }
     |  term AND_TOK term { $$ = BINARY(AND, $1,$3); }
@@ -179,7 +179,7 @@ term:  stringTerm
     |  term GE_TOK term { $$ = BINARY(GE, $1,$3);} 
     |  term '<' term { $$ = BINARY(LT, $1,$3);} 
     |  term '>' term { $$ = BINARY(GT, $1,$3);} 
-    |  term MATCH_TOK term { $$ = BINARY(MATCH, $1,$3); }
+    |  term MATCH_TOK term { $$ = AST::match($1,$3,LINE); }
     |  term '+' term { $$ = BINARY(ADD, $1,$3);} 
     |  term '-' term { $$ = BINARY(SUB, $1,$3);} 
     |  term '*' term { $$ = BINARY(MUL, $1,$3);} 
@@ -212,7 +212,7 @@ arglist: expr { $$ = new Arg($1, nullptr ,LINE); }
 
 replaceExpr: REPLACE_TOK optAll expr WITH expr optIn  %prec REPLACE_TOK
        { 
-         auto m = BINARY(MATCH, $6, $3);
+         auto m = AST::match($6, $3, LINE);
          $$ = new Binary($2 ? Binary::REPLACE_ALL : Binary::REPLACE, m, $5, LINE);
        } 
        ;

@@ -391,5 +391,5 @@ Expression *AST::checkPattern(Expression *pattern) {
   if (pattern->valueKind() == Value::Logical) {
     return pattern;
   }
-  return new Binary(Binary::MATCH, current(), pattern, pattern->getSourceLine());
+  return match(current(), pattern, pattern->getSourceLine());
 }

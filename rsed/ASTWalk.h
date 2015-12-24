@@ -75,8 +75,8 @@ AST::WalkResult Statement::walkExprs(const ACTION &a) {
       rc = ((Replace *)this)->replacement->walkDown(a);
       break;
     case SplitN:
-      if ((Split *)this->pattern) {
-        rc = ((Split *)this)->separator->walkDown(a);
+      if (auto sep = ((Split *)this)->separator) {
+        rc = sep->walkDown(a);
         if (rc != ContinueW)
           return rc;
       }

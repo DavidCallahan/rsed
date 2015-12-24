@@ -32,9 +32,6 @@ public:
 
   AST(int sourceLine) : id(++next_id), sourceLine(sourceLine) {}
 
-  static inline Statement *emptyStmt() { return nullptr; }
-  static inline Expression *emptyExpr() { return nullptr; }
-
   static Statement *foreach (Expression *control, Statement * body,
                              int sourceLine);
   static Statement *copy(Expression *control, int sourceLine);
@@ -47,21 +44,12 @@ public:
                                bool replaceAll, int sourceLine);
   static Expression *limit(int number, Expression *control);
   static Expression *limit(int number, int sourceLine);
-  static Expression *pattern(std::string *pattern);
-  static Expression *notExpr(Expression *pattern);
   static Expression *integer(int value);
   static Expression *variable(std::string *var);
   static Expression *current();
   static Expression *stringConst(std::string *constant);
-  static Expression *match(Expression *pattern, Expression *target);
-  static Expression *identifier(std::string *name);
-  static Expression *call(std::string *name, Expression *args, unsigned callId,
-                          int sourceLine);
-
-  static Expression *fileBuffer(Expression *name);
-  static Expression *memoryBuffer(std::string *name);
-  static inline Expression *all() { return emptyExpr(); }
-
+  static Expression *match(Expression * lhs, Expression * rhs, int sourceLine);
+  
   virtual bool isStatement() const = 0;
 
   enum StmtKind {
@@ -179,6 +167,9 @@ typedef Binary *BinaryP;
 inline BinaryP Expression::isOp(Operators op) {
   return (kind() == BinaryN && BinaryP(this)->isOp(op) ? BinaryP(this)
                                                        : nullptr);
+}
+inline Expression * AST::match(Expression *lhs, Expression *rhs, int sourceLine) {
+  return new Binary(Binary::MATCH, lhs, rhs, sourceLine);
 }
 
 class Foreach : public Statement {
