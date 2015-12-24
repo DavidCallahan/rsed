@@ -99,6 +99,7 @@ optStyle: /* empty */ | STYLE IDENTIFIER NEWLINE { set_style($2, scanner); } ;
 stmtlist: stmtlistlist { $$ = $1.getHead(); }
 stmtlistlist: { $$ = StmtList::emptyList(); }  
             | stmtlistlist stmt optNewline { $$ = $1.append($2); }
+	    | stmtlistlist  error NEWLINE optNewline { $$ = $1; }
             ;
 
 stmt: foreach | copy | skip | replace | ifstmt | split
@@ -203,6 +204,7 @@ primitive: lookup
          | call
 	 | NUMBER { $$ = AST::integer($1); }	  
          | '(' expr ')' { $$ = $2; }
+         | '(' error ')' { $$ = nullptr; }
          ;
 
 variable: VARIABLE { $$ = AST::variable($1); };
