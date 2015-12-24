@@ -79,7 +79,7 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
 %type <expr> optControl optExpr optIn
 %type <expr>  buffer optBuffer 
 %type <arg> optarglist arglist 
-%type <expr> name expr term primitive variable call lookup replaceExpr
+%type <expr> name expr term primitive variable call lookup replaceExpr stringTerm
 %start script
 
 %parse-param {Statement ** parseTree}
@@ -177,10 +177,8 @@ optBuffer: /* empty */ { $$ = AST::emptyExpr(); }
 required: REQUIRED lineno expr NEWLINE { $$ = new Required(0, $3,$2); }
 
 expr: term ;
-    ;
 
-term:  primitive
-    |  term term %prec CONCAT_TOK { $$ = BINARY(CONCAT,$1,$2); }
+term:  stringTerm
     |  MATCH_KW expr  { $$ = BINARY(MATCH, $2, nullptr) }
     |  replaceExpr
     |  term OR_TOK term  { $$ = BINARY(OR, $1,$3); }
@@ -200,6 +198,10 @@ term:  primitive
     |  '-' term %prec UMINUS { $$ = UNARY(NEG,$2); }
     ;
 
+// some code assumes this AST is right-leaning (right-associative)
+stringTerm: primitive
+          | primitive stringTerm { $$ = BINARY(CONCAT,$1,$2); }
+	  ;
 primitive: lookup
 	 | STRING   { $$ = AST::stringConst($1); }
 	 | variable
