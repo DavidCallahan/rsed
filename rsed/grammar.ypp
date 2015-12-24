@@ -33,18 +33,6 @@ Expression * call(std::string * name, Arg * args, Scanner * scanner) {
     return c;
 }
 
-void checkTopExpr(Expression *top, Scanner * scanner) {
-  auto msg = AST::checkTopExpression(top);
-  if (msg != "" ){
-      scanner->error() << msg << "\n";
-  }
-}
-void checkPattern(Expression *pattern, Scanner * scanner) {
-  auto msg = AST::checkPattern(pattern);
-  if (msg != "") {
-     scanner->error() << msg << "\n";
-  }
-}
 #define LINE scanner->lineno()
 #define BINARY(OP,x,y) new Binary(Binary::OP,x,y, LINE)
 #define UNARY(OP,y) new Binary(Binary::OP, nullptr, y, LINE)
@@ -77,7 +65,7 @@ void checkPattern(Expression *pattern, Scanner * scanner) {
 %type <boole> optAll optRequired
 %type <expr> control toPast  
 %type <expr> optControl optExpr optIn
-%type <expr>  buffer optBuffer 
+%type <expr>  buffer optBuffer pattern
 %type <arg> optarglist arglist 
 %type <expr> name expr term primitive variable call lookup replaceExpr stringTerm
 %start script
@@ -126,7 +114,7 @@ name: variable
 copy: COPY lineno control NEWLINE { $$ = AST::copy($3,$2); } ;
 
 skip: SKIP lineno control NEWLINE { $$ = AST::skip($3,$2); }
-    | SKIP lineno IF expr NEWLINE  { $$ = AST::skipOne($4, $2); }    // to end of foreach
+    | SKIP lineno IF pattern NEWLINE  { $$ = AST::skipOne($4, $2); }    // to end of foreach
     | SKIP NEWLINE { $$ = new Skip(LINE); } ;  // skip 1
 
 control: FOR NUMBER toPast  { $$ = AST::limit($2,$3); }
@@ -135,8 +123,8 @@ control: FOR NUMBER toPast  { $$ = AST::limit($2,$3); }
        | ALL { $$ = AST::all(); }
        ;
 
-toPast: TO optRequired expr  { $$ = new Control(AST::StopAt, $3, $2,  LINE); }
-      | PAST optRequired expr { $$ = new Control(AST::StopAfter, $3,  $2, LINE); }
+toPast: TO optRequired pattern  { $$ = new Control(AST::StopAt, $3, $2,  LINE); }
+      | PAST optRequired pattern { $$ = new Control(AST::StopAfter, $3,  $2, LINE); }
       ;
 optRequired: /* empty */  { $$ = false; } 
            | REQUIRED  { $$ = true; }
@@ -152,18 +140,18 @@ optAll: /* empty */ { $$ = false; }
 
 split: SPLIT optExpr WITH expr NEWLINE { $$ = new Split($4, $2, LINE); } ;
 columns: SPLIT optExpr COLUMNS expr NEWLINE { $$ = new Columns($4, $2, LINE); }
-optExpr: /* empty */ { $$ = nullptr; }
+optExpr: /* empty */ { $$ = AST::current(); }
 	  | expr     
           ;
 
 // for use insode of foreach loops
-ifstmt: IF lineno expr optThen NEWLINE stmtlist elsestmt END NEWLINE 
+ifstmt: IF lineno pattern optThen NEWLINE stmtlist elsestmt END NEWLINE 
 	{ $$ = new IfStatement($3, $6, $7, $2);}
       ;
 optThen: /* empty */ | THEN  ;
 
 elsestmt: /* empty */ { $$ = AST::emptyStmt() ; }
-	| ELSE IF lineno expr optThen NEWLINE stmtlist elsestmt 
+	| ELSE IF lineno pattern optThen NEWLINE stmtlist elsestmt 
 	  { $$ = new IfStatement($4, $7, $8, $3); }
 	| ELSE NEWLINE stmtlist
 	  { $$ = $3; } ;
@@ -174,8 +162,9 @@ optBuffer: /* empty */ { $$ = AST::emptyExpr(); }
          | TO buffer { $$ = $2; }
          ;
 
-required: REQUIRED lineno expr NEWLINE { $$ = new Required(0, $3,$2); }
+required: REQUIRED lineno pattern NEWLINE { $$ = new Required(0, $3,$2); }
 
+pattern: expr { $$ = AST::checkPattern($1); }
 expr: term ;
 
 term:  stringTerm
@@ -227,11 +216,9 @@ replaceExpr: REPLACE_TOK optAll expr WITH expr optIn  %prec REPLACE_TOK
          $$ = new Binary($2 ? Binary::REPLACE_ALL : Binary::REPLACE, m, $5, LINE);
        } 
        ;
-optIn: /*empty*/  { $$ = nullptr; }
+optIn: /*empty*/  { $$ = AST::current(); }
      | IN expr    { $$ = $2; }
      ;
-
-
 
 input: INPUT lineno buffer NEWLINE { $$ = new Input($3,$2); }
 output: OUTPUT lineno buffer NEWLINE { $$ = new Output($3,$2); }

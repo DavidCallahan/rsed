@@ -118,27 +118,20 @@ public:
 
 class ForeachControl {
   State *state;
-  int regIndex;
-  bool negate;
-  MatchKind matchKind;
-  bool hasCount;
-  unsigned count;
-  bool all;
+  MatchKind matchKind = NoMatchK;
+  bool hasCount = true;
+  unsigned count =0 ;
+  bool all = false;
   Expression *predicate = nullptr;
 
 public:
   ForeachControl(State *state)
-      : state(state), regIndex(-1), negate(false), matchKind(NoMatchK),
-        hasCount(true), count(0), all(false) {}
+      : state(state) {}
   void initialize(Control *c);
   MatchKind eval(const string *line);
   void release() {
-    if (regIndex >= 0) {
-      state->getRegEx()->releasePattern(regIndex);
-      regIndex = -1;
-    }
   }
-  bool needsInput() const { return all || regIndex >= 0; }
+  bool needsInput() const { return all || predicate; }
   ~ForeachControl() { release(); }
 };
 
@@ -151,13 +144,6 @@ MatchKind ForeachControl::eval(const string *line) {
       return StopAtK;
     count -= 1;
   }
-  if (regIndex >= 0) {
-    bool rc = state->getRegEx()->match(regIndex, *line);
-    state->matchColumns = false;
-    if (rc ^ negate) {
-      return matchKind;
-    }
-  }
   if (predicate) {
     if (state->interprettPredicate(predicate)) {
       return matchKind;
@@ -168,6 +154,7 @@ MatchKind ForeachControl::eval(const string *line) {
 }
 
 void ForeachControl::initialize(Control *c) {
+  predicate = nullptr;
   if (!c) {
     all = true;
     return;
@@ -177,24 +164,7 @@ void ForeachControl::initialize(Control *c) {
     count = (unsigned)c->getLimit();
   }
   matchKind = (c->getStopKind() == AST::StopAt ? StopAtK : StopAfterK);
-  regIndex = -1;
-  predicate = nullptr;
-  if (auto p = c->pattern) {
-    if (state->isMatch(p)) {
-      if (p->isOp(Expression::NOT)) {
-        negate = true;
-        p = BinaryP(p)->left;
-      }
-      auto v = state->interpret(p);
-      if (!v->isString()) {
-        // TODO -- support more general preducates
-        throw Exception("unsupported expression in foreach");
-      }
-      regIndex = state->getRegEx()->setPattern(v->asString());
-    } else {
-      predicate = p;
-    }
-  }
+  predicate = c->pattern;
 }
 
 static std::regex variable(R"((\\\$)|(\$[a-zA-Z][a-zA-Z0-9_]+)|(\$[0-9]+))");
@@ -428,13 +398,11 @@ void State::interpret(Columns *cols) {
   columns.clear();
   vector<unsigned> nums;
 
-  string inExpr =
-      (cols->inExpr ? interpret(cols->inExpr)->asString().getText() : "");
-  auto &current = (cols->inExpr ? inExpr : getCurrentLine());
+  string inExpr = interpret(cols->inExpr)->asString().getText();
 
   int lastC = 0;
-  int max = current.length();
-  auto addCol = [this, &lastC, max, cols, current](Expression *e) {
+  int max = inExpr.length();
+  auto addCol = [this, &lastC, max, cols, inExpr](Expression *e) {
     auto v = interpret(e);
     auto i = int(v->asNumber());
     if (i < lastC) {
@@ -443,7 +411,7 @@ void State::interpret(Columns *cols) {
                       cols, inputBuffer);
     }
     i = std::min(i, max);
-    columns.push_back(current.substr(lastC, (i - lastC)));
+    columns.push_back(inExpr.substr(lastC, (i - lastC)));
     lastC = i;
   };
 
@@ -453,8 +421,8 @@ void State::interpret(Columns *cols) {
   }
   addCol(c);
 
-  if (lastC < current.length()) {
-    columns.push_back(current.substr(lastC));
+  if (lastC < inExpr.length()) {
+    columns.push_back(inExpr.substr(lastC));
   } else {
     columns.push_back("");
   }
@@ -482,8 +450,8 @@ void Interpreter::initialize() {
     string result = buf.str();
     return result;
   }));
-  Symbol::defineSymbol(
-      makeSymbol("CURRENT", [this]() { return state->getCurrentLine(); }));
+  Symbol::defineSymbol(makeSymbol(
+      AST::CURRENT_LINE_SYM, [this]() { return state->getCurrentLine(); }));
 
   Symbol::defineSymbol(makeSymbol("SOURCE", [this]() {
     state->getInputEof();
@@ -503,9 +471,7 @@ bool Interpreter::setInput(const string &fileName) {
 
 bool State::interprettPredicate(Expression *predicate) {
   auto v = interpret(predicate);
-  if (v->isString()) {
-    return interpretMatch(v->asString(), getCurrentLine());
-  }
+  assert(! v->isString());
   return v->asLogical();
 }
 bool State::interpretMatch(const StringRef &pattern, const string &target) {

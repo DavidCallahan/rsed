@@ -63,6 +63,10 @@ string doQuote(char quote, const string &text) {
 
 namespace BuiltinCalls {
 
+Value::Kind callKind(unsigned id) {
+  return  (id == LENGTH ? Value::Number : Value::String);
+}
+
 bool getCallId(const string &name, unsigned *u) {
   for (auto &s : builtins) {
     if (name == s.second) {

@@ -30,6 +30,7 @@ public:
 }
 
 int AST::next_id = 0;
+const char *const AST::CURRENT_LINE_SYM = "CURRENT";
 
 void AST::dump() const {
   Dumper d(std::cout);
@@ -141,10 +142,6 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     indent(depth);
     OS << "columns ";
     dumpExpr(c->columns);
-    if (c->inExpr) {
-      OS << " in ";
-      dumpExpr(c->inExpr);
-    }
     OS << '\n';
     break;
   }
@@ -344,28 +341,55 @@ void Dumper::indent(int depth) {
   }
 }
 
-std::string AST::checkPattern(Expression *pattern) {
-  std::string msg;
-  pattern->walkDown([&msg](Expression *e) {
-    if (e->isOp(e->MATCH)) {
-      msg = "invalid =~ in expression";
-      return StopW;
+Value::Kind Expression::valueKind() {
+  switch (kind()) {
+  case AST::StringConstN:
+  case AST::VariableN:
+  case AST::VarMatchN:
+  case AST::ArgN:
+  case AST::RegExReferenceN:
+  case AST::RegExPatternN:
+  case AST::ControlN:
+    return Value::String;
+  case AST::CallN:
+    return BuiltinCalls::callKind(((Call *)this)->getCallId());
+  case AST::IntegerN:
+    return Value::Number;
+  case AST::BinaryN:
+    switch (((Binary *)this)->op) {
+    case Binary::ADD:
+    case Binary::SUB:
+    case Binary::MUL:
+    case Binary::DIV:
+    case Binary::NEG:
+      return Value::Number;
+    case Binary::LT:
+    case Binary::LE:
+    case Binary::EQ:
+    case Binary::NE:
+    case Binary::GE:
+    case Binary::GT:
+    case Binary::NOT:
+    case Binary::AND:
+    case Binary::OR:
+    case Binary::MATCH:
+      return Value::Logical;
+    case Binary::REPLACE:
+    case Binary::REPLACE_ALL:
+    case Binary::CONCAT:
+    case Binary::LOOKUP:
+      return Value::String;
     }
-    return ContinueW;
-  });
-  return msg;
+  }
 }
-std::string AST::checkTopExpression(Expression *pattern) {
-  std::string msg;
-  pattern->walkDown([&msg](Expression *e) {
-    if (e->isOp(e->NOT)) {
-      msg = "invalid NOT in expression";
-      return StopW;
-    } else if (e->isOp(e->MATCH)) {
-      msg = "invalid MATCH in expression";
-      return StopW;
-    }
-    return ContinueW;
-  });
-  return msg;
+
+Expression *AST::checkPattern(Expression *pattern) {
+  if (auto n = pattern->isOp(Expression::NOT)) {
+    n->right = checkPattern(n->right);
+    return n;
+  }
+  if (pattern->valueKind() == Value::Logical) {
+    return pattern;
+  }
+  return new Binary(Binary::MATCH, current(), pattern, pattern->getSourceLine());
 }

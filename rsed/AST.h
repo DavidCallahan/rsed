@@ -51,6 +51,7 @@ public:
   static Expression *notExpr(Expression *pattern);
   static Expression *integer(int value);
   static Expression *variable(std::string *var);
+  static Expression *current();
   static Expression *stringConst(std::string *constant);
   static Expression *match(Expression *pattern, Expression *target);
   static Expression *identifier(std::string *name);
@@ -60,12 +61,6 @@ public:
   static Expression *fileBuffer(Expression *name);
   static Expression *memoryBuffer(std::string *name);
   static inline Expression *all() { return emptyExpr(); }
-
-  // foreach control should not have NOT
-  static std::string checkPattern(Expression *pattern);
-
-  // top expressions should not have MATCH or NOT
-  static std::string checkTopExpression(Expression *pattern);
 
   virtual bool isStatement() const = 0;
 
@@ -98,6 +93,9 @@ public:
     RegExReferenceN,
   };
   enum WalkResult { StopW, ContinueW, SkipChildrenW, SkipExpressionsW };
+  
+  static const char *const CURRENT_LINE_SYM;
+  static Expression * checkPattern(Expression *pattern) ;
 };
 
 class Statement : public AST {
@@ -163,6 +161,7 @@ public:
   template <typename ACTION> WalkResult walkUp(const ACTION &a);
   BinaryP isOp(Operators op);
   static const char *opName(Operators op);
+  Value::Kind valueKind();
 };
 
 class Binary : public Expression {
@@ -322,6 +321,9 @@ inline Expression *AST::variable(std::string *var) {
   auto v = new Variable(*Symbol::findSymbol(*var));
   delete var;
   return v;
+}
+inline Expression * AST::current() {
+  return new Variable(*Symbol::findSymbol(CURRENT_LINE_SYM));
 }
 
 class Required : public Statement {
