@@ -33,6 +33,7 @@ public:
 }
 
 int AST::next_id = 0;
+int RegExPattern::nextIndex = 0;
 const char *const AST::CURRENT_LINE_SYM = "CURRENT";
 
 void AST::dump() const {
@@ -299,14 +300,14 @@ void Dumper::dumpExpr(const Expression *node) {
   }
   case AST::RegExPatternN: {
     auto r = static_cast<const RegExPattern *>(node);
-    OS << "regex[" << r->getId() << ",index=" << r->getIndex() << ",";
+    OS << "regex[" << r->getIndex() << ",";
     dumpExpr(r->pattern);
     OS << "]";
     break;
   }
   case AST::RegExReferenceN: {
     auto r = static_cast<const RegExReference *>(node);
-    OS << "regex[" << r->pattern->getId() << "]";
+    OS << "regex[" << r->getIndex() << "]";
     break;
   }
   case AST::ArgN: {

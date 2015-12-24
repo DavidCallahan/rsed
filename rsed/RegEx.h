@@ -21,17 +21,13 @@ public:
   virtual int setStyle(const std::string &style) = 0;
 
   // compile a pattern which is then referred to by index
-  virtual int setPattern(const StringRef &pattern) = 0;
-  // discard a pattern (must be most recenetlyl compiled, for now);
-  virtual void releasePattern(int) = 0;
+  virtual void setPattern(const StringRef &pattern, int index) = 0;
 
   // perform a replacement operation
   virtual std::string replace(int pattern, const std::string &replacement,
                               const std::string &line) = 0;
   virtual bool match(int pattern, const std::string &line) = 0;
-  virtual bool match(const StringRef &pattern, const std::string &target) = 0;
-  
-  virtual void split(const StringRef &pattern,
+  virtual void split(int pattern,
                      const std::string & target,
                      std::vector<std::string> * words) = 0;
 

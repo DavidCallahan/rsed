@@ -431,11 +431,11 @@ template <typename T> const T *isa(const Statement *stmt) {
 // where we compiler a regular expression
 class RegExPattern : public Expression {
   int index;
-
+  static int nextIndex;
 public:
   Expression *pattern;
   RegExPattern(Expression *pattern, int index = -1)
-      : Expression(pattern->getSourceLine()), index(index), pattern(pattern) {}
+      : Expression(pattern->getSourceLine()), index(nextIndex++), pattern(pattern) {}
   ExprKind kind() const override { return RegExPatternN; }
   void setIndex(int index) { this->index = index; };
   int getIndex() const { return index; }
@@ -471,15 +471,11 @@ inline Statement *AST::replaceOne(Expression *pattern, Expression *replacement,
 
 // a reference to a patttern (a non-tree link)
 class RegExReference : public Expression {
-  bool matchAll = false;
-
+  int index;
 public:
-  RegExPattern *pattern;
-  RegExReference(RegExPattern *pattern)
-      : Expression(pattern->getSourceLine()), pattern(pattern) {}
+  RegExReference(RegExPattern *pattern) : index(pattern->getIndex()) { }
   ExprKind kind() const override { return RegExReferenceN; }
-  void setMatchAll(bool matchAll = true) { this->matchAll = matchAll; }
-  bool getMatchAll() const { return matchAll; }
+  int getIndex() const { return index; }
 };
 
 // TODO -- optimization pass to pull string cmoparison and regular expression

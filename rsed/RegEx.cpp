@@ -32,14 +32,10 @@ class C14RegEx : public RegEx {
 
 public:
   virtual int setStyle(const std::string &style) override;
-  virtual int setPattern(const StringRef &pattern) override;
-  virtual void releasePattern(int) override;
-
-  virtual bool match(const StringRef &pattern,
-                    const std::string &target) override;
+  virtual void setPattern(const StringRef &pattern, int index) override;
 
   virtual bool match(int pattern, const std::string &line) override;
-  virtual void split(const StringRef &pattern, const std::string &target,
+  virtual void split(int pattern, const std::string &target,
                      std::vector<std::string> *words) override;
   virtual std::string escape(const std::string &text) override;
   virtual std::string getSubMatch(unsigned i) override;
@@ -53,8 +49,7 @@ std::regex createRegex(const StringRef &str) {
   try {
     std::regex temp(str.getText());
     return temp;
-  }
-  catch (std::exception &) {
+  } catch (std::exception &) {
     throw Exception("invalid regular expression: " + str.getText());
   }
 }
@@ -63,15 +58,6 @@ std::regex createRegex(const StringRef &str) {
 bool C14RegEx::specials[256];
 RegEx *RegEx::regEx = nullptr;
 std::string RegEx::styleName;
-
-bool C14RegEx::match(const StringRef &pattern, const std::string &target) {
-
-  if (debug)
-    std::cout << "regex: " << pattern.getText() << '\n';
-  std::regex rx = createRegex(pattern);
-  lastTarget = target;
-  return std::regex_search(lastTarget, matches, rx);
-}
 
 bool C14RegEx::match(int pattern, const std::string &line) {
   lastTarget = line;
@@ -85,17 +71,11 @@ std::string C14RegEx::getSubMatch(unsigned int i) {
   return matches[i];
 }
 
-int C14RegEx::setPattern(const StringRef &pattern) {
-  int r = (int)patterns.size();
-  if (debug)
-    std::cout << "regex: " << pattern.getText() << '\n';
-  patterns.emplace_back(createRegex(pattern), pattern.getFlags());
-  return r;
-}
-
-void C14RegEx::releasePattern(int r) {
-  assert(r + 1 == patterns.size());
-  patterns.pop_back();
+void C14RegEx::setPattern(const StringRef &pattern, int index) {
+  if (index >= patterns.size()) {
+    patterns.resize(2 * index + 1);
+  }
+  patterns[index] = std::make_pair(createRegex(pattern), pattern.getFlags());
 }
 
 std::string C14RegEx::escape(const std::string &text) {
@@ -154,10 +134,11 @@ std::string C14RegEx::replace(int pattern, const std::string &replacement,
   return std::regex_replace(line, re, replacement, format_first_only);
 }
 
-void C14RegEx::split(const StringRef &pattern, const std::string &target,
+void C14RegEx::split(int pattern, const std::string &target,
                      std::vector<std::string> *words) {
-  std::regex rgx = createRegex(pattern.getText());
-  std::sregex_token_iterator iter(target.begin(), target.end(), rgx, -1);
+  assert(pattern < patterns.size());
+  std::sregex_token_iterator iter(target.begin(), target.end(),
+                                  patterns[pattern].first, -1);
   std::sregex_token_iterator end;
   for (; iter != end; ++iter) {
     std::string p = *iter;

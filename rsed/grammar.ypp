@@ -144,7 +144,7 @@ optAll: /* empty */ { $$ = false; }
       ;
 
 
-split: SPLIT optExpr WITH expr NEWLINE { $$ = new Split($4, $2, LINE); } ;
+split: SPLIT optExpr WITH expr NEWLINE { $$ = new Split(new RegExPattern($4), $2, LINE); } ;
 columns: SPLIT optExpr COLUMNS expr NEWLINE { $$ = new Columns($4, $2, LINE); }
 optExpr: /* empty */ { $$ = AST::current(); }
 	  | expr     

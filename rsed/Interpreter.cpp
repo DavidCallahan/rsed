@@ -104,7 +104,7 @@ public:
   void interpret(Split *split);
 
   bool interprettPredicate(Expression *predicate);
-  bool interpretMatch(const StringRef &pattern, const string &target);
+  bool interpretMatch(int pattern, const string &target);
   Value *interpret(Expression *);
   void interpret(Expression *, stringstream &, unsigned *flags);
   void print(Expression *, LineBuffer *);
@@ -287,10 +287,9 @@ ResultCode State::interpretOne(Statement *stmt) {
     auto reg = (RegExPattern *)r->pattern;
     assert(reg->kind() == reg->RegExPatternN);
     auto pattern = interpret(reg->pattern)->asString();
-    auto index = regEx->setPattern(pattern);
+    regEx->setPattern(pattern, reg->getIndex());
     auto target = interpret(r->replacement)->asString().getText();
-    currentLine_ = regEx->replace(index, target, getCurrentLine());
-    regEx->releasePattern(index);
+    currentLine_ = regEx->replace(reg->getIndex(), target, getCurrentLine());
     break;
   }
   case AST::ForeachN:
@@ -408,7 +407,7 @@ void State::interpret(Columns *cols) {
     columns.push_back(inExpr.substr(lastC, (i - lastC)));
     lastC = i;
   };
-  
+
   cols->columns->walkConcat(addCol);
 
   if (lastC < inExpr.length()) {
@@ -419,13 +418,13 @@ void State::interpret(Columns *cols) {
 }
 
 void State::interpret(Split *split) {
-  auto sep = interpret(split->separator)->asString().getText();
-  const string &target =
-      (split->target ? interpret(split->target)->asString().getText()
-                     : getCurrentLine());
+  auto sep = (RegExPattern *) split->separator;
+  assert(sep->kind() == sep->RegExPatternN);
+  interpret(sep);
+  const string &target =interpret(split->target)->asString().getText() ;
   matchColumns = true;
   columns.clear();
-  regEx->split(sep, target, &columns);
+  regEx->split(sep->getIndex(), target, &columns);
 }
 
 void Interpreter::initialize() {
@@ -464,7 +463,7 @@ bool State::interprettPredicate(Expression *predicate) {
   assert(!v->isString());
   return v->asLogical();
 }
-bool State::interpretMatch(const StringRef &pattern, const string &target) {
+bool State::interpretMatch(int pattern, const string &target) {
   matchColumns = false;
   return regEx->match(pattern, target);
 }
@@ -504,20 +503,20 @@ Value *State::interpret(Expression *e) {
     BuiltinCalls::evalCall(c->getCallId(), args, this, e);
     break;
   }
-  case AST::RegExPatternN:
+  case AST::RegExPatternN: {
+    auto r = (RegExPattern *)e;
+    auto pattern = interpret(r->pattern)->asString();
+    regEx->setPattern(pattern, r->getIndex());
+    break;
+  }
   case AST::RegExReferenceN:
-    assert(0 && "not yet implemented");
     break;
   case AST::BinaryN: {
     auto b = (Binary *)e;
     switch (b->op) {
     case Binary::NOT: {
       auto v = interpret(b->right);
-      if (v->isString()) {
-        e->set(!interpretMatch(v->asString(), getCurrentLine()));
-      } else {
-        e->set(!v->asLogical());
-      }
+      e->set(!v->asLogical());
       break;
     }
     case Binary::LOOKUP: {
@@ -535,22 +534,19 @@ Value *State::interpret(Expression *e) {
     case Binary::MATCH: {
       auto r = (RegExPattern *)b->right;
       assert(r->kind() == AST::RegExPatternN);
-      auto pattern = interpret(r->pattern)->asString();
+      interpret(r);
       auto target = interpret(b->left)->asString().getText();
-      e->set(interpretMatch(pattern, target));
+      e->set(interpretMatch(r->getIndex(), target));
       break;
     }
     case Binary::REPLACE: {
       auto m = (Binary *)b->left;
       assert(m->isOp(m->MATCH));
       auto r = (RegExPattern *)m->right;
-      assert(r->kind() == AST::RegExPatternN);
-      auto pattern = interpret(r->pattern)->asString();
-      auto index = regEx->setPattern(pattern);
+      interpret(r);
       auto input = interpret(m->left)->asString().getText();
       auto replacement = interpret(b->right)->asString().getText();
-      b->set(regEx->replace(index, replacement, input));
-      regEx->releasePattern(index);
+      b->set(regEx->replace(r->getIndex(), replacement, input));
       break;
     }
     case Binary::SET_GLOBAL: {
