@@ -189,7 +189,7 @@ term:  stringTerm
 
 // some code assumes this AST is right-leaning (right-associative)
 stringTerm: primitive
-          | primitive stringTerm { $$ = BINARY(CONCAT,$1,$2); }
+          | stringTerm primitive { $$ = BINARY(CONCAT,$1,$2); }
 	  ;
 primitive: lookup
 	 | STRING   { $$ = AST::stringConst($1); }

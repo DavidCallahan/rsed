@@ -142,11 +142,10 @@ public:
 
   bool isStatement() const override { return false; }
   virtual ExprKind kind() const = 0;
-  //  Expression *getNext() const { return (Expression *)next; }
-  //  void setNext(Expression *next) { this->next = next; }
 
   template <typename ACTION> WalkResult walkDown(const ACTION &a);
   template <typename ACTION> WalkResult walkUp(const ACTION &a);
+  template <typename ACTION> void walkConcat(const ACTION &);
   BinaryP isOp(Operators op);
   static const char *opName(Operators op);
   Value::Kind valueKind();
@@ -469,7 +468,6 @@ inline Statement *AST::replaceOne(Expression *pattern, Expression *replacement,
   pattern = new RegExPattern(pattern);
   return new Replace(pattern, replacement, sourceLine);
 }
-
 
 // a reference to a patttern (a non-tree link)
 class RegExReference : public Expression {

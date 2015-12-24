@@ -408,12 +408,8 @@ void State::interpret(Columns *cols) {
     columns.push_back(inExpr.substr(lastC, (i - lastC)));
     lastC = i;
   };
-
-  auto c = cols->columns;
-  for (; c->isOp(c->CONCAT); c = BinaryP(c)->right) {
-    addCol(BinaryP(c)->left);
-  }
-  addCol(c);
+  
+  cols->columns->walkConcat(addCol);
 
   if (lastC < inExpr.length()) {
     columns.push_back(inExpr.substr(lastC));

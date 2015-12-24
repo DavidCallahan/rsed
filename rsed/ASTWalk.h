@@ -178,5 +178,16 @@ AST::WalkResult Expression::walkDown(const ACTION &a) {
   return ContinueW;
 }
 
+template<typename ACTION>
+void Expression::walkConcat(const ACTION & a) {
+  if (auto c = isOp(CONCAT)) {
+    c->left->walkConcat(a);
+    c->right->walkConcat(a);
+  }
+  else {
+    a(this);
+  }
+}
+
 
 #endif /* ASTWalk_h */
