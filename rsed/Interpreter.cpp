@@ -218,9 +218,9 @@ stringstream &State::expandVariables(const string &text, stringstream &str) {
 
     if (*cvar == '\\') {
       str << '$';
-    } else if(isdigit(cvar[1])) {
+    } else if (isdigit(cvar[1])) {
       stringstream temp;
-      temp.write(cvar+1, match.second-cvar-1);
+      temp.write(cvar + 1, match.second - cvar - 1);
       unsigned i;
       temp >> i;
       str << State::match(i);
@@ -555,6 +555,10 @@ Value *State::interpret(Expression *e) {
     BuiltinCalls::evalCall(c->getCallId(), args, this, e);
     break;
   }
+  case AST::RegExPatternN:
+  case AST::RegExReferenceN:
+    assert(0 && "not yet implemented");
+    break;
   case AST::BinaryN: {
     auto b = (Binary *)e;
     switch (b->op) {

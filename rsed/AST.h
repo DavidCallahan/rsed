@@ -94,6 +94,8 @@ public:
     CallN,
     ArgN,
     BinaryN,
+    RegExPatternN,
+    RegExReferenceN,
   };
   enum WalkResult { StopW, ContinueW, SkipChildrenW, SkipExpressionsW };
 };
@@ -455,6 +457,27 @@ template <typename T> T *isa(Statement *stmt) {
 template <typename T> const T *isa(const Statement *stmt) {
   return (stmt->kind() == T::typeKind() ? (T *)stmt : nullptr);
 }
+
+// where we compiler a regular expression
+class RegExPattern : public Expression {
+  int index;
+public:
+  Expression *pattern;
+  RegExPattern(Expression *pattern, int index = -1)
+      : Expression(pattern->getSourceLine()), index(index), pattern(pattern) {}
+  ExprKind kind() const override { return RegExPatternN; }
+  void setIndex(int index) { this->index = index; };
+  int getIndex() const { return index; }
+};
+
+// a reference to a patttern (a non-tree link)
+class RegExReference : public Expression {
+public:
+  RegExPattern *pattern;
+  RegExReference(RegExPattern *pattern)
+      : Expression(pattern->getSourceLine()), pattern(pattern) {}
+  ExprKind kind() const override { return RegExReferenceN; }
+};
 
 // TODO -- optimization pass to pull string cmoparison and regular expression
 //    compilation out of loops.

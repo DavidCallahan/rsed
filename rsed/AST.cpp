@@ -297,6 +297,18 @@ void Dumper::dumpExpr(const Expression *node) {
     OS << ')';
     break;
   }
+  case AST::RegExPatternN: {
+    auto r = static_cast<const RegExPattern *>(node);
+    OS << "regex[" << r->getId() << ",index=" << r->getIndex() << ",";
+    dumpExpr(r->pattern);
+    OS << "]";
+    break;
+  }
+  case AST::RegExReferenceN: {
+    auto r = static_cast<const RegExReference *>(node);
+    OS << "regex[" << r->pattern->getId() << "]";
+    break;
+  }
   case AST::ArgN: {
     assert("should not reach ArgN");
     break;
