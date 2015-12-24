@@ -207,8 +207,6 @@ const char *Expression::opName(Operators op) {
     return "=~";
   case REPLACE:
     return "replace";
-  case REPLACE_ALL:
-    return "replace all";
   case CONCAT:
     return " ";
   case LT:
@@ -231,6 +229,8 @@ const char *Expression::opName(Operators op) {
     return "or";
   case LOOKUP:
     return "$(";
+  case SET_GLOBAL:
+    return "global";
   }
 }
 
@@ -375,9 +375,9 @@ Value::Kind Expression::valueKind() {
     case Binary::MATCH:
       return Value::Logical;
     case Binary::REPLACE:
-    case Binary::REPLACE_ALL:
     case Binary::CONCAT:
     case Binary::LOOKUP:
+    case Binary::SET_GLOBAL:
       return Value::String;
     }
   }

@@ -24,8 +24,6 @@ using std::vector;
 namespace {
 enum Builtins {
   TRIM = 0,
-  REPLACE,
-  REPLACE_ALL,
   SHELL,
   LENGTH,
   JOIN,
@@ -106,35 +104,6 @@ void evalCall(unsigned int id, vector<Value *> &args, EvalState *state,
       s.erase(0, s.find_first_not_of(delimiters));
       ss << s;
     }
-    break;
-  }
-  case REPLACE_ALL:
-    replaceAll = true;
-  /*FALLTHROUGH*/
-  case REPLACE: {
-    if (args.size() < 3) {
-      throw Exception("Two few arguments to replace()");
-    }
-    auto regEx = state->getRegEx();
-    int r;
-    if (replaceAll) {
-      auto p = args[0]->asString();
-      p.setIsGlobal();
-      r = regEx->setPattern(p);
-    } else {
-      r = regEx->setPattern(args[0]->asString());
-    }
-    if (r < 0) {
-      throw Exception("Error parsing regular expression: " +
-                      args[0]->asString());
-    }
-    auto &replaceText = args[1]->asString().getText();
-    auto last = args.end();
-    for (auto p = args.begin() + 2; p != last; ++p) {
-      auto rs = regEx->replace(r, replaceText, (*p)->asString().getText());
-      ss << rs;
-    }
-    regEx->releasePattern(r);
     break;
   }
   case LENGTH: {

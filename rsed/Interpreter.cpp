@@ -111,26 +111,21 @@ public:
 
   // string expandVariables(const string &text) override;
   stringstream &expandVariables(const string &text, stringstream &str) override;
-  // evaluate match control against current linke
-  MatchKind matchPattern(AST &);
-  bool isMatch(Expression *);
 };
 
 class ForeachControl {
   State *state;
   MatchKind matchKind = NoMatchK;
   bool hasCount = true;
-  unsigned count =0 ;
+  unsigned count = 0;
   bool all = false;
   Expression *predicate = nullptr;
 
 public:
-  ForeachControl(State *state)
-      : state(state) {}
+  ForeachControl(State *state) : state(state) {}
   void initialize(Control *c);
   MatchKind eval(const string *line);
-  void release() {
-  }
+  void release() {}
   bool needsInput() const { return all || predicate; }
   ~ForeachControl() { release(); }
 };
@@ -471,7 +466,7 @@ bool Interpreter::setInput(const string &fileName) {
 
 bool State::interprettPredicate(Expression *predicate) {
   auto v = interpret(predicate);
-  assert(! v->isString());
+  assert(!v->isString());
   return v->asLogical();
 }
 bool State::interpretMatch(const StringRef &pattern, const string &target) {
@@ -550,24 +545,30 @@ Value *State::interpret(Expression *e) {
       break;
     }
     case Binary::MATCH: {
-      auto pattern = interpret(b->right)->asString();
+      auto r = (RegExPattern *)b->right;
+      assert(r->kind() == AST::RegExPatternN);
+      auto pattern = interpret(r->pattern)->asString();
       auto target = interpret(b->left)->asString().getText();
       e->set(interpretMatch(pattern, target));
       break;
     }
-    case Binary::REPLACE_ALL:
     case Binary::REPLACE: {
       auto m = (Binary *)b->left;
       assert(m->isOp(m->MATCH));
-      auto pattern = interpret(m->right)->asString();
-      if (e->isOp(e->REPLACE_ALL)) {
-        pattern.setIsGlobal();
-      }
+      auto r = (RegExPattern *)m->right;
+      assert(r->kind() == AST::RegExPatternN);
+      auto pattern = interpret(r->pattern)->asString();
       auto index = regEx->setPattern(pattern);
       auto input = interpret(m->left)->asString().getText();
       auto replacement = interpret(b->right)->asString().getText();
       b->set(regEx->replace(index, replacement, input));
       regEx->releasePattern(index);
+      break;
+    }
+    case Binary::SET_GLOBAL: {
+      auto sc = interpret(b->right)->asString();
+      sc.setIsGlobal();
+      b->set(sc);
       break;
     }
     case Binary::EQ:
@@ -647,27 +648,5 @@ void State::interpret(Expression *e, stringstream &str, unsigned *flags) {
     *flags |= v->asString().getFlags();
     break;
   }
-  }
-}
-
-bool State::isMatch(Expression *e) {
-  if (e->kind() != e->BinaryN) {
-    return true;
-  }
-  auto b = (Binary *)e;
-  switch (b->op) {
-  case Binary::EQ:
-  case Binary::NE:
-  case Binary::LT:
-  case Binary::LE:
-  case Binary::GE:
-  case Binary::GT:
-  case Binary::AND:
-  case Binary::OR:
-    return false;
-  case Binary::NOT:
-    return isMatch(b->right);
-  default:
-    return true;
   }
 }

@@ -212,8 +212,9 @@ arglist: expr { $$ = new Arg($1, nullptr ,LINE); }
 
 replaceExpr: REPLACE_TOK optAll expr WITH expr optIn  %prec REPLACE_TOK
        { 
-         auto m = AST::match($6, $3, LINE);
-         $$ = new Binary($2 ? Binary::REPLACE_ALL : Binary::REPLACE, m, $5, LINE);
+         auto p = ($2? UNARY(SET_GLOBAL,$3) : $3);
+         auto m = AST::match($6, p, LINE);
+         $$ = new Binary(Binary::REPLACE, m, $5, LINE);
        } 
        ;
 optIn: /*empty*/  { $$ = AST::current(); }

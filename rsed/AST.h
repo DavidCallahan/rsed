@@ -48,8 +48,8 @@ public:
   static Expression *variable(std::string *var);
   static Expression *current();
   static Expression *stringConst(std::string *constant);
-  static Expression *match(Expression * lhs, Expression * rhs, int sourceLine);
-  
+  static Expression *match(Expression *lhs, Expression *rhs, int sourceLine);
+
   virtual bool isStatement() const = 0;
 
   enum StmtKind {
@@ -81,9 +81,9 @@ public:
     RegExReferenceN,
   };
   enum WalkResult { StopW, ContinueW, SkipChildrenW, SkipExpressionsW };
-  
+
   static const char *const CURRENT_LINE_SYM;
-  static Expression * checkPattern(Expression *pattern) ;
+  static Expression *checkPattern(Expression *pattern);
 };
 
 class Statement : public AST {
@@ -126,7 +126,6 @@ public:
     NEG,
     MATCH,
     REPLACE,
-    REPLACE_ALL,
     CONCAT,
     LT,
     LE,
@@ -138,6 +137,7 @@ public:
     AND,
     OR,
     LOOKUP,
+    SET_GLOBAL,
   };
 
   bool isStatement() const override { return false; }
@@ -167,9 +167,6 @@ typedef Binary *BinaryP;
 inline BinaryP Expression::isOp(Operators op) {
   return (kind() == BinaryN && BinaryP(this)->isOp(op) ? BinaryP(this)
                                                        : nullptr);
-}
-inline Expression * AST::match(Expression *lhs, Expression *rhs, int sourceLine) {
-  return new Binary(Binary::MATCH, lhs, rhs, sourceLine);
 }
 
 class Foreach : public Statement {
@@ -313,7 +310,7 @@ inline Expression *AST::variable(std::string *var) {
   delete var;
   return v;
 }
-inline Expression * AST::current() {
+inline Expression *AST::current() {
   return new Variable(*Symbol::findSymbol(CURRENT_LINE_SYM));
 }
 
@@ -454,6 +451,7 @@ template <typename T> const T *isa(const Statement *stmt) {
 // where we compiler a regular expression
 class RegExPattern : public Expression {
   int index;
+
 public:
   Expression *pattern;
   RegExPattern(Expression *pattern, int index = -1)
@@ -463,13 +461,23 @@ public:
   int getIndex() const { return index; }
 };
 
+inline Expression *AST::match(Expression *lhs, Expression *rhs,
+                              int sourceLine) {
+  auto r = new RegExPattern(rhs);
+  return new Binary(Binary::MATCH, lhs, r, sourceLine);
+}
+
+
 // a reference to a patttern (a non-tree link)
 class RegExReference : public Expression {
+  bool matchAll = false;
 public:
   RegExPattern *pattern;
   RegExReference(RegExPattern *pattern)
       : Expression(pattern->getSourceLine()), pattern(pattern) {}
   ExprKind kind() const override { return RegExReferenceN; }
+  void setMatchAll(bool matchAll =true) { this->matchAll = matchAll; }
+  bool getMatchAll() const { return matchAll; }
 };
 
 // TODO -- optimization pass to pull string cmoparison and regular expression
