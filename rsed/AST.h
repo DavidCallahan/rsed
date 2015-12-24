@@ -238,27 +238,11 @@ class Replace : public Statement {
 public:
   Expression *pattern;
   Expression *replacement;
-  bool optAll;
-  Replace(Expression *pattern, Expression *replacement, bool optAll,
-          int sourceLine)
-      : Statement(sourceLine), pattern(pattern), replacement(replacement),
-        optAll(optAll) {}
+  Replace(Expression *pattern, Expression *replacement, int sourceLine)
+      : Statement(sourceLine), pattern(pattern), replacement(replacement) {}
   static StmtKind typeKind() { return ReplaceN; }
   StmtKind kind() const override { return typeKind(); }
 };
-inline Statement *AST::replace(Expression *control, Expression *pattern,
-                               Expression *replacement, bool optAll,
-                               int sourceLine) {
-  Statement *body = new Replace(pattern, replacement, optAll, sourceLine);
-#ifndef IMPLICIT_FOREACH_COPY
-  body = Statement::list<Statement>(body, new Copy(sourceLine));
-#endif
-  return new Foreach(control, body, sourceLine);
-}
-inline Statement *AST::replaceOne(Expression *pattern, Expression *replacement,
-                                  bool optAll, int sourceLine) {
-  return new Replace(pattern, replacement, optAll, sourceLine);
-}
 class Split : public Statement {
 public:
   Expression *separator;
@@ -467,16 +451,39 @@ inline Expression *AST::match(Expression *lhs, Expression *rhs,
   return new Binary(Binary::MATCH, lhs, r, sourceLine);
 }
 
+inline Statement *AST::replace(Expression *control, Expression *pattern,
+                               Expression *replacement, bool optAll,
+                               int sourceLine) {
+  if (optAll) {
+    pattern = new Binary(Binary::SET_GLOBAL, nullptr, pattern, sourceLine);
+  }
+  pattern = new RegExPattern(pattern);
+  Statement *body = new Replace(pattern, replacement, sourceLine);
+#ifndef IMPLICIT_FOREACH_COPY
+  body = Statement::list<Statement>(body, new Copy(sourceLine));
+#endif
+  return new Foreach(control, body, sourceLine);
+}
+inline Statement *AST::replaceOne(Expression *pattern, Expression *replacement,
+                                  bool optAll, int sourceLine) {
+  if (optAll) {
+    pattern = new Binary(Binary::SET_GLOBAL, nullptr, pattern, sourceLine);
+  }
+  pattern = new RegExPattern(pattern);
+  return new Replace(pattern, replacement, sourceLine);
+}
+
 
 // a reference to a patttern (a non-tree link)
 class RegExReference : public Expression {
   bool matchAll = false;
+
 public:
   RegExPattern *pattern;
   RegExReference(RegExPattern *pattern)
       : Expression(pattern->getSourceLine()), pattern(pattern) {}
   ExprKind kind() const override { return RegExReferenceN; }
-  void setMatchAll(bool matchAll =true) { this->matchAll = matchAll; }
+  void setMatchAll(bool matchAll = true) { this->matchAll = matchAll; }
   bool getMatchAll() const { return matchAll; }
 };
 

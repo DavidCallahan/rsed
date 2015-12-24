@@ -284,10 +284,9 @@ ResultCode State::interpretOne(Statement *stmt) {
   }
   case AST::ReplaceN: {
     auto r = (Replace *)stmt;
-    auto pattern = interpret(r->pattern)->asString();
-    if (r->optAll) {
-      pattern.setIsGlobal();
-    }
+    auto reg = (RegExPattern *)r->pattern;
+    assert(reg->kind() == reg->RegExPatternN);
+    auto pattern = interpret(reg->pattern)->asString();
     auto index = regEx->setPattern(pattern);
     auto target = interpret(r->replacement)->asString().getText();
     currentLine_ = regEx->replace(index, target, getCurrentLine());

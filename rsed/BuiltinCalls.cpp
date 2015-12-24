@@ -94,7 +94,6 @@ bool shell(string cmd, vector<string> * lines) {
 void evalCall(unsigned int id, vector<Value *> &args, EvalState *state,
               Value *result) {
   std::stringstream ss;
-  bool replaceAll = false;
   switch (Builtins(id)) {
   case TRIM: {
     const std::string &delimiters = " \f\n\r\t\v";
