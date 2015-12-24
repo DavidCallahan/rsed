@@ -32,7 +32,7 @@ Expression * call(std::string * name, Arg * args, Scanner * scanner) {
     delete name;
     return c;
 }
-
+  
 #define LINE scanner->lineno()
 #define BINARY(OP,x,y) new Binary(Binary::OP,x,y, LINE)
 #define UNARY(OP,y) new Binary(Binary::OP, nullptr, y, LINE)
@@ -50,6 +50,7 @@ Expression * call(std::string * name, Arg * args, Scanner * scanner) {
   std::string * name;
   int integer;
   bool boole;
+  StmtList list;
 }
 
 %token <name>  STRING VARIABLE IDENTIFIER
@@ -62,6 +63,7 @@ Expression * call(std::string * name, Arg * args, Scanner * scanner) {
 %type <stmt> stmtlist stmt foreach copy skip replace 
 %type <stmt> split print columns required
 %type <stmt> ifstmt elsestmt set input output rewind errorStmt 
+%type <list> stmtlistlist
 %type <boole> optAll optRequired
 %type <expr> control toPast  
 %type <expr> optControl optExpr optIn
@@ -94,7 +96,10 @@ script: optNewline optStyle stmtlist { *parseTree = $3 } ;
 optNewline: /* empty*/ | NEWLINE ;
 optStyle: /* empty */ | STYLE IDENTIFIER NEWLINE { set_style($2, scanner); } ;
 
-stmtlist: { $$ = nullptr; } | stmt optNewline stmtlist { $$ = Statement::list($1, $3); } ;
+stmtlist: stmtlistlist { $$ = $1.getHead(); }
+stmtlistlist: { $$ = StmtList::emptyList(); }  
+            | stmtlistlist stmt optNewline { $$ = $1.append($2); }
+            ;
 
 stmt: foreach | copy | skip | replace | ifstmt | split
     | set | print | input | output | rewind | errorStmt | columns | required

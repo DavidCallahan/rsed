@@ -2,8 +2,8 @@
 #include <string>
 #include <fstream>
 #include "AST.h"
+#include "Scanner.h"
 #include "grammar.tab.hpp"
-#include "Scanner.h" 
 
 static std::string * makeString(const char * text) {
     return new std::string(text);
