@@ -496,14 +496,7 @@ Value *State::interpret(Expression *e) {
     break;
   }
   case AST::StringConstN: {
-    const auto &sc = ((StringConst *)e)->getConstant();
-    if (sc.isRaw()) {
-      e->set(sc);
-    } else {
-      stringstream str;
-      e->set(
-          StringRef(expandVariables(sc.getText(), str).str(), sc.getFlags()));
-    }
+    e->set(((StringConst *)e)->getConstant());
     break;
   }
   case AST::CallN: {

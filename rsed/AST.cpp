@@ -13,6 +13,9 @@
 #include "ASTWalk.h"
 #include "RegEx.h"
 #include "BuiltinCalls.h"
+using std::string;
+using std::vector;
+using std::stringstream;
 
 namespace {
 class Dumper {
@@ -392,4 +395,73 @@ Expression *AST::checkPattern(Expression *pattern) {
     return pattern;
   }
   return match(current(), pattern, pattern->getSourceLine());
+}
+
+static std::regex variable(R"((\\\$)|(\$[a-zA-Z][a-zA-Z0-9_]+)|(\$[0-9]+))");
+
+static Expression *expandVariables(const StringRef &text) {
+
+  if (text.isRaw()) {
+    return new StringConst(text);
+  }
+  const char *ctext = text.getText().c_str();
+  size_t len = text.getText().length();
+  auto vars_begin = std::cregex_iterator(ctext, ctext + len, variable);
+  auto vars_end = std::cregex_iterator();
+  if (vars_begin == vars_end) {
+    return new StringConst(text);
+  }
+
+  vector<Expression *> terms;
+  stringstream str;
+  int strLength = 0;
+  unsigned numStringCounts = 0;
+  const char *last = ctext;
+  for (std::cregex_iterator vars = vars_begin; vars != vars_end; ++vars) {
+    auto match = (*vars)[0];
+    const char *cvar = match.first;
+    str.write(last, cvar - last);
+    strLength += (cvar - last);
+    if (*cvar == '\\') {
+      str << '$';
+      strLength += 1;
+    } else {
+      if (strLength > 0) {
+        numStringCounts += 1;
+        terms.push_back(new StringConst(StringRef(str.str(), text.getFlags())));
+        str.str("");
+        strLength = 0;
+      }
+      if (isdigit(cvar[1])) {
+        stringstream temp;
+        temp.write(cvar + 1, match.second - cvar - 1);
+        unsigned i;
+        temp >> i;
+        terms.push_back(new VarMatch(i));
+      } else {
+        auto sym =
+            Symbol::findSymbol(string(cvar + 1, match.second - cvar - 1));
+        terms.push_back(new Variable(*sym));
+      }
+    }
+    last = match.second;
+  }
+  auto clast = ctext + len;
+  if (last != clast) {
+    str.write(last, clast - last);
+    strLength += clast - last;
+  }
+  if (strLength > 0 || numStringCounts == 0) {
+    terms.push_back(new StringConst(StringRef(str.str(), text.getFlags())));
+  }
+  auto e = terms.back();
+  for (auto i = terms.size() - 1; i > 0;) {
+    i -= 1;
+    e = new Binary(Binary::CONCAT, terms[i], e, 0);
+  }
+  return e;
+}
+
+Expression *AST::stringConst(string *constant) {
+  return expandVariables(StringRef(constant));
 }

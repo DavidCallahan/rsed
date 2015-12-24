@@ -159,7 +159,6 @@ void C14RegEx::split(const StringRef &pattern, const std::string &target,
   std::regex rgx = createRegex(pattern.getText());
   std::sregex_token_iterator iter(target.begin(), target.end(), rgx, -1);
   std::sregex_token_iterator end;
-  const char * last = nullptr;
   for (; iter != end; ++iter) {
     std::string p = *iter;
     words->emplace_back(std::move(p));

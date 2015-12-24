@@ -314,14 +314,11 @@ class StringConst : public Expression {
   StringRef constant;
 
 public:
-  StringConst(std::string *constant) : constant(constant) {}
+  StringConst(StringRef constant) : constant(constant) {}
   ExprKind kind() const override { return StringConstN; }
   const StringRef &getConstant() const { return constant; }
   void setConstant(StringRef constant) { this->constant = constant; }
 };
-inline Expression *AST::stringConst(std::string *constant) {
-  return new StringConst(constant);
-}
 
 class Integer : public Expression {
   int value;
