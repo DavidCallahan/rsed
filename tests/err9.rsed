@@ -1,0 +1,3 @@
+cmd = "./foox"
+print $cmd
+print shell($cmd)

@@ -84,14 +84,13 @@ string shell(vector<Value*> & args) {
   std::string shellCmd = ss.str();
   std::shared_ptr<FILE> pipe;
   try {
-    //TODO make this robust when the command fails in some way
     pipe.reset(popen(shellCmd.c_str(), "r"), pclose);
   }
   catch (...) {
-    throw Exception("error executing command:" + shellCmd);
+    throw Exception("error executing command: " + shellCmd);
   }
   if (!pipe) {
-    throw Exception("error executing command:" + shellCmd);
+    throw Exception("error executing command: " + shellCmd);
   }
   std::string result = "";
   while (!feof(pipe.get())) {
@@ -100,6 +99,10 @@ string shell(vector<Value*> & args) {
       break;
     }
     result.append(1, c);
+  }
+  auto status = pclose(pipe.get());
+  if (status != 0) {
+    throw Exception("error executing command: " + shellCmd);
   }
   return result;
 }
