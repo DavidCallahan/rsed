@@ -1,0 +1,13 @@
+#!/home/dcallahan/bin/rsed
+foreach past "^power management"
+   if "^(.*\S)\s*:(.*)" then
+      $name=replace " " with "_" in $1
+      $value=trim($2)
+      print "cpuinfo_" $name "=\"" $value "\"" 
+      skip 
+   else 
+      error "unexpected line: " $CURRENT
+   end
+end
+
+
