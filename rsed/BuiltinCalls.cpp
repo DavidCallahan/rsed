@@ -20,6 +20,7 @@ using std::vector;
 #include "RegEx.h"
 #include "Exception.h"
 #include "Value.h"
+#include "Symbol.h"
 
 namespace {
 enum Builtins {
@@ -62,7 +63,7 @@ string doQuote(char quote, const string &text) {
 namespace BuiltinCalls {
 
 Value::Kind callKind(unsigned id) {
-  return  (id == LENGTH ? Value::Number : Value::String);
+  return (id == LENGTH ? Value::Number : Value::String);
 }
 
 bool getCallId(const string &name, unsigned *u) {
@@ -75,21 +76,33 @@ bool getCallId(const string &name, unsigned *u) {
   return false;
 }
 
-#if 0
-bool shell(string cmd, vector<string> * lines) {
-  std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
-  if (!pipe) return false;
-  char buffer[128];
+string shell(vector<Value*> & args) {
+  std::stringstream ss;
+  for (auto v : args) {
+    ss << v->asString().getText() << " ";
+  }
+  std::string shellCmd = ss.str();
+  std::shared_ptr<FILE> pipe;
+  try {
+    //TODO make this robust when the command fails in some way
+    pipe.reset(popen(shellCmd.c_str(), "r"), pclose);
+  }
+  catch (...) {
+    throw Exception("error executing command:" + shellCmd);
+  }
+  if (!pipe) {
+    throw Exception("error executing command:" + shellCmd);
+  }
   std::string result = "";
-  std::ifstream input(pipe);
-  
   while (!feof(pipe.get())) {
-    if (fgets(buffer, 128, pipe.get()) != NULL)
-      result += buffer;
+    char c = fgetc(pipe.get());
+    if (c == '\n' || c == EOF) {
+      break;
+    }
+    result.append(1, c);
   }
   return result;
 }
-#endif
 
 void evalCall(unsigned int id, vector<Value *> &args, EvalState *state,
               Value *result) {
@@ -162,7 +175,8 @@ void evalCall(unsigned int id, vector<Value *> &args, EvalState *state,
     }
     break;
   case SHELL:
-    throw Exception("shell function not yet implemented:");
+    ss << shell(args);
+    break;
   case SUBSTR: {
     auto n = args.size();
     if (n == 0)

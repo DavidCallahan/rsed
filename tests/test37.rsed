@@ -1,0 +1,4 @@
+cmd = "echo foo"
+print $cmd
+print shell($cmd)
+

@@ -497,7 +497,6 @@ public:
   
 };
 
-// TODO -- make script arguments available as variables $ARGk
 // TODO -- optimize join reductions
 // TODO -- add foreeach split ...
 // TODO -- add foreach shell(....), after adding "shell()"
