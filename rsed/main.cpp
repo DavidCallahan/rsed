@@ -35,9 +35,9 @@ DEFINE_string(input, "", "input file to be processed");
 DEFINE_bool(script_in, false, "read script from stdin");
 string script;
 
-void parseOptions(int argc, char *argv[]) {
+void parseOptions(int *argc, char **argv[]) {
 
-  gflags::ParseCommandLineFlags(&(argc), &(argv), true);
+  gflags::ParseCommandLineFlags(argc, argv, true);
 
   // only command line arguments are preserved by gflags, so the 0th one is
   // the tool name and 1st is the input.
@@ -52,20 +52,22 @@ void parseOptions(int argc, char *argv[]) {
       exit(1);
     }
     script = "";
-  } else if (argc < 2) {
-    std::cerr << argv[0] << ": missing script parameter\n";
+  } else if (*argc < 2) {
+    std::cerr << *argv[0] << ": missing script parameter\n";
     exit(1);
   } else {
-    script = argv[1];
+    script = (*argv)[1];
+    *argc -= 1;
+    *argv += 1;
   }
 }
 
 int main(int argc, char *argv[]) {
 
-  parseOptions(argc, argv);
+  parseOptions(&argc, &argv);
   RegEx::setDefaultRegEx();
   Interpreter interp;
-  interp.initialize();
+  interp.initialize(argc, argv);
 
   Parser parser;
   Statement *ast = parser.parse(script);

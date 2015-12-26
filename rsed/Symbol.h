@@ -31,7 +31,8 @@ class SimpleSymbol : public Symbol {
   std::string value;
 
 public:
-  SimpleSymbol(const std::string &name) : Symbol(name), value("") {}
+  SimpleSymbol(const std::string &name, std::string value = "")
+      : Symbol(name), value(value) {}
   const std::string getValue() const override { return value; }
   void setValue(const std::string &v) override { value = v; }
   ~SimpleSymbol() {}

@@ -1,0 +1,3 @@
+print "$ARG1"
+print "$ARG2"
+

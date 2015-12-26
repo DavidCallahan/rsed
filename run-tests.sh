@@ -12,10 +12,11 @@ export ENV2="ENV2 value"
 runTest () {
     if [ -e "$base.in" ] 
     then
-	$RSED $test $OPT $DEBUG < $base.in > $base.test-out
+	input="$base.in"
     else
-	$RSED $test $OPT $DEBUG  < /dev/null > $base.test-out
+	input=/dev/null
     fi
+    ARG1=x ARG2=y $RSED $test $OPT $DEBUG a < $input > $base.test-out
 }
 
 

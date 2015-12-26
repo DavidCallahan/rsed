@@ -422,7 +422,7 @@ void State::interpret(Split *split) {
   regEx->split(sep, target, &columns);
 }
 
-void Interpreter::initialize() {
+void Interpreter::initialize(int argc, char *argv[]) {
   state = new State;
   state->stdinBuffer = makeInBuffer(&std::cin, "<stdin>");
   state->resetInput(state->stdinBuffer);
@@ -443,6 +443,13 @@ void Interpreter::initialize() {
     state->getInputEof();
     return state->getInputLine();
   }));
+  
+  for (auto i = 1; i < argc; i++) {
+    stringstream buf;
+    buf << "ARG" << i;
+      Symbol::defineSymbol(new SimpleSymbol(buf.str(), argv[i]));
+  }
+  
 }
 
 bool Interpreter::setInput(const string &fileName) {
