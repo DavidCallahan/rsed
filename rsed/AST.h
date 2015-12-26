@@ -225,7 +225,7 @@ protected:
 };
 class Copy : public CopySkip {
 public:
-  Copy(int souceLine) : CopySkip(sourceLine) {}
+  Copy(int sourceLine) : CopySkip(sourceLine) {}
   static StmtKind typeKind() { return CopyN; }
   StmtKind kind() const override { return typeKind(); }
 };

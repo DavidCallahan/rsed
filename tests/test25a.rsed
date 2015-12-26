@@ -1,0 +1,9 @@
+source="test25.input"
+input $source
+foreach for 4
+	print $CURRENT
+end
+close $source
+foreach all
+	print $CURRENT
+end

@@ -47,9 +47,9 @@ public:
   vector<string> columns;
 
   string currentLine_;
-  bool firstLine = true;
+  bool needLine = true;
   string &getCurrentLine() {
-    if (firstLine) {
+    if (needLine) {
       nextLine();
     }
     return currentLine_;
@@ -69,13 +69,13 @@ public:
   }
   bool inputEof_ = false;
   bool getInputEof() {
-    if (firstLine) {
+    if (needLine) {
       nextLine();
     }
     return inputEof_;
   }
   const string &getInputLine() {
-    if (firstLine) {
+    if (needLine) {
       nextLine();
     }
     return inputBuffer->getInputLine();
@@ -86,12 +86,14 @@ public:
       if (RSED_Debug::debug) {
         std::cout << "input: " << currentLine_ << "\n";
       }
-      firstLine = false;
+      needLine = false;
     }
   }
-  unsigned getLineno() const override { return inputBuffer->getLineno(); }
+  unsigned getLineno() const override {
+    return inputBuffer->getLineno() + unsigned(needLine);
+  }
   void resetInput(const std::shared_ptr<LineBuffer> & newBuffer) {
-    firstLine = true;
+    needLine = true;
     currentLine_ = "";
     inputEof_ = false;
     inputBuffer = newBuffer;
@@ -142,6 +144,8 @@ MatchKind ForeachControl::eval(const string *line) {
     if (count == 0)
       return StopAtK;
     count -= 1;
+    if (count == 0)
+      return StopAfterK;
   }
   if (predicate) {
     if (state->interprettPredicate(predicate)) {
@@ -242,10 +246,11 @@ void State::interpret(Foreach *foreach) {
       break;
     }
     interpret(b);
-    nextLine();
     if (mk == StopAfterK) {
+      needLine = true;
       break;
     }
+    nextLine();
   }
 }
 

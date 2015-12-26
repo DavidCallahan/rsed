@@ -111,7 +111,7 @@ foreach : FOREACH lineno optControl NEWLINE stmtlist END NEWLINE
                 { $$ = new Foreach($3, $5, $2) ; }
 optControl: /*empty*/  { $$ = nullptr; } | control ;
 
-set: name '=' expr NEWLINE { $$ = new Set($1,$3,LINE); };
+set: name lineno '=' expr NEWLINE { $$ = new Set($1,$4,$2); };
 name: variable 
     | lookup
     | IDENTIFIER { $$ = AST::variable($1); }
