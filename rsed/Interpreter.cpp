@@ -40,8 +40,10 @@ enum MatchKind { NoMatchK, StopAtK, StopAfterK };
 
 class State : public EvalState {
   std::shared_ptr<LineBuffer> inputBuffer;
-
+  
 public:
+  std::shared_ptr<LineBuffer> stdinBuffer;
+  std::shared_ptr<LineBuffer> stdoutBuffer;
   // use columns are match for $1, $2,...
   bool matchColumns = true;
   vector<string> columns;
@@ -331,7 +333,13 @@ ResultCode State::interpretOne(Statement *stmt) {
   case AST::CloseN: {
     auto io = (Input *)stmt;
     auto fileName = interpret(io->buffer)->asString().getText();
-    LineBuffer::closeBuffer(fileName);
+    auto old = LineBuffer::closeBuffer(fileName);
+    if (old == inputBuffer) {
+      resetInput(stdinBuffer);
+    }
+    else if (old == outputBuffer) {
+      outputBuffer = stdoutBuffer;
+    }
     break;
   }
   case AST::RequiredN: {
@@ -432,8 +440,10 @@ void State::interpret(Split *split) {
 
 void Interpreter::initialize() {
   state = new State;
-  state->resetInput(makeInBuffer(&std::cin, "<stdin>"));
-  state->outputBuffer = makeOutBuffer(&std::cout, "<stdout>");
+  state->stdinBuffer = makeInBuffer(&std::cin, "<stdin>");
+  state->resetInput(state->stdinBuffer);
+  state->stdoutBuffer = makeOutBuffer(&std::cout, "<stdout>");
+  state->outputBuffer = state->stdoutBuffer;
   state->setRegEx(RegEx::regEx);
   Symbol::defineSymbol(makeSymbol("LINE", [this]() {
     auto line = state->getLineno();

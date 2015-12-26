@@ -74,18 +74,24 @@ std::shared_ptr<LineBuffer> LineBuffer::findInputBuffer(const std::string &name)
   return b.input;
 }
 
-void LineBuffer::closeBuffer(const std::string & name) {
+std::shared_ptr<LineBuffer> LineBuffer::closeBuffer(const std::string & name) {
   auto p = buffers.find(name);
   if (p == buffers.end()) {
-    return ;
+    return nullptr;
   }
   Buffer &b = p->second;
   if(b.output) {
     b.output->close();
+    auto rval = b.output;
     b.output = nullptr;
+    assert(!b.input);
+    return rval;
   }
   if (b.input) {
     b.input->close();
+    auto rval = b.input;
     b.input = nullptr;
+    return rval;
   }
+  return nullptr;
 }

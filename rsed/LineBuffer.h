@@ -34,7 +34,7 @@ public:
   static std::shared_ptr<LineBuffer> findOutputBuffer(const std::string &);
   static std::shared_ptr<LineBuffer> findInputBuffer(const std::string &);
   static void removeTempFiles(const std::vector<std::string> &names);
-  static void closeBuffer(const std::string &);
+  static std::shared_ptr<LineBuffer> closeBuffer(const std::string &);
   static std::vector<std::string> tempFileNames;
 };
 
