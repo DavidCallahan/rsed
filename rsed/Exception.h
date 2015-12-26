@@ -16,14 +16,14 @@ class LineBuffer;
 class Exception {
 public:
   const Statement *statement = nullptr;
-  LineBuffer *input = nullptr;
+  std::shared_ptr<LineBuffer> input = nullptr;
   std::string message;
   Exception(std::string message) : message(message){};
   Exception(std::string message, const Statement *statement)
       : statement(statement), message(message) {}
-  Exception(std::string message, const Statement *statement, LineBuffer * input)
+  Exception(std::string message, const Statement *statement, std::shared_ptr<LineBuffer> input)
   : statement(statement), input(input), message(message) {}
-  void setStatement(Statement *s, LineBuffer *i) {
+  void setStatement(Statement *s, std::shared_ptr<LineBuffer> i) {
     if (!statement)
       statement = s;
     if (!input)

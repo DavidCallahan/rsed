@@ -57,12 +57,12 @@ Expression * call(std::string * name, Arg * args, Scanner * scanner) {
 %token <token> FOREACH COPY SKIP TO PAST END NEWLINE REPLACE_TOK FOR SPLIT
 %token <token> THEN ELSE IF NOT_TOK PRINT MATCH_TOK STYLE MATCH_KW
 %token <token> COLUMNS IN LOOKUP_START REQUIRED
-%token <integer> NUMBER INPUT OUTPUT REWIND ERROR ALL WITH DYN_VARIABLE
+%token <integer> NUMBER INPUT OUTPUT CLOSE ERROR ALL WITH DYN_VARIABLE
 %type <token> EQ_TOK NE_TOK OR_TOK AND_TOK LE_TOK GE_TOK
 %type <integer> lineno
 %type <stmt> stmtlist stmt foreach copy skip replace 
 %type <stmt> split print columns required
-%type <stmt> ifstmt elsestmt set input output rewind errorStmt 
+%type <stmt> ifstmt elsestmt set input output close errorStmt 
 %type <list> stmtlistlist
 %type <boole> optAll optRequired
 %type <expr> control toPast  
@@ -103,7 +103,7 @@ stmtlistlist: { $$ = StmtList::emptyList(); }
             ;
 
 stmt: foreach | copy | skip | replace | ifstmt | split
-    | set | print | input | output | rewind | errorStmt | columns | required
+    | set | print | input | output | close | errorStmt | columns | required
     ;
 lineno:     /*empty*/  { $$ = LINE; };
 
@@ -230,5 +230,5 @@ optIn: /*empty*/  { $$ = AST::current(); }
 
 input: INPUT lineno buffer NEWLINE { $$ = new Input($3,$2); }
 output: OUTPUT lineno buffer NEWLINE { $$ = new Output($3,$2); }
-rewind: REWIND lineno buffer NEWLINE { $$ = new Rewind($3,$2); }
+close: CLOSE lineno buffer NEWLINE { $$ = new Close($3,$2); }
 buffer: expr;

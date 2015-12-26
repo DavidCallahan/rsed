@@ -12,11 +12,13 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <memory>
 class LineBuffer {
 protected:
   int lineno;
   std::string name;
   std::string inputLine;
+
 public:
   LineBuffer(std::string name) : lineno(0), name(name) {}
   int getLineno() const { return lineno; }
@@ -25,14 +27,14 @@ public:
   virtual void append(const std::string &line) = 0;
   virtual void close() = 0;
   const std::string &getName() const { return name; }
-  virtual bool rewind() { return false; }
   virtual ~LineBuffer() {}
-  
-  const std::string & getInputLine() { return inputLine; }
 
-  static LineBuffer *findOutputBuffer(const std::string &);
-  static LineBuffer *findInputBuffer(const std::string &);
+  const std::string &getInputLine() { return inputLine; }
+
+  static std::shared_ptr<LineBuffer> findOutputBuffer(const std::string &);
+  static std::shared_ptr<LineBuffer> findInputBuffer(const std::string &);
   static void removeTempFiles(const std::vector<std::string> &names);
+  static void closeBuffer(const std::string &);
   static std::vector<std::string> tempFileNames;
 };
 
@@ -43,6 +45,7 @@ public:
 
 template <typename Stream> class StreamInBuffer : public LineBuffer {
   Stream *stream;
+
 public:
   StreamInBuffer(Stream *stream, std::string name)
       : LineBuffer(name), stream(stream) {}
@@ -64,11 +67,9 @@ public:
     assert(!"invalid append to input buffer");
   }
   void close() override;
-  bool rewind() override;
 };
 template class StreamInBuffer<std::istream>;
 template <> inline void StreamInBuffer<std::istream>::close() {}
-template <> inline bool StreamInBuffer<std::istream>::rewind() { return false; }
 
 template class StreamInBuffer<std::ifstream>;
 template <> inline void StreamInBuffer<std::ifstream>::close() {
@@ -76,8 +77,9 @@ template <> inline void StreamInBuffer<std::ifstream>::close() {
 }
 
 template <typename Stream>
-inline StreamInBuffer<Stream> *makeInBuffer(Stream *stream, std::string name) {
-  return new StreamInBuffer<Stream>(stream, name);
+inline std::shared_ptr<LineBuffer> makeInBuffer(Stream *stream,
+                                                std::string name) {
+  return std::make_shared<StreamInBuffer<Stream>>(stream,name);
 }
 
 template <typename Stream> class StreamOutBuffer : public LineBuffer {
@@ -101,8 +103,9 @@ template <> inline void StreamOutBuffer<std::ofstream>::close() {
   stream->close();
 }
 template <typename Stream>
-    inline StreamOutBuffer<Stream> *makeOutBuffer(Stream *stream, std::string name) {
-  return new StreamOutBuffer<Stream>(stream,name);
+inline std::shared_ptr<LineBuffer> makeOutBuffer(Stream *stream,
+                                                 std::string name) {
+  return std::make_shared<StreamOutBuffer<Stream>>(stream, name);
 }
 
 #endif /* defined(__rsed__LineBuffer__) */

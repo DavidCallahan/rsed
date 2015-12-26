@@ -6,8 +6,6 @@
 //
 //
 
-// TODO -- compiler suitable regular expressions
-
 #include <gflags/gflags.h>
 #include "rsed.h"
 #include "Optimize.h"

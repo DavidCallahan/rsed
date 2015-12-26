@@ -3,7 +3,8 @@ input $source
 foreach for 4
 	print $CURRENT
 end
-rewind $source
+close $source
+input $source
 foreach for 4
 	print $CURRENT
 end

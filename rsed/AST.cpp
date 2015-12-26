@@ -150,13 +150,13 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     OS << '\n';
     break;
   }
-  case AST::RewindN:
+  case AST::CloseN:
   case AST::InputN:
   case AST::OutputN: {
     auto i = static_cast<const IOStmt *>(node);
     indent(depth);
 
-    OS << (isa<Input>(i) ? "input " : isa<Output>(i) ? "output " : "rewind ");
+    OS << (isa<Input>(i) ? "input " : isa<Output>(i) ? "output " : "close ");
     dumpExpr(i->buffer);
     OS << '\n';
     break;

@@ -13,10 +13,12 @@
 using std::string;
 using std::ifstream;
 using std::ofstream;
+using std::shared_ptr;
+
 namespace {
 struct Buffer {
-  LineBuffer *input = nullptr;
-  LineBuffer *output = nullptr;
+  std::shared_ptr<LineBuffer> input = nullptr;
+  std::shared_ptr<LineBuffer> output = nullptr;
 };
 std::unordered_map<std::string, Buffer> buffers;
 }
@@ -34,12 +36,11 @@ LineBufferCloser::~LineBufferCloser() {
   }
 }
 
-LineBuffer *LineBuffer::findOutputBuffer(const std::string &name) {
+std::shared_ptr<LineBuffer> LineBuffer::findOutputBuffer(const std::string &name) {
   auto p = buffers.insert(std::make_pair(name, Buffer()));
   Buffer &b = p.first->second;
   if (b.input) {
     b.input->close();
-    delete b.input;
     b.input = nullptr;
   }
   if (!b.output) {
@@ -49,17 +50,16 @@ LineBuffer *LineBuffer::findOutputBuffer(const std::string &name) {
       error += name;
       throw error;
     }
-    b.output = new StreamOutBuffer<ofstream>(f,name);
+    b.output.reset(new StreamOutBuffer<ofstream>(f,name));
   }
   return b.output;
 }
 
-LineBuffer *LineBuffer::findInputBuffer(const std::string &name) {
+std::shared_ptr<LineBuffer> LineBuffer::findInputBuffer(const std::string &name) {
   auto p = buffers.insert(std::make_pair(name, Buffer()));
   Buffer &b = p.first->second;
   if (b.output) {
     b.output->close();
-    delete b.output;
     b.output = nullptr;
   }
   if (!b.input) {
@@ -69,13 +69,23 @@ LineBuffer *LineBuffer::findInputBuffer(const std::string &name) {
       error += name;
       throw Exception(error);
     }
-    b.input = new StreamInBuffer<ifstream>(f,name);
+    b.input.reset(new StreamInBuffer<ifstream>(f,name));
   }
   return b.input;
 }
 
-template<> bool StreamInBuffer<ifstream>::rewind() {
-  stream->seekg(0);
-  lineno = 0;
-  return !stream->fail();
+void LineBuffer::closeBuffer(const std::string & name) {
+  auto p = buffers.find(name);
+  if (p == buffers.end()) {
+    return ;
+  }
+  Buffer &b = p->second;
+  if(b.output) {
+    b.output->close();
+    b.output = nullptr;
+  }
+  if (b.input) {
+    b.input->close();
+    b.input = nullptr;
+  }
 }

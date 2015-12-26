@@ -39,7 +39,7 @@ enum MatchKind { NoMatchK, StopAtK, StopAfterK };
 }
 
 class State : public EvalState {
-  LineBuffer *inputBuffer;
+  std::shared_ptr<LineBuffer> inputBuffer;
 
 public:
   // use columns are match for $1, $2,...
@@ -55,7 +55,7 @@ public:
     return currentLine_;
   }
 
-  LineBuffer *getInputBuffer() const { return inputBuffer; }
+  std::shared_ptr<LineBuffer> getInputBuffer() const { return inputBuffer; }
 
   string match(unsigned i) {
     if (matchColumns) {
@@ -90,14 +90,14 @@ public:
     }
   }
   unsigned getLineno() const override { return inputBuffer->getLineno(); }
-  void resetInput(LineBuffer *newBuffer) {
+  void resetInput(const std::shared_ptr<LineBuffer> & newBuffer) {
     firstLine = true;
     currentLine_ = "";
     inputEof_ = false;
     inputBuffer = newBuffer;
   }
 
-  LineBuffer *outputBuffer;
+  std::shared_ptr<LineBuffer> outputBuffer;
 
   ResultCode interpret(Statement *stmtList);
   ResultCode interpretOne(Statement *stmt);
@@ -230,7 +230,6 @@ void State::interpret(Foreach *foreach) {
     if (fc.needsInput()) {
       if (getInputEof()) {
         if (c && c->getReuired()) {
-          // TODO add test case
           throw Exception("end of input reached before required pattern seen",
                           foreach, inputBuffer);
         }
@@ -274,7 +273,7 @@ ResultCode State::interpretOne(Statement *stmt) {
     return NEXT_S;
   case AST::PrintN: {
     auto p = (Print *)stmt;
-    LineBuffer *out = outputBuffer;
+    auto out = outputBuffer;
     string value = interpret(p->text)->asString().getText();
     if (auto b = p->buffer) {
       auto v = interpret(b);
@@ -308,15 +307,14 @@ ResultCode State::interpretOne(Statement *stmt) {
     interpret((Split *)stmt);
     break;
   case AST::ErrorN: {
-    // TODO add test cases
-    auto e = (Error *)stmt;
+      auto e = (Error *)stmt;
     auto msg = interpret(e->text)->asString().getText();
     throw Exception(msg, stmt, inputBuffer);
   }
   case AST::InputN: {
     auto io = (Input *)stmt;
     auto fileName = interpret(io->buffer)->asString().getText();
-    inputBuffer = LineBuffer::findInputBuffer(fileName);
+    resetInput(LineBuffer::findInputBuffer(fileName));
     break;
   }
   case AST::OutputN: {
@@ -325,14 +323,10 @@ ResultCode State::interpretOne(Statement *stmt) {
     outputBuffer = LineBuffer::findInputBuffer(fileName);
     break;
   }
-  case AST::RewindN: {
+  case AST::CloseN: {
     auto io = (Input *)stmt;
     auto fileName = interpret(io->buffer)->asString().getText();
-    resetInput(LineBuffer::findInputBuffer(fileName));
-    if (!inputBuffer->rewind()) {
-      throw Exception("unable to rewrind input file: " + fileName, stmt,
-                      getInputBuffer());
-    }
+    LineBuffer::closeBuffer(fileName);
     break;
   }
   case AST::RequiredN: {

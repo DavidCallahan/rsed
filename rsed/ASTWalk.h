@@ -52,7 +52,7 @@ AST::WalkResult Statement::walkExprs(const ACTION &a) {
   auto rc = ContinueW;
   switch (kind()) {
   case InputN:
-  case RewindN:
+  case CloseN:
   case OutputN:
     return ((IOStmt *)this)->buffer->walkDown(a);
   case HoistedValueN:
@@ -112,7 +112,7 @@ template <typename ACTION> void Statement::applyExprs(const ACTION &a) {
     a(((Foreach *)this)->control);
     break;
   case InputN:
-  case RewindN:
+  case CloseN:
   case OutputN:
     a(((IOStmt *)this)->buffer);
     break;

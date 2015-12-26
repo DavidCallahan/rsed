@@ -47,7 +47,7 @@ to	    return TO;
 with	    return WITH;
 split	    return SPLIT;
 required    return REQUIRED;
-rewind	    return REWIND;
+close	    return CLOSE;
 match	    return MATCH_KW;
 
 {ID}	    yylval.name = new std::string(yytext);   return IDENTIFIER;

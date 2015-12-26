@@ -66,7 +66,7 @@ public:
     ErrorN,
     InputN,
     OutputN,
-    RewindN,
+    CloseN,
     RequiredN,
     HoistedValueN,
   };
@@ -399,10 +399,10 @@ public:
   static StmtKind typeKind() { return OutputN; }
   StmtKind kind() const override { return typeKind(); }
 };
-class Rewind : public IOStmt {
+class Close : public IOStmt {
 public:
-  Rewind(Expression *buffer, int sourceLine) : IOStmt(buffer, sourceLine) {}
-  static StmtKind typeKind() { return RewindN; }
+  Close(Expression *buffer, int sourceLine) : IOStmt(buffer, sourceLine) {}
+  static StmtKind typeKind() { return CloseN; }
   StmtKind kind() const override { return typeKind(); }
 };
 
@@ -497,10 +497,11 @@ public:
   
 };
 
-
+// TODO -- make script arguments available as variables $ARGk
 // TODO -- optimize join reductions
 // TODO -- add foreeach split ...
 // TODO -- add foreach shell(....), after adding "shell()"
-
+// TODO -- think about adding lists [x,y,z]
+//      with iteration over lists, functions of lists,
 
 #endif /* defined(__rsed__AST__) */

@@ -28,7 +28,7 @@ do
     then
 	echo "non zero exit"
 	failed=1
-	DEBUG="-dump" runTest
+	DEBUG="-dump -debug" runTest
 	cat $base.test-out
 	exit 1
     fi
@@ -36,6 +36,9 @@ do
     if [ $? != 0 ]
     then
 	failed=1
+	DEBUG="-dump -debug" runTest
+	cat $base.test-out
+	exit 1
     fi
     rm $base.test-out
 done
