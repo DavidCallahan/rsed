@@ -22,33 +22,32 @@ public:
     Logical,
     Number,
     String,
+    RegEx,
   };
   Kind kind;
   StringRef sref;
   bool logical = false;
   double number = 0.0;
-  
+  unsigned regEx;
   Value(StringRef string) : kind(String), sref{string} {}
   Value(bool logical = false) : kind(Logical), logical(logical) {}
   Value(double number) : kind(Number), number(number) {}
-
+  
   bool isString() const { return kind == String; }
   const StringRef &asString();
   bool asLogical() const;
   double asNumber();
+  unsigned getRegEx() ;
 
   void set(bool);
   void set(double);
   void set(StringRef);
   void set(std::string);
+  void setRegEx(unsigned i);
   void append(ValueP &);
 };
 std::ostream &operator<<(std::ostream &OS, const Value &value);
 int compare(Value * left, Value * right);
 
-template <typename T> ValueP makeValue(T &t) {
-  ValueP v(new Value(t));
-  return v;
-}
 
 #endif /* Value_hpp */

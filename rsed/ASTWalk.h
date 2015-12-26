@@ -18,30 +18,30 @@ template <typename ACTION> AST::WalkResult Statement::walk(const ACTION &a) {
       return rc;
     if (rc == SkipChildrenW)
       continue;
-    
+
     switch (s->kind()) {
-      case ForeachN: {
-        rc = ForeachP(s)->body->walk(a);
-        if (rc == StopW)
-          return rc;
-        break;
-      }
-        
-      case IfStmtN: {
-        auto ifs = (IfStatement *)s;
-        rc = ifs->thenStmts->walk(a);
-        if (rc == StopW)
-          return rc;
-        if (rc == ContinueW) {
-          if (auto elseStmts = ifs->elseStmts) {
-            rc = elseStmts->walk(a);
-            if (rc == StopW)
-              return rc;
-          }
+    case ForeachN: {
+      rc = ForeachP(s)->body->walk(a);
+      if (rc == StopW)
+        return rc;
+      break;
+    }
+
+    case IfStmtN: {
+      auto ifs = (IfStatement *)s;
+      rc = ifs->thenStmts->walk(a);
+      if (rc == StopW)
+        return rc;
+      if (rc == ContinueW) {
+        if (auto elseStmts = ifs->elseStmts) {
+          rc = elseStmts->walk(a);
+          if (rc == StopW)
+            return rc;
         }
       }
-      default:
-        break;
+    }
+    default:
+      break;
     }
   }
   return ContinueW;
@@ -51,84 +51,148 @@ template <typename ACTION>
 AST::WalkResult Statement::walkExprs(const ACTION &a) {
   auto rc = ContinueW;
   switch (kind()) {
-    case ControlN:
-      return ((Control *)this)->pattern->walkDown(a);
-    case InputN:
-    case RewindN:
-    case OutputN:
-      return ((IOStmt *)this)->buffer->walkDown(a);
-    case PrintN:
-      rc = ((Print *)this)->text->walkDown(a);
-      if (rc == ContinueW) {
-        if (auto buffer = ((Print *)this)->buffer) {
-          rc = buffer->walkDown(a);
-        }
+  case InputN:
+  case RewindN:
+  case OutputN:
+    return ((IOStmt *)this)->buffer->walkDown(a);
+  case HoistedValueN:
+    return ((HoistedValue *)this)->rhs->walkDown(a);
+  case ForeachN:
+    return ((Foreach *)this)->control->walkDown(a);
+  case PrintN:
+    rc = ((Print *)this)->text->walkDown(a);
+    if (rc == ContinueW) {
+      if (auto buffer = ((Print *)this)->buffer) {
+        rc = buffer->walkDown(a);
       }
-      break;
-    case CopyN:
-    case SkipN:
-      break;
-    case ReplaceN:
-      rc = ((Replace *)this)->pattern->walkDown(a);
+    }
+    break;
+  case CopyN:
+  case SkipN:
+    break;
+  case ReplaceN:
+    rc = ((Replace *)this)->pattern->walkDown(a);
+    if (rc != ContinueW)
+      return rc;
+    rc = ((Replace *)this)->replacement->walkDown(a);
+    break;
+  case SplitN:
+    if (auto sep = ((Split *)this)->separator) {
+      rc = sep->walkDown(a);
       if (rc != ContinueW)
         return rc;
-      rc = ((Replace *)this)->replacement->walkDown(a);
-      break;
-    case SplitN:
-      if (auto sep = ((Split *)this)->separator) {
-        rc = sep->walkDown(a);
-        if (rc != ContinueW)
-          return rc;
-      }
-      rc = ((Split *)this)->separator->walkDown(a);
-      break;
-    case SetN:
-      rc = ((Set *)this)->rhs->walkDown(a);
-      break;
-    case IfStmtN:
-      rc = ((IfStatement *)this)->predicate->walkDown(a);
-      break;
-    case ErrorN:
-      rc = ((Error *)this)->text->walkDown(a);
-      break;
-    case ColumnsN:
-      rc = ((Columns *)this)->columns->walkDown(a);
-      break;
-    case RequiredN:
-      if (auto p = ((Required*)this)->predicate) {
-        rc = p->walkDown(a);
-      }
-      break;
+    }
+    rc = ((Split *)this)->separator->walkDown(a);
+    break;
+  case SetN:
+    rc = ((Set *)this)->rhs->walkDown(a);
+    break;
+  case IfStmtN:
+    rc = ((IfStatement *)this)->predicate->walkDown(a);
+    break;
+  case ErrorN:
+    rc = ((Error *)this)->text->walkDown(a);
+    break;
+  case ColumnsN:
+    rc = ((Columns *)this)->columns->walkDown(a);
+    break;
+  case RequiredN:
+    if (auto p = ((Required *)this)->predicate) {
+      rc = p->walkDown(a);
+    }
+    break;
   }
-  
+
   return rc;
+}
+
+template <typename ACTION> void Statement::applyExprs(const ACTION &a) {
+  switch (kind()) {
+  case ForeachN:
+    a(((Foreach *)this)->control);
+    break;
+  case InputN:
+  case RewindN:
+  case OutputN:
+    a(((IOStmt *)this)->buffer);
+    break;
+  case PrintN:
+    a(((Print *)this)->text);
+    a(((Print *)this)->buffer);
+    break;
+  case CopyN:
+  case SkipN:
+    break;
+  case ReplaceN:
+    a(((Replace *)this)->pattern);
+    a(((Replace *)this)->replacement);
+    break;
+  case SplitN:
+    a(((Split *)this)->separator);
+    a(((Split *)this)->target);
+    break;
+  case SetN:
+    a(((Set *)this)->rhs);
+    break;
+  case IfStmtN: {
+    auto ifs = (IfStatement *)this;
+    a(ifs->predicate);
+    ifs->thenStmts->applyExprs(a);
+    if (ifs->elseStmts) {
+      ifs->elseStmts->applyExprs(a);
+    }
+    break;
+  }
+  case ErrorN:
+    a(((Error *)this)->text);
+    break;
+  case ColumnsN:
+    a(((Columns *)this)->columns);
+    break;
+  case RequiredN:
+    a(((Required *)this)->predicate);
+    break;
+  case HoistedValueN:
+    a(((HoistedValue *)this)->rhs);
+    break;
+  }
+  if (getNext()) {
+    getNext()->applyExprs(a);
+  }
 }
 
 template <typename ACTION> AST::WalkResult Expression::walkUp(const ACTION &a) {
   Expression *e = this;
   WalkResult rc = ContinueW;
   switch (e->kind()) {
-    case ControlN:
-      rc = ((Control *)e)->pattern->walkUp(a);
-      break;
-    case BinaryN:
-      if (BinaryP(e)->left) {
-        rc = walkUp(BinaryP(e)->left);
-        if (rc != ContinueW)
-          return rc;
-      }
-      rc = walkUp(BinaryP(e)->right);
-      break;
-    case CallN:
-      for (auto arg = CallP(e)->args; arg; arg = arg->nextArg) {
-        rc = arg->value->walkUp(a);
-        if (rc != ContinueW)
-          return rc;
-      }
-      break;
-    default:
-      rc = ContinueW;
-      break;
+  case ControlN:
+    rc = ((Control *)e)->pattern->walkUp(a);
+    break;
+  case BinaryN:
+    if (BinaryP(e)->left) {
+      rc = walkUp(BinaryP(e)->left);
+      if (rc != ContinueW)
+        return rc;
+    }
+    rc = walkUp(BinaryP(e)->right);
+    break;
+  case CallN:
+    for (auto arg = CallP(e)->args; arg; arg = arg->nextArg) {
+      rc = arg->value->walkUp(a);
+      if (rc != ContinueW)
+        return rc;
+    }
+    break;
+  case RegExPatternN:
+    rc = ((RegExPattern *)e)->pattern->walkUp(a);
+    break;
+  case VariableN:
+  case IntegerN:
+  case VarMatchN:
+  case StringConstN:
+  case ArgN:
+  case HoistedValueRefN:
+    break;
   }
   if (rc != ContinueW)
     return rc;
@@ -147,47 +211,57 @@ AST::WalkResult Expression::walkDown(const ACTION &a) {
       rc = ContinueW;
     return rc;
   }
-  
+
   switch (e->kind()) {
-    case ControlN:
-      rc = ((Control *)e)->pattern->walkDown(a);
+  case ControlN:
+    rc = ((Control *)e)->pattern->walkDown(a);
+    if (rc != ContinueW)
+      return rc;
+    break;
+  case BinaryN:
+    if (auto left = BinaryP(e)->left) {
+      rc = left->walkDown(a);
       if (rc != ContinueW)
         return rc;
-      break;
-    case BinaryN:
-      if (auto left = BinaryP(e)->left) {
-        rc = left->walkDown(a);
-        if (rc != ContinueW)
-          return rc;
-      }
-      rc = BinaryP(e)->right->walkDown(a);
+    }
+    rc = BinaryP(e)->right->walkDown(a);
+    if (rc != ContinueW)
+      return rc;
+    break;
+  case CallN:
+    for (auto arg = CallP(e)->args; arg; arg = arg->nextArg) {
+      rc = arg->value->walkDown(a);
       if (rc != ContinueW)
         return rc;
-      break;
-    case CallN:
-      for (auto arg = CallP(e)->args; arg; arg = arg->nextArg) {
-        rc = arg->value->walkDown(a);
-        if (rc != ContinueW)
-          return rc;
-      }
-      break;
-      
-    default:
-      break;
+    }
+    break;
+  case RegExPatternN:
+    rc = ((RegExPattern *)e)->pattern->walkDown(a);
+    break;
+  case HoistedValueRefN:
+  case ArgN:
+  case IntegerN:
+  case StringConstN:
+  case VarMatchN:
+  case VariableN:
+    break;
   }
   return ContinueW;
 }
 
-template<typename ACTION>
-void Expression::walkConcat(const ACTION & a) {
+template <typename ACTION>
+void Expression::walkConcat(const ACTION &a, std::vector<Binary *> *operators) {
   if (auto c = isOp(CONCAT)) {
-    c->left->walkConcat(a);
-    c->right->walkConcat(a);
-  }
-  else {
+    if (operators) {
+      operators->push_back(c);
+    }
+    c->left->walkConcat(a, operators);
+    c->right->walkConcat(a, operators);
+  } else if (kind() == HoistedValueRefN) {
+    ((HoistedValueRef *)this)->value->walkConcat(a, operators);
+  } else {
     a(this);
   }
 }
-
 
 #endif /* ASTWalk_h */

@@ -1,0 +1,11 @@
+print "#!/bin/bash -x"
+constant = "foo"
+foreach all
+    if "(.*)/TARGETS-" then
+       $dir = $1
+       if "name\s*=\s*'(.*)'" then
+           print "./runbench.sh " "in" $dir ":" $1 " _bin/" $constant $dir "/" $1 "a" "b"
+       end 
+    end
+    skip
+end

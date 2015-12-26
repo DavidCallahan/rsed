@@ -22,7 +22,7 @@ class Dumper {
   std::ostream &OS;
   void indent(int depth);
   void ifstmt(int depth, const IfStatement *i);
-  void end(int depth, int id);
+  void end(int depth, int id, int line);
 
 public:
   Dumper(std::ostream &OS) : OS(OS){};
@@ -52,8 +52,9 @@ void Statement::dumpOne() {
   d.dumpOneStmt(0, this);
 }
 
-void Dumper::end(int depth, int id) {
+void Dumper::end(int depth, int id, int line) {
   OS << std::setw(3) << id << ' ';
+  OS << std::setw(3) << line << ' ';
   indent(depth);
   OS << "end\n";
 }
@@ -171,6 +172,14 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     }
     OS << '\n';
   }
+  case AST::HoistedValueN: {
+    auto h = static_cast<const HoistedValue *>(node);
+    indent(depth);
+    OS << "hoisted " << h->rhs->getId() << ' ';
+    dumpExpr(h->rhs);
+    OS << '\n';
+    break;
+  }
   }
 }
 
@@ -181,7 +190,7 @@ void Dumper::dump(int depth, const Statement *node) {
     case AST::ForeachN: {
       auto f = static_cast<const Foreach *>(node);
       dump(depth + 1, f->body);
-      end(depth, node->getId());
+      end(depth, node->getId(), node->getSourceLine());
       break;
     }
     case AST::IfStmtN: {
@@ -249,10 +258,22 @@ void Dumper::dumpExpr(const Expression *node) {
     if (b->left) {
       dumpExpr(b->left);
     }
-    OS << ' ' << b->opName(b->op) << ' ';
-    dumpExpr(b->right);
-    if (b->op == b->LOOKUP) {
-      OS << ")";
+    if (b->isOp(b->CONCAT)) {
+      OS << ' ';
+      auto r = b->right;
+      if (r->kind() == r->BinaryN) {
+        OS << '(';
+      }
+      dumpExpr(r);
+      if (r->kind() == r->BinaryN) {
+        OS << ')';
+      }
+    } else {
+      OS << ' ' << b->opName(b->op) << ' ';
+      dumpExpr(b->right);
+      if (b->op == b->LOOKUP) {
+        OS << ")";
+      }
     }
     break;
   }
@@ -305,20 +326,19 @@ void Dumper::dumpExpr(const Expression *node) {
     OS << "]";
     break;
   }
-  case AST::RegExReferenceN: {
-    auto r = static_cast<const RegExReference *>(node);
-    OS << "regex[" << r->getIndex() << "]";
-    break;
-  }
   case AST::ArgN: {
     assert("should not reach ArgN");
+    break;
+  }
+  case AST::HoistedValueRefN: {
+    auto h = (HoistedValueRef *)node;
+    OS << "hoisted[" << h->value->getId() << "]";
     break;
   }
   }
 }
 
 void Dumper::ifstmt(int depth, const IfStatement *i) {
-  auto id = i->getId();
   for (;;) {
     dump(depth + 1, i->thenStmts);
     auto e = static_cast<const Statement *>(i->elseStmts);
@@ -326,17 +346,16 @@ void Dumper::ifstmt(int depth, const IfStatement *i) {
       break;
     }
     if (e->kind() != AST::IfStmtN || e->getNext()) {
-      OS << std::setw(3) << id << ' ';
+      OS << std::setw(3) << i->getId() << ' ';
       indent(depth);
       OS << "else\n";
       dump(depth + 1, e);
       break;
     }
     i = static_cast<const IfStatement *>(e);
-    id = i->getId();
     dumpOneStmt(depth, i, /*elseIf*/ true);
   }
-  end(depth, id);
+  end(depth, i->getId(), i->getSourceLine());
 }
 
 void Dumper::indent(int depth) {
@@ -351,7 +370,6 @@ Value::Kind Expression::valueKind() {
   case AST::VariableN:
   case AST::VarMatchN:
   case AST::ArgN:
-  case AST::RegExReferenceN:
   case AST::RegExPatternN:
   case AST::ControlN:
     return Value::String;
@@ -359,6 +377,8 @@ Value::Kind Expression::valueKind() {
     return BuiltinCalls::callKind(((Call *)this)->getCallId());
   case AST::IntegerN:
     return Value::Number;
+  case AST::HoistedValueRefN:
+    return ((HoistedValueRef *)this)->value->valueKind();
   case AST::BinaryN:
     switch (((Binary *)this)->op) {
     case Binary::ADD:

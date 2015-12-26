@@ -11,6 +11,7 @@
 #include <sstream>
 #include <iostream>
 #include <vector>
+#include "rsed.h"
 #include "Symbol.h"
 #include "AST.h"
 #include "ASTWalk.h"
@@ -24,7 +25,10 @@
 using std::vector;
 using std::string;
 using std::stringstream;
+
+namespace RSED_Debug {
 extern int debug;
+}
 
 namespace {
 enum ResultCode {
@@ -79,7 +83,7 @@ public:
   void nextLine() {
     if (!inputEof_) {
       inputEof_ = !inputBuffer->getLine(currentLine_);
-      if (debug) {
+      if (RSED_Debug::debug) {
         std::cout << "input: " << currentLine_ << "\n";
       }
       firstLine = false;
@@ -258,7 +262,7 @@ ResultCode State::interpret(IfStatement *ifstmt) {
 }
 
 ResultCode State::interpretOne(Statement *stmt) {
-  if (debug) {
+  if (RSED_Debug::debug) {
     std::cout << "trace " << inputBuffer->getLineno() << ":";
     stmt->dumpOne();
   }
@@ -284,12 +288,9 @@ ResultCode State::interpretOne(Statement *stmt) {
   }
   case AST::ReplaceN: {
     auto r = (Replace *)stmt;
-    auto reg = (RegExPattern *)r->pattern;
-    assert(reg->kind() == reg->RegExPatternN);
-    auto pattern = interpret(reg->pattern)->asString();
-    regEx->setPattern(pattern, reg->getIndex());
+    auto reg = interpret(r->pattern)->getRegEx();
     auto target = interpret(r->replacement)->asString().getText();
-    currentLine_ = regEx->replace(reg->getIndex(), target, getCurrentLine());
+    currentLine_ = regEx->replace(reg, target, getCurrentLine());
     break;
   }
   case AST::ForeachN:
@@ -353,6 +354,11 @@ ResultCode State::interpretOne(Statement *stmt) {
       }
       throw Exception("failed required column count", stmt, inputBuffer);
     }
+  }
+  case AST::HoistedValueN: {
+    auto h = (HoistedValue *)stmt;
+    interpret(h->rhs);
+    break;
   }
   }
   return OK_S;
@@ -418,13 +424,11 @@ void State::interpret(Columns *cols) {
 }
 
 void State::interpret(Split *split) {
-  auto sep = (RegExPattern *) split->separator;
-  assert(sep->kind() == sep->RegExPatternN);
-  interpret(sep);
-  const string &target =interpret(split->target)->asString().getText() ;
+  auto sep = interpret(split->separator)->getRegEx();
+  const string &target = interpret(split->target)->asString().getText();
   matchColumns = true;
   columns.clear();
-  regEx->split(sep->getIndex(), target, &columns);
+  regEx->split(sep, target, &columns);
 }
 
 void Interpreter::initialize() {
@@ -507,10 +511,16 @@ Value *State::interpret(Expression *e) {
     auto r = (RegExPattern *)e;
     auto pattern = interpret(r->pattern)->asString();
     regEx->setPattern(pattern, r->getIndex());
+    r->setRegEx(r->getIndex());
     break;
   }
-  case AST::RegExReferenceN:
-    break;
+  case AST::HoistedValueRefN: {
+    auto h = (HoistedValueRef *)e;
+    while (h->value->kind() == AST::HoistedValueRefN) {
+      h = (HoistedValueRef*) h->value;
+    }
+    return h->value;
+  }
   case AST::BinaryN: {
     auto b = (Binary *)e;
     switch (b->op) {
@@ -532,21 +542,18 @@ Value *State::interpret(Expression *e) {
       break;
     }
     case Binary::MATCH: {
-      auto r = (RegExPattern *)b->right;
-      assert(r->kind() == AST::RegExPatternN);
-      interpret(r);
+      auto r = interpret(b->right)->getRegEx();
       auto target = interpret(b->left)->asString().getText();
-      e->set(interpretMatch(r->getIndex(), target));
+      e->set(interpretMatch(r, target));
       break;
     }
     case Binary::REPLACE: {
       auto m = (Binary *)b->left;
       assert(m->isOp(m->MATCH));
-      auto r = (RegExPattern *)m->right;
-      interpret(r);
+      auto r = interpret(m->right)->getRegEx();
       auto input = interpret(m->left)->asString().getText();
       auto replacement = interpret(b->right)->asString().getText();
-      b->set(regEx->replace(r->getIndex(), replacement, input));
+      b->set(regEx->replace(r, replacement, input));
       break;
     }
     case Binary::SET_GLOBAL: {

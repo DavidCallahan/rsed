@@ -9,20 +9,28 @@ failed=0
 export ENV1=1
 export ENV2="ENV2 value"
 
+runTest () {
+    if [ -e "$base.in" ] 
+    then
+	$RSED $test $OPT $DEBUG < $base.in > $base.test-out
+    else
+	$RSED $test $OPT $DEBUG  < /dev/null > $base.test-out
+    fi
+}
+
+
 for test in test*.rsed
 do
     base=`basename $test .rsed`
-    echo $test
-    if [ -e "$base.in" ] 
-    then
-	$RSED $test < $base.in > $base.test-out
-    else
-	$RSED $test < /dev/null > $base.test-out
-    fi
+    echo $test 
+    runTest
     if [ $? != 0 ]
     then
 	echo "non zero exit"
 	failed=1
+	DEBUG="-dump" runTest
+	cat $base.test-out
+	exit 1
     fi
     diff $base.test-out $base.out
     if [ $? != 0 ]

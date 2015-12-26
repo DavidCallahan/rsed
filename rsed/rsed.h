@@ -9,6 +9,9 @@
 #ifndef rsed_rsed_h
 #define rsed_rsed_h
 
-extern int debug;
+namespace RSED_Debug {
+  extern int debug;
+  extern int dump;
+}
 
 #endif

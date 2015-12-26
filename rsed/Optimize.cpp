@@ -9,20 +9,24 @@
 // TODO -- compiler suitable regular expressions
 
 #include <gflags/gflags.h>
+#include "rsed.h"
 #include "Optimize.h"
 #include "AST.h"
+#include "ASTWalk.h"
 #include <unordered_set>
 #include <assert.h>
 using std::unordered_set;
+using std::vector;
 
 DEFINE_bool(optimize, false, "enable optimizer");
-
-#if 0
 namespace {
 
+const unsigned HOISTABLE_COST = 1;
 typedef std::pair<bool, unsigned> HoistInfo;
+const HoistInfo NON_HOISTABLE{false, 0};
+const HoistInfo HOISTABLE{true, HOISTABLE_COST};
+
 bool isInvariant(HoistInfo h) { return h.first; }
-// unsigned cost(HoistInfo h) { return h.second; }
 bool shouldHoist(HoistInfo h) { return h.first && h.second > 0; }
 HoistInfo operator+(HoistInfo h1, HoistInfo h2) {
   h1.first &= h2.first;
@@ -34,43 +38,39 @@ HoistInfo operator+(HoistInfo h1, unsigned k) {
   return h1;
 }
 class Optimizer {
+  bool unknownSymbolSet;
   unordered_set<Symbol *> setInLoop;
   void noteSetVariables(Statement *body);
-  bool isInvariant(Symbol &sym) { return setInLoop.count(&sym); }
+  bool isInvariant(Symbol *sym) {
+    return !unknownSymbolSet && !sym->isDynamic() && !setInLoop.count(sym);
+  }
   Statement *firstInvariant, *lastInvariant;
   void hoistInvariants(Statement *body);
-  Expression *hoistInvariants(Expression *expr);
-  void hoistInvariants(Expression**expr) {
-    *expr = hoistInvariants(*expr);
-  }
-  HoistInfo checkHoist(Expression *expr);
-  HoistInfo checkHoistTerm(Expression *expr);
-  Expression *hoist(Expression *expr);
-
-  template <typename ACTION> void processFields(Expression *, ACTION &action);
+  HoistInfo checkHoist(Expression **expr);
+  HoistInfo checkHoistConcat(Expression **expr);
+  void hoist(Expression **expr);
+  void hoistInvariants(Expression **expr);
 
 public:
   Optimizer() {}
   Statement *optimize(Statement *input);
 };
 }
-#endif
 
 namespace Optimize {
 Statement *optimize(Statement *input) {
-#if 0
   if (!FLAGS_optimize) {
     return input;
   }
   Optimizer opt;
-  return opt.optimize(input);
-#else
-  return input;
-#endif
+  auto out = opt.optimize(input);
+  if (RSED_Debug::dump) {
+    out->dump();
+  }
+  return out;
 }
 }
 
-#if 0
 Statement *Optimizer::optimize(Statement *input) {
   if (!input) {
     return input;
@@ -79,8 +79,11 @@ Statement *Optimizer::optimize(Statement *input) {
   if (auto foreach = isa<Foreach>(input)) {
     auto newBody = optimize(foreach->body);
     noteSetVariables(newBody);
+    firstInvariant = lastInvariant = nullptr;
+    hoistInvariants(&foreach->control);
     hoistInvariants(newBody);
-    foreach->body = newBody;
+    foreach
+      ->body = newBody;
     if (lastInvariant) {
       lastInvariant->setNext(foreach);
       return firstInvariant;
@@ -88,8 +91,8 @@ Statement *Optimizer::optimize(Statement *input) {
     return foreach;
   }
   if (auto ifstmt = isa<IfStatement>(input)) {
-    ifstmt->setThenStmts(optimize(ifstmt->thenStmts));
-    ifstmt->setElseStmts(optimize(ifstmt->elseStmts));
+    ifstmt->thenStmts = optimize(ifstmt->thenStmts);
+    ifstmt->elseStmts = optimize(ifstmt->elseStmts);
     return ifstmt;
   }
   return input;
@@ -97,180 +100,239 @@ Statement *Optimizer::optimize(Statement *input) {
 
 void Optimizer::noteSetVariables(Statement *body) {
   setInLoop.clear();
+  unknownSymbolSet = false;
   body->walk([this](Statement *stmt) {
     if (auto set = isa<Set>(stmt)) {
-      setInLoop.insert(&set->getSymbol());
+      auto lhs = set->lhs;
+      if (lhs->kind() == lhs->VariableN) {
+        auto sym = &((Variable *)lhs)->getSymbol();
+        setInLoop.insert(sym);
+      } else {
+        unknownSymbolSet = true;
+        return AST::StopW;
+      }
     }
     return AST::ContinueW;
   });
 }
 
-#define APPLY(T, F, A, x) ((T *)x)->set##F(A(((T *)x)->get##F()))
-#define HOIST(T, F) APPLY(T, F, hoistInvariants, stmt)
-
-// #define HOIST(T, F) ((T *)stmt)->set##F(hoistInvariants(((T
-// *)stmt)->get##F()))
 void Optimizer::hoistInvariants(Statement *body) {
-#if 0
-  firstInvariant = lastInvariant = nullptr;
-  body->walk([this](Statement *stmt) {
-    switch (stmt->kind()) {
-    case AST::ForeachN:
-      hoistInvariants(& ForeachP(stmt)->control);
-      break;
-    case AST::ReplaceN:
-      HOIST(Replace, Pattern);
-      HOIST(Replace, Replacement);
-      break;
-    case AST::IfStmtN:
-      HOIST(IfStatement, Pattern);
-      break;
-    case AST::SetN:
-      HOIST(Set, Rhs);
-      break;
-    case AST::ColumnsN:
-      HOIST(Columns, InExpr);
-      break;
-    case AST::PrintN:
-      HOIST(Print, Text);
-      break;
-    case AST::SkipN:
-    case AST::CopyN:
-    case AST::ErrorN:
-    case AST::InputN:
-    case AST::OutputN:
-      break;
-    }
-    return AST::ContinueW;
-  });
-#endif
+  body->applyExprs([this](Expression *&expr) { hoistInvariants(&expr); });
 }
 
-Expression *Optimizer::hoistInvariants(Expression *expr) {
-  return (shouldHoist(checkHoist(expr)) ? hoist(expr) : expr);
-}
-
-HoistInfo Optimizer::checkHoist(Expression *expr) {
-
-#if 0
-  if (expr->kind() != expr->BinaryN) {
-    return checkHoistTerm(expr);
+void Optimizer::hoistInvariants(Expression **expr) {
+  if (*expr && shouldHoist(checkHoist(expr))) {
+    hoist(expr);
   }
+}
+
+HoistInfo Optimizer::checkHoistConcat(Expression **exprHome) {
+
+  auto expr = *exprHome;
   assert(BinaryP(expr)->op == expr->CONCAT);
 
   // first of an implicit concatentation
   assert(expr->kind() != Expression::ArgN);
-  std::vector<Expression *> terms;
-  std::vector<HoistInfo> hterms;
-  for (auto t = expr; t; t = t->getNext()) {
-    terms.push_back(t);
-    hterms.push_back(checkHoistTerm(t));
+
+  typedef std::pair<Expression *, HoistInfo> TermInfo;
+  std::vector<TermInfo> terms;
+  std::vector<Binary *> operators;
+  bool allInvariant = true;
+  bool hasInvariant = false;
+  expr->walkConcat([this, &terms, &hasInvariant, &allInvariant](Expression *t) {
+    terms.push_back(std::make_pair(t, checkHoist(&t)));
+    if (::isInvariant(terms.back().second)) {
+      hasInvariant = true;
+    } else {
+      allInvariant = false;
+    }
+  }, &operators);
+
+  if (allInvariant) {
+    return HOISTABLE;
   }
-  auto N = terms.size();
-  size_t first = N;
-  Expression *last = nullptr;
-  for (auto i = terms.size(); i > 0;) {
-    i -= 1;
-    if (::isInvariant(hterms[i])) {
-      if (first == N) {
-        first = i;
+  if (!hasInvariant) {
+    return NON_HOISTABLE;
+  }
+
+  auto ops = operators.begin();
+  // rebuild a concat from one of the input operators
+  auto makeOp = [&ops](Expression *left, Expression *right) -> Binary *{
+    auto b = *ops++;
+    b->left = left;
+    b->right = right;
+    return b;
+  };
+
+  // rebuild the tree, collecting sequences of invaraint
+  // terms so they can be hoisted.
+  Expression *result = nullptr;
+  Expression *invariant = nullptr;
+  bool doHoist = false; // should hoist invariant term
+  for (auto &term : terms) {
+    auto e = term.first;
+    if (::isInvariant(term.second)) {
+      // true for any two or more invariant terms or one shouldHoist term
+      doHoist = doHoist || invariant || shouldHoist(term.second);
+      invariant = (invariant ? makeOp(invariant, e) : e);
+    } else {
+      if (invariant) {
+        auto b = makeOp(invariant, e);
+        if (doHoist) {
+          hoist(&b->left);
+        }
+        e = b;
+        invariant = nullptr;
+        doHoist = false;
       }
-      continue;
+      result = (result ? makeOp(result, e) : e);
     }
-    if (first != N) {
-      // i+1..first inclusive are all invariant....
-      Expression *cur = terms[i + 1];
-      if (i + 1 != first || shouldHoist(hterms[first])) {
-        // truncate the list at 'first'
-        terms[first]->setNext(nullptr);
-        cur = hoist(cur);
-      }
-      last = AST::list(cur, last);
-      first = N;
+  }
+  if (invariant) {
+    assert(result && "unepected invariant expression");
+    auto b = makeOp(result, invariant);
+    if (doHoist) {
+      hoist(&b->right);
     }
-    last = AST::list(terms[i], last);
+    result = b;
   }
-  if (first == N - 1) {
-    // entire expression is invariant
-    return HoistInfo(true, N + 1);
-  }
-  if (first != N) {
-    // i+1..first inclusive are all invariant....
-    Expression *cur = terms[0];
-    if (1 != first || shouldHoist(hterms[first])) {
-      // truncate the list at 'first'
-      terms[first]->setNext(nullptr);
-      cur = hoist(cur);
-    }
-    last = AST::list(cur, last);
-  }
-  // what do we do here? I guesss we have
-  // to move change how this is handled
-  //   --maybe add a wrapper Concat node
-  assert("not yet finished");
-#endif
-  return HoistInfo(false, 0);
+  *exprHome = result;
+  return NON_HOISTABLE;
 }
 
-HoistInfo Optimizer::checkHoistTerm(Expression *expr) {
+HoistInfo Optimizer::checkHoist(Expression **exprHome) {
 
-#if 0
+  auto expr = *exprHome;
   switch (expr->kind()) {
-  case AST::BinaryN:
-    assert("not yet implemented");
+  case AST::VarMatchN:
     break;
+  case AST::RegExPatternN:
+    return checkHoist(&((RegExPattern *)expr)->pattern) + HOISTABLE_COST;
   case AST::ControlN:
-    APPLY(Control, Pattern, hoistInvariants, expr);
-    break;
-  case AST::BufferN:
-    APPLY(Buffer, FileName, hoistInvariants, expr);
-    break;
-  case AST::MatchN:
-    // TODO -- we could hoist this if we knew there
-    // were no dynamic field references ($0, $1,....)
-    APPLY(Match, Pattern, hoistInvariants, expr);
-    APPLY(Match, Target, hoistInvariants, expr);
+    hoistInvariants(&((Control *)expr)->pattern);
     break;
   case AST::ArgN:
-    return checkHoist(((Arg *)expr)->value);
-
-  case AST::VariableN:
-    return HoistInfo(isInvariant(((Variable *)expr)->getSymbol()), 0);
+    return checkHoist(&((Arg *)expr)->value);
+  case AST::VariableN: {
+    auto sym = &((Variable *)expr)->getSymbol();
+    return HoistInfo(isInvariant(sym), 0);
+  }
   case AST::IntegerN:
     return HoistInfo(true, 0);
   case AST::StringConstN:
-    // ok, what is the impact of interpretation?
-    if (((StringConst *)expr)->getConstant().getText().find('$') !=
-        std::string::npos) {
-      break;
-    }
     return HoistInfo(true, 0);
-
+  case AST::HoistedValueRefN:
+    assert(0 && "unexpected hoistvalueref type");
+    break;
   case AST::CallN: {
     auto *c = (Call *)expr;
     std::vector<HoistInfo> args;
     bool invariant = true;
-    for (auto a = c->args; a; a =a->nextArg) {
-      args.push_back(checkHoist(((Arg *)a)->value));
+    for (auto a = c->args; a; a = a->nextArg) {
+      args.push_back(checkHoist(&((Arg *)a)->value));
       if (!::isInvariant(args.back())) {
         invariant = false;
       }
     }
     if (invariant) {
-      return HoistInfo(true, 2);
+      return HOISTABLE;
     }
     auto ap = args.begin();
     for (auto a = c->args; a; a = a->nextArg, ++ap) {
-      if (shouldHoist(*ap)) {
-        a->value = hoist(a->value);
+      hoistInvariants(&a->value);
+    }
+    break;
+  }
+  case AST::BinaryN: {
+    auto b = (Binary *)expr;
+    switch (b->op) {
+    case Binary::NEG:
+    case Binary::SET_GLOBAL:
+    case Binary::NOT: {
+      return checkHoist(&b->right) + 1;
+    }
+    case Binary::LOOKUP: {
+      // can we ever hoist a look up operation?
+      hoistInvariants(&b->right);
+      break;
+    }
+    case Binary::CONCAT: {
+      return checkHoistConcat(exprHome);
+    }
+    case Binary::MATCH: {
+      // this operation side-effects the dynamic variables
+      // so can be hoisted only if they are not used
+      hoistInvariants(&b->left);
+      hoistInvariants(&b->right);
+      break;
+    }
+    case Binary::REPLACE: {
+      // treat replace/match pair as a ternary-op
+      auto m = b->left->isOp(b->MATCH);
+      assert(m && "expected MATCH operand to replace");
+      auto hml = checkHoist(&m->left);
+      auto hmr = checkHoist(&m->right);
+      auto hr = checkHoist(&b->right);
+      if (::isInvariant(hml + hmr + hr)) {
+        return HoistInfo(true, HOISTABLE_COST);
       }
+      if (shouldHoist(hml)) {
+        hoist(&m->left);
+      }
+      if (shouldHoist(hmr)) {
+        hoist(&m->right);
+      }
+      if (shouldHoist(hr)) {
+        hoist(&b->right);
+      }
+      break;
+    }
+    case Binary::EQ:
+    case Binary::NE:
+    case Binary::LT:
+    case Binary::LE:
+    case Binary::GE:
+    case Binary::GT:
+    case Binary::ADD:
+    case Binary::SUB:
+    case Binary::MUL:
+    case Binary::DIV:
+    case Binary::AND:
+    case Binary::OR: {
+      auto hl = checkHoist(&b->left);
+      auto hr = checkHoist(&b->right);
+      if (::isInvariant(hl + hr)) {
+        return HoistInfo(true, HOISTABLE_COST);
+      }
+      if (shouldHoist(hl)) {
+        hoist(&b->left);
+      }
+      if (shouldHoist(hr)) {
+        hoist(&b->right);
+      }
+      break;
+    }
     }
     break;
   }
   }
-#endif
   return HoistInfo(false, 0);
 }
 
-Expression *Optimizer::hoist(Expression *expr) { return expr; }
-#endif
+void Optimizer::hoist(Expression **expr) {
+  auto e = *expr;
+  if (RSED_Debug::debug) {
+    std::cout << "hoiosting: ";
+    e->dump();
+    std::cout << "\n";
+  }
+  auto h = new HoistedValue(e);
+  *expr = new HoistedValueRef(e);
+  if (!firstInvariant) {
+    firstInvariant = h;
+  } else {
+    lastInvariant->setNext(h);
+  }
+  lastInvariant = h;
+  return;
+}

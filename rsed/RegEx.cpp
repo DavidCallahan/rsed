@@ -19,7 +19,9 @@
 using namespace std::regex_constants;
 using std::vector;
 using std::string;
-extern int debug;
+namespace RSED_Debug {
+  extern int debug;
+}
 
 namespace {
 

@@ -1,0 +1,5 @@
+#!/bin/bash -x
+./runbench.sh inadmarket/adsearch2/query:queryengine_benchmark _bin/fooadmarket/adsearch2/query/queryengine_benchmarkab
+./runbench.sh inadmarket/adsearch2/query:queryengine_benchmark_custom _bin/fooadmarket/adsearch2/query/queryengine_benchmark_customab
+./runbench.sh inadmarket/asx/common/test:ngram_bench _bin/fooadmarket/asx/common/test/ngram_benchab
+./runbench.sh inadmarket/cpe/common/tests:cpe_laser_client_benchmark_test _bin/fooadmarket/cpe/common/tests/cpe_laser_client_benchmark_testab

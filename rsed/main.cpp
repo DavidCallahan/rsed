@@ -19,9 +19,12 @@
 #include "LineBuffer.h"
 
 using std::string;
-int debug;
+
+namespace RSED_Debug {
+  int debug = 0;
+  int dump = 0;
+}
 extern int yydebug;
-static int dump = 0;
 static bool scriptIn;
 string input("");
 
@@ -38,9 +41,9 @@ void parseOptions(int argc, char *argv[]) {
 
   // only command line arguments are preserved by gflags, so the 0th one is
   // the tool name and 1st is the input.
-  debug = FLAGS_debug;
+  RSED_Debug::debug = FLAGS_debug;
   yydebug = FLAGS_yydebug;
-  dump = FLAGS_dump;
+  RSED_Debug::dump = FLAGS_dump;
   input = FLAGS_input;
   scriptIn = FLAGS_script_in;
   if (scriptIn) {
@@ -69,7 +72,7 @@ int main(int argc, char *argv[]) {
   if (!ast) {
     exit(1);
   }
-  if (dump) {
+  if (RSED_Debug::dump) {
     ast->dump();
   }
   ast = Optimize::optimize(ast);

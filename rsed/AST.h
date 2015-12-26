@@ -10,6 +10,7 @@
 #define __rsed__AST__
 #include <string>
 #include <regex>
+#include <vector>
 #include "Symbol.h"
 #include "StringRef.h"
 #include "Value.h"
@@ -67,6 +68,7 @@ public:
     OutputN,
     RewindN,
     RequiredN,
+    HoistedValueN,
   };
   enum ExprKind {
     ControlN,
@@ -78,7 +80,7 @@ public:
     ArgN,
     BinaryN,
     RegExPatternN,
-    RegExReferenceN,
+    HoistedValueRefN,
   };
   enum WalkResult { StopW, ContinueW, SkipChildrenW, SkipExpressionsW };
 
@@ -101,6 +103,7 @@ public:
 
   template <typename ACTION> WalkResult walk(const ACTION &a);
   template <typename ACTION> WalkResult walkExprs(const ACTION &a);
+  template <typename ACTION> void applyExprs(const ACTION &);
   template <typename T> static T *list(T *car, T *cdr) {
     if (!car)
       return cdr;
@@ -145,8 +148,11 @@ public:
 
   template <typename ACTION> WalkResult walkDown(const ACTION &a);
   template <typename ACTION> WalkResult walkUp(const ACTION &a);
-  template <typename ACTION> void walkConcat(const ACTION &);
+  template <typename ACTION>
+  void walkConcat(const ACTION &action,
+                  std::vector<class Binary *> *operators = nullptr);
   BinaryP isOp(Operators op);
+  const BinaryP isOp(Operators op) const;
   static const char *opName(Operators op);
   Value::Kind valueKind();
 };
@@ -160,12 +166,16 @@ public:
   Binary(Operators op, Expression *left, Expression *right, int sourceLine)
       : Expression(sourceLine), op(op), left(left), right(right) {}
   ExprKind kind() const override { return BinaryN; }
-  bool isOp(Operators op) { return op == this->op; }
+  bool isOp(Operators op) const { return op == this->op; }
 };
 typedef Binary *BinaryP;
 inline BinaryP Expression::isOp(Operators op) {
   return (kind() == BinaryN && BinaryP(this)->isOp(op) ? BinaryP(this)
                                                        : nullptr);
+}
+inline const BinaryP Expression::isOp(Operators op) const {
+  return (kind() == BinaryN && BinaryP(this)->isOp(op) ? BinaryP(this)
+          : nullptr);
 }
 
 class Foreach : public Statement {
@@ -432,10 +442,12 @@ template <typename T> const T *isa(const Statement *stmt) {
 class RegExPattern : public Expression {
   int index;
   static int nextIndex;
+
 public:
   Expression *pattern;
   RegExPattern(Expression *pattern, int index = -1)
-      : Expression(pattern->getSourceLine()), index(nextIndex++), pattern(pattern) {}
+      : Expression(pattern->getSourceLine()), index(nextIndex++),
+        pattern(pattern) {}
   ExprKind kind() const override { return RegExPatternN; }
   void setIndex(int index) { this->index = index; };
   int getIndex() const { return index; }
@@ -469,14 +481,22 @@ inline Statement *AST::replaceOne(Expression *pattern, Expression *replacement,
   return new Replace(pattern, replacement, sourceLine);
 }
 
-// a reference to a patttern (a non-tree link)
-class RegExReference : public Expression {
-  int index;
+class HoistedValue : public Statement {
 public:
-  RegExReference(RegExPattern *pattern) : index(pattern->getIndex()) { }
-  ExprKind kind() const override { return RegExReferenceN; }
-  int getIndex() const { return index; }
+  Expression * rhs;
+  HoistedValue(Expression *rhs) : Statement(rhs->getSourceLine()), rhs(rhs) { }
+  static StmtKind typeKind() { return HoistedValueN; }
+  StmtKind kind() const override { return typeKind(); }
 };
+
+class HoistedValueRef : public Expression {
+public:
+  Expression *value;
+  HoistedValueRef(Expression *value) : Expression(value->getSourceLine()), value(value) { }
+  ExprKind kind() const override { return HoistedValueRefN; }
+  
+};
+
 
 // TODO -- optimization pass to pull string cmoparison and regular expression
 //    compilation out of loops.
