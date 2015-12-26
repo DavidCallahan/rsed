@@ -21,6 +21,7 @@
 #include "EvalState.h"
 #include "Exception.h"
 #include "Value.h"
+#include "ExpandVariables.h"
 
 using std::vector;
 using std::string;
@@ -40,7 +41,7 @@ enum MatchKind { NoMatchK, StopAtK, StopAfterK };
 
 class State : public EvalState {
   std::shared_ptr<LineBuffer> inputBuffer;
-  
+
 public:
   std::shared_ptr<LineBuffer> stdinBuffer;
   std::shared_ptr<LineBuffer> stdoutBuffer;
@@ -94,7 +95,7 @@ public:
   unsigned getLineno() const override {
     return inputBuffer->getLineno() + unsigned(needLine);
   }
-  void resetInput(const std::shared_ptr<LineBuffer> & newBuffer) {
+  void resetInput(const std::shared_ptr<LineBuffer> &newBuffer) {
     needLine = true;
     currentLine_ = "";
     inputEof_ = false;
@@ -172,40 +173,24 @@ void ForeachControl::initialize(Control *c) {
   predicate = c->pattern;
 }
 
-static std::regex variable(R"((\\\$)|(\$[a-zA-Z][a-zA-Z0-9_]+)|(\$[0-9]+))");
+namespace {
+class DynamicExpander : public ExpandVariables {
+  State &state;
+  stringstream &out;
+public:
+  DynamicExpander(State &state, stringstream &out) : state(state), out(out) {}
+  void single(const std::string &text, unsigned) override { out << text; }
+  void string(stringstream &s, unsigned) override { out << s.str(); }
+  void varMatch(unsigned i) override { out << state.match(i); };
+  void variable(std::string name) override {
+    out << Symbol::findSymbol(name)->getValue();
+  }
+};
+}
 
 stringstream &State::expandVariables(const string &text, stringstream &str) {
-
-  const char *ctext = text.c_str();
-  size_t len = text.length();
-  auto vars_begin = std::cregex_iterator(ctext, ctext + len, variable);
-  auto vars_end = std::cregex_iterator();
-  if (vars_begin == vars_end) {
-    str << text;
-    return str;
-  }
-
-  const char *last = ctext;
-  for (std::cregex_iterator vars = vars_begin; vars != vars_end; ++vars) {
-    auto match = (*vars)[0];
-    const char *cvar = match.first;
-    str.write(last, cvar - last);
-
-    if (*cvar == '\\') {
-      str << '$';
-    } else if (isdigit(cvar[1])) {
-      stringstream temp;
-      temp.write(cvar + 1, match.second - cvar - 1);
-      unsigned i;
-      temp >> i;
-      str << State::match(i);
-    } else {
-      str << Symbol::findSymbol(string(cvar + 1, match.second - cvar - 1))
-                 ->getValue();
-    }
-    last = match.second;
-  }
-  str.write(last, len - (last - ctext));
+  DynamicExpander expander(*this, str);
+  expander.expand(text);
   return str;
 }
 
@@ -314,7 +299,7 @@ ResultCode State::interpretOne(Statement *stmt) {
     interpret((Split *)stmt);
     break;
   case AST::ErrorN: {
-      auto e = (Error *)stmt;
+    auto e = (Error *)stmt;
     auto msg = interpret(e->text)->asString().getText();
     throw Exception(msg, stmt, inputBuffer);
   }
@@ -336,8 +321,7 @@ ResultCode State::interpretOne(Statement *stmt) {
     auto old = LineBuffer::closeBuffer(fileName);
     if (old == inputBuffer) {
       resetInput(stdinBuffer);
-    }
-    else if (old == outputBuffer) {
+    } else if (old == outputBuffer) {
       outputBuffer = stdoutBuffer;
     }
     break;
@@ -526,7 +510,7 @@ Value *State::interpret(Expression *e) {
   case AST::HoistedValueRefN: {
     auto h = (HoistedValueRef *)e;
     while (h->value->kind() == AST::HoistedValueRefN) {
-      h = (HoistedValueRef*) h->value;
+      h = (HoistedValueRef *)h->value;
     }
     return h->value;
   }

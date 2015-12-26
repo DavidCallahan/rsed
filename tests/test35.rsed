@@ -1,0 +1,4 @@
+foo = "abc"
+foox = "def"
+print "x$foox "
+print "x${foo}x "
