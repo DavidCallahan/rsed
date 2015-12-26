@@ -498,11 +498,9 @@ public:
 };
 
 
-// TODO -- optimization pass to pull string cmoparison and regular expression
-//    compilation out of loops.
-//    optimize join reductions
+// TODO -- optimize join reductions
 // TODO -- add foreeach split ...
 // TODO -- add foreach shell(....), after adding "shell()"
-//
+
 
 #endif /* defined(__rsed__AST__) */
