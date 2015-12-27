@@ -1,0 +1,2 @@
+sh: ./catx: No such file or directory
+error in command: ./catx test1.in

@@ -1,0 +1,2 @@
+input shell("./catx test1.in")
+copy all
