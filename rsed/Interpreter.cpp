@@ -306,7 +306,13 @@ ResultCode State::interpretOne(Statement *stmt) {
   case AST::InputN: {
     auto io = (Input *)stmt;
     auto fileName = interpret(io->buffer)->asString().getText();
-    resetInput(LineBuffer::findInputBuffer(fileName));
+    if (io->getShellCmd()) {
+      // todo: how does "close" work here?
+      resetInput(LineBuffer::makePipeBuffer(fileName));
+    }
+    else {
+      resetInput(LineBuffer::findInputBuffer(fileName));
+    }
     break;
   }
   case AST::OutputN: {
@@ -424,9 +430,9 @@ void State::interpret(Split *split) {
 
 void Interpreter::initialize(int argc, char *argv[]) {
   state = new State;
-  state->stdinBuffer = makeInBuffer(&std::cin, "<stdin>");
+  state->stdinBuffer = LineBuffer::makeInBuffer(&std::cin, "<stdin>");
   state->resetInput(state->stdinBuffer);
-  state->stdoutBuffer = makeOutBuffer(&std::cout, "<stdout>");
+  state->stdoutBuffer = LineBuffer::makeOutBuffer(&std::cout, "<stdout>");
   state->outputBuffer = state->stdoutBuffer;
   state->setRegEx(RegEx::regEx);
   Symbol::defineSymbol(makeSymbol("LINE", [this]() {
@@ -458,7 +464,7 @@ bool Interpreter::setInput(const string &fileName) {
     std::cerr << "unable to open: " << fileName << '\n';
     return false;
   }
-  state->resetInput(makeInBuffer(f, fileName));
+  state->resetInput(LineBuffer::makeInBuffer(f, fileName));
   return true;
 }
 

@@ -1,0 +1,2 @@
+input shell("cat test1.in")
+copy all

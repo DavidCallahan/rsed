@@ -422,13 +422,15 @@ Expression *AST::checkPattern(Expression *pattern) {
 namespace {
 class StaticExpandVariables : public ExpandVariables {
 public:
-  Expression * term = nullptr;
-  void append(Expression * t) {
+  Expression *term = nullptr;
+  void append(Expression *t) {
     term = (term ? new Binary(Binary::CONCAT, term, t, 0) : t);
   }
-  void single(const std::string &s, unsigned flags) override{ term = new StringConst(StringRef(s,flags)); }
-  void string(stringstream & s, unsigned flags) override {
-    append(new StringConst(StringRef(s.str(),flags)));
+  void single(const std::string &s, unsigned flags) override {
+    term = new StringConst(StringRef(s, flags));
+  }
+  void string(stringstream &s, unsigned flags) override {
+    append(new StringConst(StringRef(s.str(), flags)));
   }
   void varMatch(unsigned i) override { append(new VarMatch(i)); }
   void variable(std::string name) override {
@@ -447,4 +449,27 @@ static Expression *expandVariables(const StringRef &text) {
 
 Expression *AST::stringConst(string *constant) {
   return expandVariables(StringRef(constant));
+}
+
+Statement *AST::input(Expression *s, int sourceLine) {
+  bool isShell = false;
+  auto c = (Call *)s;
+  if (c->kind() == c->CallN && c->getCallId() == BuiltinCalls::SHELL &&
+      c->args) {
+    isShell = true;
+    auto args = c->args;
+    delete c;
+    s = args->value;
+    for (;;) {
+      auto next = args->nextArg;
+      delete args;
+      if (!next) {
+        break ;
+      }
+      args = next;
+      s = new Binary(Binary::CONCAT, s, new StringConst(" "), sourceLine);
+      s = new Binary(Binary::CONCAT, s, args->value, sourceLine);
+    }
+  }
+  return new Input(s,isShell, sourceLine);
 }

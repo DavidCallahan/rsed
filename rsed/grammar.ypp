@@ -228,7 +228,7 @@ optIn: /*empty*/  { $$ = AST::current(); }
      | IN expr    { $$ = $2; }
      ;
 
-input: INPUT lineno buffer NEWLINE { $$ = new Input($3,$2); }
+input: INPUT lineno buffer NEWLINE { $$ = AST::input($3,$2); }
 output: OUTPUT lineno buffer NEWLINE { $$ = new Output($3,$2); }
 close: CLOSE lineno buffer NEWLINE { $$ = new Close($3,$2); }
 buffer: expr;

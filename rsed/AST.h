@@ -50,6 +50,7 @@ public:
   static Expression *current();
   static Expression *stringConst(std::string *constant);
   static Expression *match(Expression *lhs, Expression *rhs, int sourceLine);
+  static Statement *input(Expression *source, int sourceLine);
 
   virtual bool isStatement() const = 0;
 
@@ -86,6 +87,7 @@ public:
 
   static const char *const CURRENT_LINE_SYM;
   static Expression *checkPattern(Expression *pattern);
+  virtual ~AST() { } 
 };
 
 class Statement : public AST {
@@ -324,6 +326,7 @@ class StringConst : public Expression {
 
 public:
   StringConst(StringRef constant) : constant(constant) {}
+  StringConst(const char *constant) : constant(constant) {} 
   ExprKind kind() const override { return StringConstN; }
   const StringRef &getConstant() const { return constant; }
   void setConstant(StringRef constant) { this->constant = constant; }
@@ -388,10 +391,13 @@ public:
 };
 
 class Input : public IOStmt {
+  bool shellCmd = false;
 public:
-  Input(Expression *buffer, int sourceLine) : IOStmt(buffer, sourceLine) {}
+  Input(Expression *buffer, bool shellCmd, int sourceLine) : IOStmt(buffer, sourceLine), shellCmd(shellCmd) {}
   static StmtKind typeKind() { return InputN; }
   StmtKind kind() const override { return typeKind(); }
+  bool getShellCmd() const { return shellCmd; }
+  void setShellCmd(bool shellCmd) { this->shellCmd = shellCmd; }
 };
 class Output : public IOStmt {
 public:

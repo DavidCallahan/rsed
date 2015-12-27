@@ -36,6 +36,13 @@ public:
   static void removeTempFiles(const std::vector<std::string> &names);
   static std::shared_ptr<LineBuffer> closeBuffer(const std::string &);
   static std::vector<std::string> tempFileNames;
+  
+  template<typename Stream>
+  static std::shared_ptr<LineBuffer> makeInBuffer(Stream *, std::string);
+  template<typename Stream>
+  static std::shared_ptr<LineBuffer> makeOutBuffer(Stream *, std::string);
+  
+  static std::shared_ptr<LineBuffer> makePipeBuffer(std::string command);
 };
 
 class LineBufferCloser {
@@ -43,69 +50,5 @@ public:
   ~LineBufferCloser();
 };
 
-template <typename Stream> class StreamInBuffer : public LineBuffer {
-  Stream *stream;
-
-public:
-  StreamInBuffer(Stream *stream, std::string name)
-      : LineBuffer(name), stream(stream) {}
-  bool eof() override { return stream->eof(); }
-  bool getLine(std::string &line) override {
-    if (eof()) {
-      line = "";
-      return false;
-    }
-    getline(*stream, line);
-    if (eof() && line == "") {
-      return false;
-    }
-    inputLine = line;
-    lineno += 1;
-    return true;
-  }
-  void append(const std::string &line) override {
-    assert(!"invalid append to input buffer");
-  }
-  void close() override;
-};
-template class StreamInBuffer<std::istream>;
-template <> inline void StreamInBuffer<std::istream>::close() {}
-
-template class StreamInBuffer<std::ifstream>;
-template <> inline void StreamInBuffer<std::ifstream>::close() {
-  stream->close();
-}
-
-template <typename Stream>
-inline std::shared_ptr<LineBuffer> makeInBuffer(Stream *stream,
-                                                std::string name) {
-  return std::make_shared<StreamInBuffer<Stream>>(stream,name);
-}
-
-template <typename Stream> class StreamOutBuffer : public LineBuffer {
-  Stream *stream;
-
-public:
-  StreamOutBuffer(Stream *stream, std::string name)
-      : LineBuffer(name), stream(stream) {}
-  bool eof() override { return false; }
-  bool getLine(std::string &line) override {
-    assert(!"invalid append to output buffer");
-    return false;
-  }
-  void append(const std::string &line) override { *stream << line << '\n'; }
-  void close() override;
-};
-template class StreamOutBuffer<std::ostream>;
-template <> inline void StreamOutBuffer<std::ostream>::close() {}
-template class StreamOutBuffer<std::ofstream>;
-template <> inline void StreamOutBuffer<std::ofstream>::close() {
-  stream->close();
-}
-template <typename Stream>
-inline std::shared_ptr<LineBuffer> makeOutBuffer(Stream *stream,
-                                                 std::string name) {
-  return std::make_shared<StreamOutBuffer<Stream>>(stream, name);
-}
 
 #endif /* defined(__rsed__LineBuffer__) */

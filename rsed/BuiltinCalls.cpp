@@ -22,18 +22,9 @@ using std::vector;
 #include "Value.h"
 #include "Symbol.h"
 
+namespace BuiltinCalls {
+
 namespace {
-enum Builtins {
-  TRIM = 0,
-  SHELL,
-  LENGTH,
-  JOIN,
-  ESCAPE,
-  MKTEMP,
-  EXPAND,
-  SUBSTR,
-  QUOTE
-};
 typedef std::pair<unsigned, string> BuiltinName;
 vector<BuiltinName> builtins{{LENGTH, "length"},
                              {TRIM, "trim"},
@@ -60,7 +51,6 @@ string doQuote(char quote, const string &text) {
 }
 }
 
-namespace BuiltinCalls {
 
 Value::Kind callKind(unsigned id) {
   return (id == LENGTH ? Value::Number : Value::String);
