@@ -41,7 +41,10 @@ enum MatchKind { NoMatchK, StopAtK, StopAfterK };
 
 class State : public EvalState {
   std::shared_ptr<LineBuffer> inputBuffer;
-
+  
+  vector<std::shared_ptr<LineBuffer>> inputStack;
+  vector<std::shared_ptr<LineBuffer>> outputStack;
+  
 public:
   std::shared_ptr<LineBuffer> stdinBuffer;
   std::shared_ptr<LineBuffer> stdoutBuffer;
@@ -59,7 +62,27 @@ public:
   }
 
   std::shared_ptr<LineBuffer> getInputBuffer() const { return inputBuffer; }
-
+  void pushInput(std::shared_ptr<LineBuffer> newInput) {
+    inputStack.push_back(std::move(inputBuffer));
+    resetInput(newInput);
+  }
+  void popInput() {
+    if (!inputStack.empty()) {
+      resetInput(inputStack.back());
+      inputStack.pop_back();
+    }
+  }
+  void pushOutput(std::shared_ptr<LineBuffer> newOutput) {
+    outputStack.push_back(std::move(outputBuffer));
+    outputBuffer = std::move(newOutput);
+  }
+  void popOutput() {
+    if (!outputStack.empty()) {
+      outputBuffer = outputStack.back();
+      outputStack.pop_back();
+    }
+  }
+  
   string match(unsigned i) {
     if (matchColumns) {
       if (i >= columns.size()) {
@@ -309,9 +332,9 @@ ResultCode State::interpretOne(Statement *stmt) {
     auto fileName = interpret(io->buffer)->asString().getText();
     if (io->getShellCmd()) {
       // todo: how does "close" work here?
-      resetInput(LineBuffer::makePipeBuffer(fileName));
+      pushInput(LineBuffer::makePipeBuffer(fileName));
     } else {
-      resetInput(LineBuffer::findInputBuffer(fileName));
+      pushInput(LineBuffer::findInputBuffer(fileName));
     }
     break;
   }
@@ -326,20 +349,20 @@ ResultCode State::interpretOne(Statement *stmt) {
     switch(io->getMode()) {
       case Close::Input:
         inputBuffer->close();
-        resetInput(stdinBuffer);
+        popInput();
         break ;
       case Close::Output:
         outputBuffer->close();
-        outputBuffer = stdoutBuffer;
+        popOutput();
         break;
       case Close::ByName:
         auto fileName = interpret(io->buffer)->asString().getText();
         auto old = LineBuffer::closeBuffer(fileName);
         if (old == inputBuffer) {
-          resetInput(stdinBuffer);
+          popInput();
         }
         else if (old == outputBuffer) {
-          outputBuffer = stdoutBuffer;
+          popOutput();
         }
         break;
     }
