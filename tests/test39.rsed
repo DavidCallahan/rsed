@@ -1,0 +1,8 @@
+n=""
+m=""
+a="a"
+b="b"
+print ifnull($a,$b)
+print ifnull($n, $a)
+print ifnull($n, $a, $b)
+print ifnull($n, $m, $b)

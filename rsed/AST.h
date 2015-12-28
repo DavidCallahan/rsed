@@ -513,7 +513,10 @@ public:
 };
 
 // TODO -- optimize join reductions
+//       append x to y [with sep]
+//       $? -- number of matches?
 // TODO -- add foreeach split ...
+//       input split ...
 // TODO -- think about adding lists [x,y,z]
 //      with iteration over lists, functions of lists,
 //      implicit concatenation when used like a string

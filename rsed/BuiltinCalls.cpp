@@ -35,6 +35,7 @@ vector<BuiltinName> builtins{{LENGTH, "length"},
                              {EXPAND, "expand"},
                              {SUBSTR, "substr"},
                              {SUBSTR, "substring"},
+                             {IFNULL, "ifnull"},
                              {SHELL, "shell"}};
 
 string doQuote(char quote, const string &text) {
@@ -51,7 +52,6 @@ string doQuote(char quote, const string &text) {
 }
 }
 
-
 Value::Kind callKind(unsigned id) {
   return (id == LENGTH ? Value::Number : Value::String);
 }
@@ -66,7 +66,7 @@ bool getCallId(const string &name, unsigned *u) {
   return false;
 }
 
-string shell(vector<Value*> & args) {
+string shell(vector<Value *> &args) {
   std::stringstream ss;
   for (auto v : args) {
     ss << v->asString().getText() << " ";
@@ -75,8 +75,7 @@ string shell(vector<Value*> & args) {
   std::shared_ptr<FILE> pipe;
   try {
     pipe.reset(popen(shellCmd.c_str(), "r"), pclose);
-  }
-  catch (...) {
+  } catch (...) {
     throw Exception("error executing command: " + shellCmd);
   }
   if (!pipe) {
@@ -193,6 +192,19 @@ void evalCall(unsigned int id, vector<Value *> &args, EvalState *state,
     }
     result->set(text.substr(start));
     return;
+  }
+  case IFNULL: {
+    if (args.size() < 2) {
+      throw Exception("at least two args required for ifnull()");
+    }
+    for (auto v : args) {
+      auto s = v->asString().getText();
+      if (s != "") {
+        ss << s;
+        break;
+      }
+    }
+    break;
   }
   }
   result->set(ss.str());
