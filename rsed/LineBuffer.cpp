@@ -78,29 +78,6 @@ template <> inline void StreamOutBuffer<std::ofstream>::close() {
   closed = true;
 }
 
-// http://stackoverflow.com/questions/12342542/convert-file-to-ifstream-c-android-ndk
-class stdiobuf : public std::streambuf {
-private:
-  FILE *d_file;
-  char d_buffer[8192];
-
-public:
-  stdiobuf(FILE *file) : d_file(file) {
-    char *end = d_buffer + sizeof(d_buffer);
-    setg(end, end, end);
-  }
-  ~stdiobuf() {}
-  int underflow() override {
-    if (gptr() == egptr() && this->d_file) {
-      size_t size =
-          std::fread(this->d_file, sizeof(char), sizeof(d_buffer), d_file);
-      this->setg(this->d_buffer, this->d_buffer, this->d_buffer + size);
-    }
-    return gptr() == egptr() ? traits_type::eof()
-                             : traits_type::to_int_type(*gptr());
-  }
-};
-
 class PipeInBuffer : public StreamInBuffer<std::istream> {
 public:
   std::shared_ptr<FILE> pipe;
