@@ -46,11 +46,12 @@ public:
   void close() override;
 };
 template class StreamInBuffer<std::istream>;
-template <> inline void StreamInBuffer<std::istream>::close() {}
+template <> inline void StreamInBuffer<std::istream>::close() { closed = true; }
 
 template class StreamInBuffer<std::ifstream>;
 template <> inline void StreamInBuffer<std::ifstream>::close() {
   stream->close();
+  closed = true;
 }
 
 template <typename Stream> class StreamOutBuffer : public LineBuffer {
@@ -68,10 +69,13 @@ public:
   void close() override;
 };
 template class StreamOutBuffer<std::ostream>;
-template <> inline void StreamOutBuffer<std::ostream>::close() {}
+template <> inline void StreamOutBuffer<std::ostream>::close() {
+  closed = true;
+}
 template class StreamOutBuffer<std::ofstream>;
 template <> inline void StreamOutBuffer<std::ofstream>::close() {
   stream->close();
+  closed = true;
 }
 
 // http://stackoverflow.com/questions/12342542/convert-file-to-ifstream-c-android-ndk
@@ -82,19 +86,18 @@ private:
 
 public:
   stdiobuf(FILE *file) : d_file(file) {
-    char * end = d_buffer + sizeof(d_buffer);
-    setg(end,end,end);
+    char *end = d_buffer + sizeof(d_buffer);
+    setg(end, end, end);
   }
-  ~stdiobuf() { }
+  ~stdiobuf() {}
   int underflow() override {
     if (gptr() == egptr() && this->d_file) {
       size_t size =
           std::fread(this->d_file, sizeof(char), sizeof(d_buffer), d_file);
       this->setg(this->d_buffer, this->d_buffer, this->d_buffer + size);
     }
-    return gptr() == egptr()
-               ? traits_type::eof()
-               : traits_type::to_int_type(*gptr());
+    return gptr() == egptr() ? traits_type::eof()
+                             : traits_type::to_int_type(*gptr());
   }
 };
 
@@ -104,16 +107,17 @@ public:
   FILE_buffer fileBuffer;
   std::istream in;
   PipeInBuffer(std::shared_ptr<FILE> pipe, std::string name)
-      : StreamInBuffer<std::istream>(&in, name), pipe(pipe), fileBuffer(pipe.get(), 8*1024),
-        in(&fileBuffer) {}
+      : StreamInBuffer<std::istream>(&in, name), pipe(pipe),
+        fileBuffer(pipe.get(), 8 * 1024), in(&fileBuffer) {}
   virtual void close() override {
-    if(pipe) {
-      auto rc  = pclose(pipe.get());
-      if (rc ) {
+    if (pipe) {
+      auto rc = pclose(pipe.get());
+      if (rc) {
         throw Exception("error in command: " + name);
       }
       pipe = nullptr;
     }
+    closed = true;
   }
 };
 
@@ -146,16 +150,23 @@ template std::shared_ptr<LineBuffer>
 LineBuffer::makeOutBuffer<std::ostream>(std::ostream *, std::string name);
 
 std::vector<string> LineBuffer::tempFileNames;
-LineBufferCloser::~LineBufferCloser() {
+static std::vector<std::shared_ptr<LineBuffer>> pipeFiles;
+
+void LineBuffer::closeAll() {
   for (auto &name : LineBuffer::tempFileNames) {
     auto p = buffers.find(name);
     if (p != buffers.end()) {
       Buffer &b = p->second;
-      if (b.input)
+      if (b.input && !b.input->closed)
         b.input->close();
-      if (b.output)
+      if (b.output && !b.output->closed)
         b.output->close();
       std::remove(name.c_str());
+    }
+  }
+  for (auto &p : pipeFiles) {
+    if (!p->closed) {
+      p->close();
     }
   }
 }
@@ -165,10 +176,12 @@ LineBuffer::findOutputBuffer(const std::string &name) {
   auto p = buffers.insert(std::make_pair(name, Buffer()));
   Buffer &b = p.first->second;
   if (b.input) {
-    b.input->close();
+    if (!b.input->closed) {
+      b.input->close();
+    }
     b.input = nullptr;
   }
-  if (!b.output) {
+  if (!b.output || b.output->closed) {
     auto f = new ofstream(name);
     if (!f->is_open()) {
       string error("unable to open file: ");
@@ -185,10 +198,12 @@ LineBuffer::findInputBuffer(const std::string &name) {
   auto p = buffers.insert(std::make_pair(name, Buffer()));
   Buffer &b = p.first->second;
   if (b.output) {
-    b.output->close();
+    if (!b.output->closed) {
+      b.output->close();
+    }
     b.output = nullptr;
   }
-  if (!b.input) {
+  if (!b.input || b.input->closed) {
     auto f = new ifstream(name);
     if (!f->is_open()) {
       string error = "unable to open file: ";
@@ -233,5 +248,7 @@ std::shared_ptr<LineBuffer> LineBuffer::makePipeBuffer(std::string command) {
   if (!pipe) {
     throw Exception("error executing command: " + command);
   }
-  return std::make_shared<PipeInBuffer>(pipe,command);
+  auto p = std::make_shared<PipeInBuffer>(pipe, command);
+  pipeFiles.push_back(p);
+  return p;
 }

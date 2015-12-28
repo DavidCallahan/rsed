@@ -18,7 +18,7 @@ protected:
   int lineno;
   std::string name;
   std::string inputLine;
-
+  bool closed = false;
 public:
   LineBuffer(std::string name) : lineno(0), name(name) {}
   int getLineno() const { return lineno; }
@@ -43,11 +43,7 @@ public:
   static std::shared_ptr<LineBuffer> makeOutBuffer(Stream *, std::string);
   
   static std::shared_ptr<LineBuffer> makePipeBuffer(std::string command);
-};
-
-class LineBufferCloser {
-public:
-  ~LineBufferCloser();
+  static void closeAll();
 };
 
 

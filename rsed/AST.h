@@ -87,7 +87,7 @@ public:
 
   static const char *const CURRENT_LINE_SYM;
   static Expression *checkPattern(Expression *pattern);
-  virtual ~AST() { } 
+  virtual ~AST() {}
 };
 
 class Statement : public AST {
@@ -177,7 +177,7 @@ inline BinaryP Expression::isOp(Operators op) {
 }
 inline const BinaryP Expression::isOp(Operators op) const {
   return (kind() == BinaryN && BinaryP(this)->isOp(op) ? BinaryP(this)
-          : nullptr);
+                                                       : nullptr);
 }
 
 class Foreach : public Statement {
@@ -326,7 +326,7 @@ class StringConst : public Expression {
 
 public:
   StringConst(StringRef constant) : constant(constant) {}
-  StringConst(const char *constant) : constant(constant) {} 
+  StringConst(const char *constant) : constant(constant) {}
   ExprKind kind() const override { return StringConstN; }
   const StringRef &getConstant() const { return constant; }
   void setConstant(StringRef constant) { this->constant = constant; }
@@ -392,8 +392,10 @@ public:
 
 class Input : public IOStmt {
   bool shellCmd = false;
+
 public:
-  Input(Expression *buffer, bool shellCmd, int sourceLine) : IOStmt(buffer, sourceLine), shellCmd(shellCmd) {}
+  Input(Expression *buffer, bool shellCmd, int sourceLine)
+      : IOStmt(buffer, sourceLine), shellCmd(shellCmd) {}
   static StmtKind typeKind() { return InputN; }
   StmtKind kind() const override { return typeKind(); }
   bool getShellCmd() const { return shellCmd; }
@@ -407,9 +409,16 @@ public:
 };
 class Close : public IOStmt {
 public:
-  Close(Expression *buffer, int sourceLine) : IOStmt(buffer, sourceLine) {}
+  enum Mode {
+    Input,Output,ByName,
+  };
+  Close(Expression *buffer, Mode mode, int sourceLine)
+      : IOStmt(buffer, sourceLine), mode(mode) {}
   static StmtKind typeKind() { return CloseN; }
   StmtKind kind() const override { return typeKind(); }
+  Mode getMode() const { return mode; }
+private:
+  enum Mode mode;
 };
 
 class Arg : public Expression {
@@ -489,8 +498,8 @@ inline Statement *AST::replaceOne(Expression *pattern, Expression *replacement,
 
 class HoistedValue : public Statement {
 public:
-  Expression * rhs;
-  HoistedValue(Expression *rhs) : Statement(rhs->getSourceLine()), rhs(rhs) { }
+  Expression *rhs;
+  HoistedValue(Expression *rhs) : Statement(rhs->getSourceLine()), rhs(rhs) {}
   static StmtKind typeKind() { return HoistedValueN; }
   StmtKind kind() const override { return typeKind(); }
 };
@@ -498,15 +507,15 @@ public:
 class HoistedValueRef : public Expression {
 public:
   Expression *value;
-  HoistedValueRef(Expression *value) : Expression(value->getSourceLine()), value(value) { }
+  HoistedValueRef(Expression *value)
+      : Expression(value->getSourceLine()), value(value) {}
   ExprKind kind() const override { return HoistedValueRefN; }
-  
 };
 
 // TODO -- optimize join reductions
 // TODO -- add foreeach split ...
-// TODO -- add foreach shell(....), after adding "shell()"
 // TODO -- think about adding lists [x,y,z]
 //      with iteration over lists, functions of lists,
+//      implicit concatenation when used like a string
 
 #endif /* defined(__rsed__AST__) */

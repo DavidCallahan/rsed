@@ -177,6 +177,7 @@ namespace {
 class DynamicExpander : public ExpandVariables {
   State &state;
   stringstream &out;
+
 public:
   DynamicExpander(State &state, stringstream &out) : state(state), out(out) {}
   void single(const std::string &text, unsigned) override { out << text; }
@@ -309,8 +310,7 @@ ResultCode State::interpretOne(Statement *stmt) {
     if (io->getShellCmd()) {
       // todo: how does "close" work here?
       resetInput(LineBuffer::makePipeBuffer(fileName));
-    }
-    else {
+    } else {
       resetInput(LineBuffer::findInputBuffer(fileName));
     }
     break;
@@ -322,13 +322,26 @@ ResultCode State::interpretOne(Statement *stmt) {
     break;
   }
   case AST::CloseN: {
-    auto io = (Input *)stmt;
-    auto fileName = interpret(io->buffer)->asString().getText();
-    auto old = LineBuffer::closeBuffer(fileName);
-    if (old == inputBuffer) {
-      resetInput(stdinBuffer);
-    } else if (old == outputBuffer) {
-      outputBuffer = stdoutBuffer;
+    auto io = (Close *)stmt;
+    switch(io->getMode()) {
+      case Close::Input:
+        inputBuffer->close();
+        resetInput(stdinBuffer);
+        break ;
+      case Close::Output:
+        outputBuffer->close();
+        outputBuffer = stdoutBuffer;
+        break;
+      case Close::ByName:
+        auto fileName = interpret(io->buffer)->asString().getText();
+        auto old = LineBuffer::closeBuffer(fileName);
+        if (old == inputBuffer) {
+          resetInput(stdinBuffer);
+        }
+        else if (old == outputBuffer) {
+          outputBuffer = stdoutBuffer;
+        }
+        break;
     }
     break;
   }
@@ -449,13 +462,12 @@ void Interpreter::initialize(int argc, char *argv[]) {
     state->getInputEof();
     return state->getInputLine();
   }));
-  
+
   for (auto i = 1; i < argc; i++) {
     stringstream buf;
     buf << "ARG" << i;
-      Symbol::defineSymbol(new SimpleSymbol(buf.str(), argv[i]));
+    Symbol::defineSymbol(new SimpleSymbol(buf.str(), argv[i]));
   }
-  
 }
 
 bool Interpreter::setInput(const string &fileName) {

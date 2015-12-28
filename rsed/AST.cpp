@@ -157,8 +157,24 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     auto i = static_cast<const IOStmt *>(node);
     indent(depth);
 
-    OS << (isa<Input>(i) ? "input " : isa<Output>(i) ? "output " : "close ");
-    dumpExpr(i->buffer);
+    if (auto c = isa<Close>(i)) {
+      OS << "close ";
+      switch (c->getMode()) {
+        case Close::Input:
+          OS << "input" ;
+          break;
+        case Close::Output:
+          OS << "output";
+          break;
+        case Close::ByName:
+          dumpExpr(c->buffer);
+          break;
+      }
+    }
+    else {
+      OS << (isa<Input>(i) ? "input " : "output " );
+      dumpExpr(i->buffer);
+    }
     OS << '\n';
     break;
   }

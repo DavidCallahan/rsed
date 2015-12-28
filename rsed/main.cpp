@@ -87,8 +87,8 @@ int main(int argc, char *argv[]) {
 
   int rc = 0;
   try {
-    LineBufferCloser closer;
     interp.interpret(ast);
+    LineBuffer::closeAll();
   }
   catch (Exception & e) {
     if (e.input && e.input->getLineno() > 0) {
