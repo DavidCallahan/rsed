@@ -41,10 +41,10 @@ enum MatchKind { NoMatchK, StopAtK, StopAfterK };
 
 class State : public EvalState {
   std::shared_ptr<LineBuffer> inputBuffer;
-  
+
   vector<std::shared_ptr<LineBuffer>> inputStack;
   vector<std::shared_ptr<LineBuffer>> outputStack;
-  
+
 public:
   std::shared_ptr<LineBuffer> stdinBuffer;
   std::shared_ptr<LineBuffer> stdoutBuffer;
@@ -82,7 +82,7 @@ public:
       outputStack.pop_back();
     }
   }
-  
+
   string match(unsigned i) {
     if (matchColumns) {
       if (i >= columns.size()) {
@@ -132,7 +132,7 @@ public:
   void interpret(Foreach *foreach);
   ResultCode interpret(IfStatement *ifstmt);
   void interpret(Set *set);
-  void interpret(Columns *cols);
+  void interpret(Columns *cols, vector<string> *columns);
   void interpret(Split *split);
 
   bool interprettPredicate(Expression *predicate);
@@ -317,7 +317,8 @@ ResultCode State::interpretOne(Statement *stmt) {
     interpret((Set *)stmt);
     break;
   case AST::ColumnsN:
-    interpret((Columns *)stmt);
+    matchColumns = true;
+    interpret((Columns *)stmt, &columns);
     break;
   case AST::SplitN:
     interpret((Split *)stmt);
@@ -338,6 +339,21 @@ ResultCode State::interpretOne(Statement *stmt) {
     }
     break;
   }
+  case AST::SplitInputN: {
+    auto split = (SplitInput *)stmt;
+    auto sep = interpret(split->separator)->getRegEx();
+    const string &target = interpret(split->target)->asString().getText();
+    vector<string> data;
+    regEx->split(sep, target, &data);
+    pushInput(LineBuffer::makeVectorInBuffer(&data, target));
+    break;
+  }
+  case AST::ColumnsInputN: {
+    vector<string> data;
+    interpret((Columns*) stmt, &data);
+    pushInput(LineBuffer::makeVectorInBuffer(&data, "columns"));
+    break;
+  }
   case AST::OutputN: {
     auto io = (Output *)stmt;
     auto fileName = interpret(io->buffer)->asString().getText();
@@ -346,25 +362,24 @@ ResultCode State::interpretOne(Statement *stmt) {
   }
   case AST::CloseN: {
     auto io = (Close *)stmt;
-    switch(io->getMode()) {
-      case Close::Input:
-        inputBuffer->close();
+    switch (io->getMode()) {
+    case Close::Input:
+      inputBuffer->close();
+      popInput();
+      break;
+    case Close::Output:
+      outputBuffer->close();
+      popOutput();
+      break;
+    case Close::ByName:
+      auto fileName = interpret(io->buffer)->asString().getText();
+      auto old = LineBuffer::closeBuffer(fileName);
+      if (old == inputBuffer) {
         popInput();
-        break ;
-      case Close::Output:
-        outputBuffer->close();
+      } else if (old == outputBuffer) {
         popOutput();
-        break;
-      case Close::ByName:
-        auto fileName = interpret(io->buffer)->asString().getText();
-        auto old = LineBuffer::closeBuffer(fileName);
-        if (old == inputBuffer) {
-          popInput();
-        }
-        else if (old == outputBuffer) {
-          popOutput();
-        }
-        break;
+      }
+      break;
     }
     break;
   }
@@ -425,16 +440,15 @@ void State::interpret(Set *set) {
   }
 }
 
-void State::interpret(Columns *cols) {
-  matchColumns = true;
-  columns.clear();
+void State::interpret(Columns *cols, vector<string> *columns) {
+  columns->clear();
   vector<unsigned> nums;
 
   string inExpr = interpret(cols->inExpr)->asString().getText();
 
   int lastC = 0;
   int max = inExpr.length();
-  auto addCol = [this, &lastC, max, cols, inExpr](Expression *e) {
+  auto addCol = [this, &lastC, columns, max, cols, inExpr](Expression *e) {
     auto v = interpret(e);
     auto i = int(v->asNumber());
     if (i < lastC) {
@@ -443,16 +457,16 @@ void State::interpret(Columns *cols) {
                       cols, inputBuffer);
     }
     i = std::min(i, max);
-    columns.push_back(inExpr.substr(lastC, (i - lastC)));
+    columns->push_back(inExpr.substr(lastC, (i - lastC)));
     lastC = i;
   };
 
   cols->columns->walkConcat(addCol);
 
   if (lastC < inExpr.length()) {
-    columns.push_back(inExpr.substr(lastC));
+    columns->push_back(inExpr.substr(lastC));
   } else {
-    columns.push_back("");
+    columns->push_back("");
   }
 }
 

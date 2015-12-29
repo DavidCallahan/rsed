@@ -12,11 +12,13 @@
 #include <string>
 #include <unordered_map>
 #include <cstdio>
+#include <vector>
 
 using std::string;
 using std::ifstream;
 using std::ofstream;
 using std::shared_ptr;
+using std::vector;
 
 namespace {
 
@@ -94,6 +96,32 @@ public:
       }
       pipe = nullptr;
     }
+    closed = true;
+  }
+};
+
+class VectorInBuffer : public LineBuffer {
+  vector<string> lines;
+
+public:
+  VectorInBuffer(vector<string> lines, string name)
+      : LineBuffer(name), lines(std::move(lines)) {}
+  virtual bool eof() override { return lineno >= lines.size(); }
+  virtual bool getLine(std::string &s) override {
+    if (lineno < lines.size()) {
+      inputLine = std::move(lines[lineno++]);
+      s = inputLine;
+      return true;
+    } else {
+      s = "";
+      return false;
+    }
+  }
+  virtual void append(const std::string &line) override {
+    throw Exception("invalid write to vector input file");
+  }
+  virtual void close() override {
+    lineno = lines.size();
     closed = true;
   }
 };
@@ -228,4 +256,10 @@ std::shared_ptr<LineBuffer> LineBuffer::makePipeBuffer(std::string command) {
   auto p = std::make_shared<PipeInBuffer>(pipe, command);
   pipeFiles.push_back(p);
   return p;
+}
+
+std::shared_ptr<LineBuffer>
+LineBuffer::makeVectorInBuffer(std::vector<std::string> *data,
+                               std::string name) {
+  return std::make_shared<VectorInBuffer>(std::move(*data), name);
 }

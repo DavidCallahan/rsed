@@ -77,6 +77,7 @@ AST::WalkResult Statement::walkExprs(const ACTION &a) {
     rc = ((Replace *)this)->replacement->walkDown(a);
     break;
   case SplitN:
+  case SplitInputN:
     if (auto sep = ((Split *)this)->separator) {
       rc = sep->walkDown(a);
       if (rc != ContinueW)
@@ -94,6 +95,7 @@ AST::WalkResult Statement::walkExprs(const ACTION &a) {
     rc = ((Error *)this)->text->walkDown(a);
     break;
   case ColumnsN:
+  case ColumnsInputN:
     rc = ((Columns *)this)->columns->walkDown(a);
     break;
   case RequiredN:
@@ -128,6 +130,7 @@ template <typename ACTION> void Statement::applyExprs(const ACTION &a) {
     a(((Replace *)this)->replacement);
     break;
   case SplitN:
+  case SplitInputN:
     a(((Split *)this)->separator);
     a(((Split *)this)->target);
     break;
@@ -147,6 +150,7 @@ template <typename ACTION> void Statement::applyExprs(const ACTION &a) {
     a(((Error *)this)->text);
     break;
   case ColumnsN:
+  case ColumnsInputN:
     a(((Columns *)this)->columns);
     break;
   case RequiredN:

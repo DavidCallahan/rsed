@@ -94,8 +94,13 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     OS << '\n';
     break;
   }
+  case AST::SplitInputN:
   case AST::SplitN: {
     auto s = static_cast<const Split *>(node);
+    indent(depth);
+    if (node->kind() == AST::SplitInputN) {
+      OS << "input ";
+    }
     OS << "split ";
     if (s->target) {
       dumpExpr(s->target);
@@ -143,9 +148,13 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     OS << '\n';
     break;
   }
+  case AST::ColumnsInputN:
   case AST::ColumnsN: {
     auto c = static_cast<const Columns *>(node);
     indent(depth);
+    if (node->kind() == AST::ColumnsInputN) {
+      OS << "input ";
+    }
     OS << "columns ";
     dumpExpr(c->columns);
     OS << '\n';
@@ -160,19 +169,18 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     if (auto c = isa<Close>(i)) {
       OS << "close ";
       switch (c->getMode()) {
-        case Close::Input:
-          OS << "input" ;
-          break;
-        case Close::Output:
-          OS << "output";
-          break;
-        case Close::ByName:
-          dumpExpr(c->buffer);
-          break;
+      case Close::Input:
+        OS << "input";
+        break;
+      case Close::Output:
+        OS << "output";
+        break;
+      case Close::ByName:
+        dumpExpr(c->buffer);
+        break;
       }
-    }
-    else {
-      OS << (isa<Input>(i) ? "input " : "output " );
+    } else {
+      OS << (isa<Input>(i) ? "input " : "output ");
       dumpExpr(i->buffer);
     }
     OS << '\n';
@@ -480,12 +488,12 @@ Statement *AST::input(Expression *s, int sourceLine) {
       auto next = args->nextArg;
       delete args;
       if (!next) {
-        break ;
+        break;
       }
       args = next;
       s = new Binary(Binary::CONCAT, s, new StringConst(" "), sourceLine);
       s = new Binary(Binary::CONCAT, s, args->value, sourceLine);
     }
   }
-  return new Input(s,isShell, sourceLine);
+  return new Input(s, isShell, sourceLine);
 }

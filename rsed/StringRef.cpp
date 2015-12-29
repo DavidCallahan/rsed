@@ -115,7 +115,7 @@ StringRef StringRef::processEscapes(const StringRef &r) {
       auto c = r.getText()[i];
       if (c != '\\') {
         s.text.append(1, c);
-      } else {
+      } else { //todo fix array bound errror for "a\".
         c = r.getText()[++i];
         switch (c) {
         case '\\':

@@ -51,6 +51,7 @@ public:
   static Expression *stringConst(std::string *constant);
   static Expression *match(Expression *lhs, Expression *rhs, int sourceLine);
   static Statement *input(Expression *source, int sourceLine);
+  static Statement *input(Statement *);
 
   virtual bool isStatement() const = 0;
 
@@ -66,6 +67,8 @@ public:
     PrintN,
     ErrorN,
     InputN,
+    SplitInputN,
+    ColumnsInputN,
     OutputN,
     CloseN,
     RequiredN,
@@ -116,6 +119,12 @@ public:
     return car;
   }
 };
+template <typename T> T *isa(Statement *stmt) {
+  return (stmt->kind() == T::typeKind() ? (T *)stmt : nullptr);
+}
+template <typename T> const T *isa(const Statement *stmt) {
+  return (stmt->kind() == T::typeKind() ? (T *)stmt : nullptr);
+}
 
 typedef class Binary *BinaryP;
 class Expression : public AST, public Value {
@@ -263,6 +272,13 @@ public:
   static StmtKind typeKind() { return SplitN; }
   StmtKind kind() const override { return typeKind(); }
 };
+class SplitInput : public Split {
+public:
+  SplitInput(Expression *columns, Expression *inExpr, int sourceLine)
+      : Split(columns, inExpr, sourceLine) {}
+  static StmtKind typeKind() { return SplitInputN; }
+  StmtKind kind() const override { return typeKind(); }
+};
 
 class IfStatement : public Statement {
 public:
@@ -290,6 +306,24 @@ public:
   static StmtKind typeKind() { return ColumnsN; }
   StmtKind kind() const override { return typeKind(); }
 };
+class ColumnsInput : public Columns {
+public:
+  ColumnsInput(Expression *columns, Expression *inExpr, int sourceLine)
+      : Columns(columns, inExpr, sourceLine) {}
+  static StmtKind typeKind() { return ColumnsInputN; }
+  StmtKind kind() const override { return typeKind(); }
+};
+inline Statement *AST::input(Statement *s) {
+  Statement *result;
+  if (auto c = isa<Columns>(s)) {
+    result = new ColumnsInput(c->columns, c->inExpr, c->getSourceLine());
+  } else {
+    auto sp = isa<Split>(s);
+    result = new SplitInput(sp->separator, sp->target, sp->getSourceLine());
+  }
+  delete s;
+  return result;
+}
 
 class Variable : public Expression {
   Symbol &symbol;
@@ -401,6 +435,7 @@ public:
   bool getShellCmd() const { return shellCmd; }
   void setShellCmd(bool shellCmd) { this->shellCmd = shellCmd; }
 };
+
 class Output : public IOStmt {
 public:
   Output(Expression *buffer, int sourceLine) : IOStmt(buffer, sourceLine) {}
@@ -410,13 +445,16 @@ public:
 class Close : public IOStmt {
 public:
   enum Mode {
-    Input,Output,ByName,
+    Input,
+    Output,
+    ByName,
   };
   Close(Expression *buffer, Mode mode, int sourceLine)
       : IOStmt(buffer, sourceLine), mode(mode) {}
   static StmtKind typeKind() { return CloseN; }
   StmtKind kind() const override { return typeKind(); }
   Mode getMode() const { return mode; }
+
 private:
   enum Mode mode;
 };
@@ -445,13 +483,6 @@ public:
   void setCallId(unsigned callId) { this->callId = callId; }
 };
 typedef Call *CallP;
-
-template <typename T> T *isa(Statement *stmt) {
-  return (stmt->kind() == T::typeKind() ? (T *)stmt : nullptr);
-}
-template <typename T> const T *isa(const Statement *stmt) {
-  return (stmt->kind() == T::typeKind() ? (T *)stmt : nullptr);
-}
 
 // where we compiler a regular expression
 class RegExPattern : public Expression {
@@ -520,5 +551,20 @@ public:
 // TODO -- think about adding lists [x,y,z]
 //      with iteration over lists, functions of lists,
 //      implicit concatenation when used like a string
+// TODO  split ... into var1, ..., vk
+//    or (v1,...vk) = split ...
+// TODO bug1  (single character names in expansion)
+// TODO what happens with "abc\"def"r  ? is it 'abc"def'?
+// TODO simplify the multiline terminator to be an identifier posibly as a string
+// TODO should we allow '&' on the terminator line for a multi-line string?
+// TODO why aren't we processing regex escapes?
+// TODO add support for floating point values in the input
+// TODO add true/false as boolean literals
+// TODO NaN should coerce to false
+// TODO add number(), string(), logical() explicit coerion functions
+// TODO is it a good idea for not e to be implicitly not match e?
+//       maybe a string-boolean converstion should be via match?
+// TODO add a mechanism to print a string without a newline (WRITE, PRINT STRING, ...)
+
 
 #endif /* defined(__rsed__AST__) */

@@ -1,0 +1,5 @@
+input split "a b  c  d e" with " +"
+copy all
+close input
+input split "012345678901234" columns 3 5 7
+copy all

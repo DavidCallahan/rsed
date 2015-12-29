@@ -15,18 +15,20 @@
 #include <memory>
 class LineBuffer {
 protected:
-  int lineno;
+  int lineno = 0;
   std::string name;
   std::string inputLine;
   bool closed = false;
+
 public:
-  LineBuffer(std::string name) : lineno(0), name(name) {}
+  LineBuffer(std::string name) : name(name) {}
   int getLineno() const { return lineno; }
+  const std::string &getName() const { return name; }
+
   virtual bool eof() = 0;
   virtual bool getLine(std::string &) = 0;
   virtual void append(const std::string &line) = 0;
   virtual void close() = 0;
-  const std::string &getName() const { return name; }
   virtual ~LineBuffer() {}
 
   const std::string &getInputLine() { return inputLine; }
@@ -36,15 +38,16 @@ public:
   static void removeTempFiles(const std::vector<std::string> &names);
   static std::shared_ptr<LineBuffer> closeBuffer(const std::string &);
   static std::vector<std::string> tempFileNames;
-  
-  template<typename Stream>
+
+  template <typename Stream>
   static std::shared_ptr<LineBuffer> makeInBuffer(Stream *, std::string);
-  template<typename Stream>
+  template <typename Stream>
   static std::shared_ptr<LineBuffer> makeOutBuffer(Stream *, std::string);
-  
+
   static std::shared_ptr<LineBuffer> makePipeBuffer(std::string command);
+  static std::shared_ptr<LineBuffer>
+  makeVectorInBuffer(std::vector<std::string> *data, std::string name);
   static void closeAll();
 };
-
 
 #endif /* defined(__rsed__LineBuffer__) */
