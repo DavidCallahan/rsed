@@ -1,2 +1,5 @@
 print "line 1\nline 2"
 print "line 1\nline 2"r
+print "abc\"def"
+print "abc\"def"r
+

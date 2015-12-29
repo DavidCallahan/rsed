@@ -546,14 +546,11 @@ public:
 // TODO -- optimize join reductions
 //       append x to y [with sep]
 //       $? -- number of matches?
-// TODO -- add foreeach split ...
-//       input split ...
 // TODO -- think about adding lists [x,y,z]
 //      with iteration over lists, functions of lists,
 //      implicit concatenation when used like a string
 // TODO  split ... into var1, ..., vk
 //    or (v1,...vk) = split ...
-// TODO bug1  (single character names in expansion)
 // TODO what happens with "abc\"def"r  ? is it 'abc"def'?
 // TODO simplify the multiline terminator to be an identifier posibly as a string
 // TODO should we allow '&' on the terminator line for a multi-line string?
