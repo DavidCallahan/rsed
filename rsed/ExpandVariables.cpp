@@ -13,7 +13,7 @@
 using std::vector;
 using std::stringstream;
 
-static std::regex variable(R"((\\\$)|(\$[a-zA-Z][a-zA-Z0-9_]+)|(\$\{[^}]+\})|(\$[0-9]+))");
+static std::regex variable(R"((\\\$)|(\$[a-zA-Z][a-zA-Z0-9_]*)|(\$\{[^}]+\})|(\$[0-9]+))");
 
 void ExpandVariables::expand(const StringRef & text) {
   

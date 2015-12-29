@@ -1,0 +1,4 @@
+v=4
+f="fam"
+print "$f-$v"
+
