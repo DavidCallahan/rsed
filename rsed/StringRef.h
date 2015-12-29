@@ -43,8 +43,6 @@ public:
   void setIsGlobal() { flags |= GLOBAL; }
 
   void clear() { flags = 0, text.clear(); }
-  
-  static StringRef processEscapes(const StringRef &r);
 };
 std::ostream &operator<<(std::ostream &, const StringRef &);
 inline std::string operator+(std::string left, StringRef right) {
