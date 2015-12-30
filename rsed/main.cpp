@@ -33,7 +33,10 @@ DEFINE_bool(yydebug, false, "enable parser debugging");
 DEFINE_bool(dump, false, "dump parsed script");
 DEFINE_string(input, "", "input file to be processed");
 DEFINE_bool(script_in, false, "read script from stdin");
+DEFINE_string(env_save, "", "file to save referenced environment variables");
 string script;
+
+std::ofstream env_save;
 
 void parseOptions(int *argc, char **argv[]) {
 
@@ -46,19 +49,28 @@ void parseOptions(int *argc, char **argv[]) {
   RSED_Debug::dump = FLAGS_dump;
   input = FLAGS_input;
   scriptIn = FLAGS_script_in;
+  const char * err = nullptr;
   if (scriptIn) {
     if (input == "") {
-      std::cerr << argv[0] << ": missing input file\n";
-      exit(1);
+      err = "missing input file";
     }
     script = "";
   } else if (*argc < 2) {
-    std::cerr << *argv[0] << ": missing script parameter\n";
-    exit(1);
+    err = "missing script parameter";
   } else {
     script = (*argv)[1];
     *argc -= 1;
     *argv += 1;
+  }
+  if (FLAGS_env_save != "") {
+    env_save.open(FLAGS_env_save);
+    if (!env_save.is_open()) {
+        err = "unable to open env_save file";
+    }
+  }
+  if (err) {
+    std::cerr << argv[0] << ":" << err << '\n';
+    exit (1);
   }
 }
 

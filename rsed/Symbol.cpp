@@ -11,12 +11,14 @@
 #include <stdlib.h>
 #include <sstream>
 #include <string>
+#include <fstream>
 
 using std::string;
 namespace {
 std::unordered_map<string, Symbol *> stringMap;
 unsigned nextTemp = 0;
 }
+extern std::ofstream env_save;
 
 Symbol *Symbol::findSymbol(const string &name) {
   auto p = stringMap.insert(std::make_pair(name, nullptr));
@@ -24,6 +26,9 @@ Symbol *Symbol::findSymbol(const string &name) {
     auto s = new SimpleSymbol(std::move(name));
     if (auto e = getenv(name.c_str())) {
       s->setValue(e);
+      if (env_save.is_open()) {
+        env_save << "export "<< name << "=\"" << e << "\"\n";
+      }
     }
     p.first->second = s;
   }
