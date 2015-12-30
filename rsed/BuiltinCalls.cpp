@@ -83,27 +83,10 @@ string shell(vector<Value *> &args) {
     ss << v->asString().getText() << " ";
   }
   std::string shellCmd = ss.str();
-  std::shared_ptr<FILE> pipe;
-  try {
-    pipe.reset(popen(shellCmd.c_str(), "r"), pclose);
-  } catch (...) {
-    throw Exception("error executing command: " + shellCmd);
-  }
-  if (!pipe) {
-    throw Exception("error executing command: " + shellCmd);
-  }
-  std::string result = "";
-  while (!feof(pipe.get())) {
-    char c = fgetc(pipe.get());
-    if (c == '\n' || c == EOF) {
-      break;
-    }
-    result.append(1, c);
-  }
-  auto status = pclose(pipe.get());
-  if (status != 0) {
-    throw Exception("error executing command: " + shellCmd);
-  }
+  auto pipe = LineBuffer::makePipeBuffer(shellCmd);
+  string result;
+  pipe->getLine(result);
+  pipe->close();
   return result;
 }
 

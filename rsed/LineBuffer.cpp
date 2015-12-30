@@ -82,21 +82,32 @@ template <> inline void StreamOutBuffer<std::ofstream>::close() {
 
 class PipeInBuffer : public StreamInBuffer<std::istream> {
 public:
-  std::shared_ptr<FILE> pipe;
+  FILE *pipe;
   FILE_buffer fileBuffer;
   std::istream in;
-  PipeInBuffer(std::shared_ptr<FILE> pipe, std::string name)
+  PipeInBuffer(FILE *pipe, std::string name)
       : StreamInBuffer<std::istream>(&in, name), pipe(pipe),
-        fileBuffer(pipe.get(), 8 * 1024), in(&fileBuffer) {}
+        fileBuffer(pipe, 8 * 1024), in(&fileBuffer) {}
   virtual void close() override {
     if (pipe) {
-      auto rc = pclose(pipe.get());
+      int rc = 0;
+      try {
+        rc = pclose(pipe);
+      }
+      catch (...) {
+        rc = 1;
+      }
+      pipe = nullptr;      
       if (rc) {
         throw Exception("error in command: " + name);
       }
-      pipe = nullptr;
     }
     closed = true;
+  }
+  virtual ~PipeInBuffer() {
+    if (!closed) {
+      close();
+    }
   }
 };
 
@@ -244,9 +255,9 @@ std::shared_ptr<LineBuffer> LineBuffer::closeBuffer(const std::string &name) {
 
 std::shared_ptr<LineBuffer> LineBuffer::makePipeBuffer(std::string command) {
 
-  std::shared_ptr<FILE> pipe;
+  FILE *pipe = nullptr;
   try {
-    pipe.reset(popen(command.c_str(), "r"), pclose);
+    pipe = popen(command.c_str(), "r");
   } catch (...) {
     throw Exception("error executing command: " + command);
   }
