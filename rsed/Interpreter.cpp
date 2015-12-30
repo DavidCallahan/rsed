@@ -350,7 +350,7 @@ ResultCode State::interpretOne(Statement *stmt) {
   }
   case AST::ColumnsInputN: {
     vector<string> data;
-    interpret((Columns*) stmt, &data);
+    interpret((Columns *)stmt, &data);
     pushInput(LineBuffer::makeVectorInBuffer(&data, "columns"));
     break;
   }
@@ -542,7 +542,11 @@ Value *State::interpret(Expression *e) {
     break;
   }
   case AST::NumberN: {
-    e->set(double(((Number *)e)->getValue()));
+    e->set(((Number *)e)->getValue());
+    break;
+  }
+  case AST::LogicalN: {
+    e->set(((Logical *)e)->getValue());
     break;
   }
   case AST::VarMatchN: {

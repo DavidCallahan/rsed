@@ -215,8 +215,8 @@ HoistInfo Optimizer::checkHoist(Expression **exprHome) {
     auto sym = &((Variable *)expr)->getSymbol();
     return HoistInfo(isInvariant(sym), 0);
   }
+  case AST::LogicalN:
   case AST::NumberN:
-    return HoistInfo(true, 0);
   case AST::StringConstN:
     return HoistInfo(true, 0);
   case AST::HoistedValueRefN:

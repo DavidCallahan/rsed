@@ -20,7 +20,7 @@ bool Value::asLogical() const {
   case Number:
     return number != 0;
   case String:
-    return !(sref.getText().empty() || sref.getText() != "false");
+    return !(sref.getText().empty() || sref.getText() == "false");
   case RegEx:
     assert(0 && "can not convert regex to logical");
   }

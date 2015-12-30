@@ -58,7 +58,7 @@ Expression * call(std::string * name, Arg * args, Scanner * scanner) {
 %token <token> FOREACH COPY SKIP TO PAST END NEWLINE REPLACE_TOK FOR SPLIT
 %token <token> THEN ELSE IF NOT_TOK PRINT MATCH_TOK STYLE MATCH_KW
 %token <token> COLUMNS IN LOOKUP_START REQUIRED INPUT OUTPUT INOUT
-%token <token>  CLOSE ERROR ALL WITH 
+%token <token>  CLOSE ERROR ALL WITH TRUE FALSE
 %type <token> EQ_TOK NE_TOK OR_TOK AND_TOK LE_TOK GE_TOK
 %token <integer> INTEGER  DYN_VARIABLE
 %token <number> NUMBER
@@ -208,6 +208,8 @@ primitive: lookup
          | call
 	 | INTEGER { $$ = AST::number($1); }	  
 	 | NUMBER { $$ = AST::number($1); }	  
+ 	 | TRUE { $$ = new Logical(true); }
+ 	 | FALSE { $$ = new Logical(false); }
          | '(' expr ')' { $$ = $2; }
          | '(' error ')' { $$ = nullptr; }
          ;

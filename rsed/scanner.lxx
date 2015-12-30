@@ -32,6 +32,7 @@ copy        return COPY;
 else	    return ELSE;
 end         return END;
 error	    return ERROR;
+false       return FALSE;
 for	    return FOR;
 foreach     return FOREACH;
 if	    return IF;
@@ -49,6 +50,7 @@ skip        return SKIP;
 split	    return SPLIT;
 style	    return STYLE;
 then	    return THEN;
+true	    return TRUE;
 to	    return TO;
 with	    return WITH;
 

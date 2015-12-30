@@ -324,6 +324,10 @@ void Dumper::dumpExpr(const Expression *node) {
     OS << '$' << i->getValue();
     break;
   }
+  case AST::LogicalN: {
+    OS << (((Logical *)node)->getValue() ? "true" : "false");
+    break;
+  }
   case AST::StringConstN: {
     OS << static_cast<const StringConst *>(node)->getConstant();
     break;
@@ -402,6 +406,8 @@ Value::Kind Expression::valueKind() {
     return BuiltinCalls::callKind(((Call *)this)->getCallId());
   case AST::NumberN:
     return Value::Number;
+  case AST::LogicalN:
+    return Value::Logical;
   case AST::HoistedValueRefN:
     return ((HoistedValueRef *)this)->value->valueKind();
   case AST::BinaryN:

@@ -1,0 +1,14 @@
+x = true
+print $x
+print not $x
+y = false
+print $y
+print not $y
+print $x < $y
+print $x > $y
+if $x == true then
+   print "is true"
+end
+if (not $y) == true then
+   print "is not true"
+end
