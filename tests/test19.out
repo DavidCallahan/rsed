@@ -1,5 +1,9 @@
 match 1
+match 1x
 match 2
 not match 3
+not match 3x
 foo $\.*+?()[]{} bar
 match 4
+aXbXc
+a$b$X

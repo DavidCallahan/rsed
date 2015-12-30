@@ -80,6 +80,9 @@ StringRef::StringRef(std::string *text) : flags(0) {
     case 'g':
       flags |= GLOBAL;
       break;
+    case 'x':
+      flags |= ESCAPE_SPECIALS;
+      break;
     }
   }
   this->text = text->substr(1, len - 2);
@@ -100,7 +103,9 @@ std::ostream &operator<<(std::ostream &OS, const StringRef &s) {
     if (s.getFlags() & s.GLOBAL) {
       OS << 'g';
     }
+    if (s.getFlags() &  s.ESCAPE_SPECIALS) {
+      OS << 'x';
+    }
   }
   return OS;
 }
-

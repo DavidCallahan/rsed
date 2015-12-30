@@ -20,7 +20,7 @@ using namespace std::regex_constants;
 using std::vector;
 using std::string;
 namespace RSED_Debug {
-  extern int debug;
+extern int debug;
 }
 
 namespace {
@@ -47,12 +47,12 @@ public:
 
 syntax_option_type C14RegEx::regExOptions = basic;
 
-std::regex createRegex(const StringRef &str) {
+std::regex createRegex(const string &str) {
   try {
-    std::regex temp(str.getText());
+    std::regex temp(str);
     return temp;
   } catch (std::exception &) {
-    throw Exception("invalid regular expression: " + str.getText());
+    throw Exception("invalid regular expression: " + str);
   }
 }
 }
@@ -77,7 +77,8 @@ void C14RegEx::setPattern(const StringRef &pattern, int index) {
   if (index >= patterns.size()) {
     patterns.resize(2 * index + 1);
   }
-  patterns[index] = std::make_pair(createRegex(pattern), pattern.getFlags());
+  auto regex = createRegex(pattern.getText());
+  patterns[index] = std::make_pair(std::move(regex) ,pattern.getFlags());
 }
 
 std::string C14RegEx::escape(const std::string &text) {

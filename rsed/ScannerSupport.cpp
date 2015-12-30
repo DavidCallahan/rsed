@@ -27,7 +27,7 @@ int Scanner::init(const char *source) {
   return 1;
 }
 
-static std::regex terminator("^\\s*[\"']?([[a-zA-Z_][a-zA-Z0-9_]*)([\"'](r)?)?\\s*$");
+static std::regex terminator("^\\s*[\"']?([[a-zA-Z_][a-zA-Z0-9_]*)([\"']([rxig]*))?\\s*$");
 
 // implement shell-style multilin strings
 // we jsut saw "<<", now find teh terminator string

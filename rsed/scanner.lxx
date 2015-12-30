@@ -92,8 +92,8 @@ with	    return WITH;
 
 \n([ \t]*(#.*)?\n)* return NEWLINE;
 
-\"([^"]|\\\")*\"[rig]*  yylval.name = makeString(yytext); return STRING;
-\'([^']|\\\')*\'[rig]*  yylval.name = makeString(yytext); return STRING;
+\"([^"]|\\\")*\"[rigx]*  yylval.name = makeString(yytext); return STRING;
+\'([^']|\\\')*\'[rigx]*  yylval.name = makeString(yytext); return STRING;
 
 <<EOF>>     { static int seen = 0; return (seen++ ? 0 : NEWLINE); }
 

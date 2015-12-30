@@ -20,6 +20,7 @@ public:
     RAW_STRING = 1,
     CASE_INSENSITIVE = 2,
     GLOBAL = 4,
+    ESCAPE_SPECIALS = 8,
   };
 
   StringRef() : flags(0) {}
@@ -41,7 +42,7 @@ public:
   bool isRaw() const { return flags & RAW_STRING; }
   void setIsRaw() { flags |= RAW_STRING; }
   void setIsGlobal() { flags |= GLOBAL; }
-
+  bool escapeSpecials() const { return flags & ESCAPE_SPECIALS; }
   void clear() { flags = 0, text.clear(); }
 };
 std::ostream &operator<<(std::ostream &, const StringRef &);

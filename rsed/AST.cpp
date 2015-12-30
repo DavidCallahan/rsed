@@ -456,11 +456,17 @@ public:
   void append(Expression *t) {
     term = (term ? new Binary(Binary::CONCAT, term, t, 0) : t);
   }
+  StringConst * makeString(std::string s, unsigned flags) {
+    if (flags & StringRef::ESCAPE_SPECIALS) {
+      s = RegEx::regEx->escape(s);
+    }
+    return new StringConst(StringRef(s,flags));
+  }
   void single(const std::string &s, unsigned flags) override {
-    term = new StringConst(StringRef(s, flags));
+    term = makeString(s,flags);
   }
   void string(stringstream &s, unsigned flags) override {
-    append(new StringConst(StringRef(s.str(), flags)));
+    append(makeString(s.str(),flags));
   }
   void varMatch(unsigned i) override { append(new VarMatch(i)); }
   void variable(std::string name) override {
