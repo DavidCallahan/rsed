@@ -19,9 +19,9 @@ typedef class Value *ValueP;
 class Value {
 public:
   enum Kind {
+    String,
     Logical,
     Number,
-    String,
     RegEx,
   };
   Kind kind;
@@ -43,6 +43,13 @@ public:
   void set(double);
   void set(StringRef);
   void set(std::string);
+  void set(Value * value) {
+    kind = value->kind;
+    logical = value->logical;
+    number = value->number;
+    regEx = value->regEx;
+    sref = value->sref;
+  }
   void setRegEx(unsigned i);
   void append(ValueP &);
 };

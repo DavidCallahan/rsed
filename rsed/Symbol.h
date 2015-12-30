@@ -9,32 +9,35 @@
 #ifndef __rsed__Symbol__
 #define __rsed__Symbol__
 #include <string>
+#include "Value.h"
+#include "Exception.h"
 
-class Symbol {
+class Symbol : protected Value {
   std::string name;
 
 public:
   Symbol(const std::string &name) : name(name) {}
   const std::string &getName() { return name; }
 
-  virtual const std::string getValue() const = 0;
   virtual void setValue(const std::string &v) = 0;
   virtual ~Symbol() {}
   virtual bool isDynamic() const { return false; }
-
+  virtual void set(Value *) {
+    throw Exception("unable to modify symbol " + name);
+  }
+  virtual Value * getValue() { return this; }
   static Symbol *findSymbol(const std::string &name);
   static Symbol *newTempSymbol();
   static void defineSymbol(Symbol *sym);
 };
 
-class SimpleSymbol : public Symbol {
-  std::string value;
+class SimpleSymbol : public Symbol  {
 
 public:
   SimpleSymbol(const std::string &name, std::string value = "")
-      : Symbol(name), value(value) {}
-  const std::string getValue() const override { return value; }
-  void setValue(const std::string &v) override { value = v; }
+  : Symbol(name) {  Value::set(value); }
+  void setValue(const std::string &v) override { Value::set(v); }
+  void set(Value * value) override { Value::set(value); }
   ~SimpleSymbol() {}
 };
 
@@ -44,7 +47,10 @@ template <typename Action> class DynamicSymbol : public Symbol {
 public:
   DynamicSymbol(const std::string &name, const Action &action)
       : Symbol(name), action(std::move(action)) {}
-  const std::string getValue() const override { return action(); }
+  Value * getValue() override {
+    Value::set(action());
+    return this;
+  }
   void setValue(const std::string &v) override {}
   virtual bool isDynamic() const override { return true; }
   ~DynamicSymbol() {}

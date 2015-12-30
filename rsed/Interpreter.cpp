@@ -207,7 +207,7 @@ public:
   void string(stringstream &s, unsigned) override { out << s.str(); }
   void varMatch(unsigned i) override { out << state.match(i); };
   void variable(std::string name) override {
-    out << Symbol::findSymbol(name)->getValue();
+    out << Symbol::findSymbol(name)->getValue()->asString().getText();
   }
 };
 }
@@ -422,10 +422,10 @@ void State::print(Expression *e, LineBuffer *out) {
 }
 
 void State::interpret(Set *set) {
-  auto rhs = interpret(set->rhs)->asString().getText();
+  auto rhs = interpret(set->rhs);
   auto lhs = set->lhs;
   if (lhs->kind() == AST::VariableN) {
-    ((Variable *)lhs)->getSymbol().setValue(rhs);
+    ((Variable *)lhs)->getSymbol().set(rhs);
   } else if (lhs->isOp(lhs->LOOKUP)) {
     auto b = BinaryP(lhs);
     auto name = interpret(b->right);
@@ -434,7 +434,7 @@ void State::interpret(Set *set) {
                       inputBuffer);
     }
     auto symbol = Symbol::findSymbol(name->asString().getText());
-    symbol->setValue(rhs);
+    symbol->set(rhs);
   } else {
     assert("not yet implemented non variable lhs");
   }
@@ -675,7 +675,7 @@ void State::interpret(Expression *e, stringstream &str, unsigned *flags) {
   }
   switch (e->kind()) {
   case AST::VariableN: {
-    str << ((Variable *)e)->getSymbol().getValue();
+    str << ((Variable *)e)->getSymbol().getValue()->asString().getText();
     break;
   }
   case AST::NumberN: {
