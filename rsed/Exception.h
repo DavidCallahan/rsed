@@ -9,6 +9,7 @@
 #ifndef Exception_h
 #define Exception_h
 #include <string>
+#include <memory>
 
 class Statement;
 class LineBuffer;

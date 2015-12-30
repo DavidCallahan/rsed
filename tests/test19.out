@@ -5,5 +5,6 @@ not match 3
 not match 3x
 foo $\.*+?()[]{} bar
 match 4
+match 4x
 aXbXc
 a$b$X
