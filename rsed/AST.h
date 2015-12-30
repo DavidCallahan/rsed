@@ -569,7 +569,6 @@ public:
 // TODO add a mechanism to print a string without a newline (WRITE, PRINT
 // STRING, ...)
 // TODO test "  "i
-// TODO fix string modifiers in multi line strings
 
 
 #endif /* defined(__rsed__AST__) */

@@ -45,11 +45,11 @@ public:
                               const std::string &line) override;
 };
 
-syntax_option_type C14RegEx::regExOptions = basic;
+syntax_option_type C14RegEx::regExOptions = ECMAScript;
 
-std::regex createRegex(const string &str) {
+std::regex createRegex(const string &str, syntax_option_type options) {
   try {
-    std::regex temp(str);
+    std::regex temp(str,options);
     return temp;
   } catch (std::exception &) {
     throw Exception("invalid regular expression: " + str);
@@ -77,7 +77,11 @@ void C14RegEx::setPattern(const StringRef &pattern, int index) {
   if (index >= patterns.size()) {
     patterns.resize(2 * index + 1);
   }
-  auto regex = createRegex(pattern.getText());
+  syntax_option_type options = C14RegEx::regExOptions;
+  if (pattern.getFlags() & pattern.CASE_INSENSITIVE) {
+    options |= icase;
+  }
+  auto regex = createRegex(pattern.getText(), options);
   patterns[index] = std::make_pair(std::move(regex) ,pattern.getFlags());
 }
 
@@ -94,7 +98,7 @@ std::string C14RegEx::escape(const std::string &text) {
 
 void RegEx::setDefaultRegEx() {
   regEx = new C14RegEx;
-  regEx->setStyle("basic");
+  regEx->setStyle("ECMAScript");
 }
 
 // maybe thos should not be in C14RegEx but rather used
