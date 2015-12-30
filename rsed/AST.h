@@ -551,8 +551,6 @@ public:
 //      implicit concatenation when used like a string
 // TODO  split ... into var1, ..., vk
 //    or (v1,...vk) = split ...
-// TODO what happens with "abc\"def"r  ? is it 'abc"def'?
-// TODO simplify the multiline terminator to be an identifier posibly as a string
 // TODO should we allow '&' on the terminator line for a multi-line string?
 // TODO why aren't we processing regex escapes?
 // TODO add support for floating point values in the input

@@ -1,0 +1,3 @@
+print << EOT
+Some text
+EOT " more"

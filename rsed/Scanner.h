@@ -15,7 +15,7 @@ public:
     return std::cerr << lineno() << "; ";
   }
   
-  std::string * multilineString();
+  std::string * multilineString(std::string * unputText);
 };
 
 class StmtList {

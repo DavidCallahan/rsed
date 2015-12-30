@@ -25,6 +25,8 @@ ID       [a-zA-Z][a-zA-Z0-9_]*
 %%
 
 all	    return ALL;
+and	    return AND_TOK;
+close	    return CLOSE;
 columns	    return COLUMNS;
 copy        return COPY;
 else	    return ELSE;
@@ -35,27 +37,27 @@ foreach     return FOREACH;
 if	    return IF;
 in	    return IN;
 input	    return INPUT;
+match	    return MATCH_KW;
 not	    return NOT_TOK;
+or	    return OR_TOK;
 output	    return OUTPUT;
 past	    return PAST;
 print	    return PRINT;
 replace     return REPLACE_TOK;
+required    return REQUIRED;
 skip        return SKIP;
+split	    return SPLIT;
 style	    return STYLE;
 then	    return THEN;
 to	    return TO;
 with	    return WITH;
-split	    return SPLIT;
-required    return REQUIRED;
-close	    return CLOSE;
-match	    return MATCH_KW;
 
 {ID}	    yylval.name = new std::string(yytext);   return IDENTIFIER;
 \${ID}	    yylval.name = new std::string(yytext+1); return VARIABLE;
 \${DIGIT}+  yylval.integer = atoi(yytext+1); return DYN_VARIABLE;
 {DIGIT}+    yylval.integer = atoi(yytext) ; return NUMBER;
-\$\(	    return LOOKUP_START;
 
+\$\(	    return LOOKUP_START;
 =~	    return MATCH_TOK;
 =	    return '=';
 \(	    return '(';
@@ -77,7 +79,12 @@ match	    return MATCH_KW;
 	    	   
 #.*         /* comment */
 [ \t]+          /* eat up whitespace */
-"<<"        { yylval.name = multilineString(); unput('\n'); return STRING; }
+"<<"        { std::string endLine; 	     
+	      yylval.name = multilineString(&endLine); 
+              for (auto i = endLine.length(); i > 0; ) {
+	      	  unput(endLine[--i]);
+	      }
+              return STRING; }
 
 \n([ \t]*(#.*)?\n)* return NEWLINE;
 
