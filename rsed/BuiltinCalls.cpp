@@ -36,6 +36,9 @@ vector<BuiltinName> builtins{{LENGTH, "length"},
                              {SUBSTR, "substr"},
                              {SUBSTR, "substring"},
                              {IFNULL, "ifnull"},
+                             {LOGICAL, "logical"},
+                             {NUMBERB, "number"},
+                             {STRINGB, "string"},
                              {SHELL, "shell"}};
 
 string doQuote(char quote, const string &text) {
@@ -53,7 +56,15 @@ string doQuote(char quote, const string &text) {
 }
 
 Value::Kind callKind(unsigned id) {
-  return (id == LENGTH ? Value::Number : Value::String);
+  switch(id) {
+    case LENGTH:
+    case NUMBERB:
+      return Value::Number;
+    case LOGICAL:
+      return Value::Logical;
+    default:
+      return Value::String;
+  }
 }
 
 bool getCallId(const string &name, unsigned *u) {
@@ -205,6 +216,25 @@ void evalCall(unsigned int id, vector<Value *> &args, EvalState *state,
       }
     }
     break;
+  }
+  case LOGICAL: {
+    if (args.size() < 1) {
+      throw Exception("at least one arg required for logical()");
+    }
+    result->set(args[0]->asLogical());
+    return;
+  }
+  case NUMBERB: {
+    if (args.size() < 1) {
+      throw Exception("at least one arg required for number()");
+    }
+    result->set(args[0]->asNumber());
+    return;
+  }
+  case STRINGB: {
+    for (auto v : args) {
+      ss << v->asString().getText();
+    }
   }
   }
   result->set(ss.str());

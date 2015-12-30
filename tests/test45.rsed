@@ -12,3 +12,9 @@ end
 if (not $y) == true then
    print "is not true"
 end
+if logical($x) then
+   print "is true"
+end 
+if not logical($y) then
+   print "is not true"
+end

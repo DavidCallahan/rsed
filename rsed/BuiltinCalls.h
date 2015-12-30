@@ -25,6 +25,9 @@ enum Builtins {
   SUBSTR,
   QUOTE,
   IFNULL,
+  LOGICAL,
+  NUMBERB,
+  STRINGB,
 };
 bool getCallId(const std::string &name, unsigned *);
 void evalCall(unsigned id, std::vector<Value *> &args, EvalState *,
