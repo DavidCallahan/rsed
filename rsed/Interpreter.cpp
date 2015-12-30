@@ -541,8 +541,8 @@ Value *State::interpret(Expression *e) {
     e->set(((Variable *)e)->getSymbol().getValue());
     break;
   }
-  case AST::IntegerN: {
-    e->set(double(((Integer *)e)->getValue()));
+  case AST::NumberN: {
+    e->set(double(((Number *)e)->getValue()));
     break;
   }
   case AST::VarMatchN: {
@@ -674,8 +674,8 @@ void State::interpret(Expression *e, stringstream &str, unsigned *flags) {
     str << ((Variable *)e)->getSymbol().getValue();
     break;
   }
-  case AST::IntegerN: {
-    str << ((Integer *)e)->getValue();
+  case AST::NumberN: {
+    str << ((Number *)e)->getValue();
     break;
   }
   case AST::StringConstN: {

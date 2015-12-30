@@ -45,7 +45,7 @@ public:
                                bool replaceAll, int sourceLine);
   static Expression *limit(int number, Expression *control);
   static Expression *limit(int number, int sourceLine);
-  static Expression *integer(int value);
+  static Expression *number(double value);
   static Expression *variable(std::string *var);
   static Expression *current();
   static Expression *stringConst(std::string *constant);
@@ -77,7 +77,7 @@ public:
   enum ExprKind {
     ControlN,
     VariableN,
-    IntegerN,
+    NumberN,
     VarMatchN,
     StringConstN,
     CallN,
@@ -366,19 +366,19 @@ public:
   void setConstant(StringRef constant) { this->constant = constant; }
 };
 
-class Integer : public Expression {
-  int value;
+class Number : public Expression {
+  double value;
 
 public:
-  Integer(int value) : value(value) {}
-  ExprKind kind() const override { return IntegerN; }
-  int getValue() const { return value; }
+  Number(double value) : value(value) {}
+  ExprKind kind() const override { return NumberN; }
+  double getValue() const { return value; }
 };
-inline Expression *AST::integer(int value) { return new Integer(value); }
+inline Expression *AST::number(double value) { return new Number(value); }
 
-class VarMatch : public Integer {
+class VarMatch : public Number {
 public:
-  VarMatch(int value) : Integer(value) {}
+  VarMatch(int value) : Number(value) {}
   ExprKind kind() const override { return VarMatchN; }
 };
 
@@ -549,9 +549,10 @@ public:
 // TODO -- think about adding lists [x,y,z]
 //      with iteration over lists, functions of lists,
 //      implicit concatenation when used like a string
+//      subscript operator  x[i]
+//
 // TODO  split ... into var1, ..., vk
 //    or (v1,...vk) = split ...
-// TODO should we allow '&' on the terminator line for a multi-line string?
 // TODO why aren't we processing regex escapes?
 // TODO add support for floating point values in the input
 // TODO add true/false as boolean literals

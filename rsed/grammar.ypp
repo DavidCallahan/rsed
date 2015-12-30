@@ -51,6 +51,7 @@ Expression * call(std::string * name, Arg * args, Scanner * scanner) {
   int integer;
   bool boole;
   StmtList list;
+  double number;
 }
 
 %token <name>  STRING VARIABLE IDENTIFIER
@@ -59,7 +60,8 @@ Expression * call(std::string * name, Arg * args, Scanner * scanner) {
 %token <token> COLUMNS IN LOOKUP_START REQUIRED INPUT OUTPUT INOUT
 %token <token>  CLOSE ERROR ALL WITH 
 %type <token> EQ_TOK NE_TOK OR_TOK AND_TOK LE_TOK GE_TOK
-%token <integer> NUMBER  DYN_VARIABLE
+%token <integer> INTEGER  DYN_VARIABLE
+%token <number> NUMBER
 %type <integer> lineno
 %type <boole> inout
 %type <stmt> stmtlist stmt foreach copy skip replace 
@@ -125,9 +127,9 @@ skip: SKIP lineno control NEWLINE { $$ = AST::skip($3,$2); }
     | SKIP lineno IF pattern NEWLINE  { $$ = AST::skipOne($4, $2); }    // to end of foreach
     | SKIP NEWLINE { $$ = new Skip(LINE); } ;  // skip 1
 
-control: FOR NUMBER toPast  { $$ = AST::limit($2,$3); }
+control: FOR INTEGER toPast  { $$ = AST::limit($2,$3); }
        | toPast  
-       | FOR NUMBER	{ $$ = AST::limit($2, LINE); }
+       | FOR INTEGER	{ $$ = AST::limit($2, LINE); }
        | ALL { $$ = nullptr; }
        ;
 
@@ -204,7 +206,8 @@ primitive: lookup
 	 | variable
 	 | DYN_VARIABLE { $$ = new VarMatch($1); }
          | call
-	 | NUMBER { $$ = AST::integer($1); }	  
+	 | INTEGER { $$ = AST::number($1); }	  
+	 | NUMBER { $$ = AST::number($1); }	  
          | '(' expr ')' { $$ = $2; }
          | '(' error ')' { $$ = nullptr; }
          ;

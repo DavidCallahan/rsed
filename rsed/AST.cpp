@@ -314,8 +314,8 @@ void Dumper::dumpExpr(const Expression *node) {
     }
     break;
   }
-  case AST::IntegerN: {
-    auto i = static_cast<const Integer *>(node);
+  case AST::NumberN: {
+    auto i = static_cast<const Number *>(node);
     OS << i->getValue();
     break;
   }
@@ -400,7 +400,7 @@ Value::Kind Expression::valueKind() {
     return Value::String;
   case AST::CallN:
     return BuiltinCalls::callKind(((Call *)this)->getCallId());
-  case AST::IntegerN:
+  case AST::NumberN:
     return Value::Number;
   case AST::HoistedValueRefN:
     return ((HoistedValueRef *)this)->value->valueKind();
