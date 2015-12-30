@@ -196,6 +196,7 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
       OS << r->getCount();
     }
     OS << '\n';
+    break;
   }
   case AST::HoistedValueN: {
     auto h = static_cast<const HoistedValue *>(node);
