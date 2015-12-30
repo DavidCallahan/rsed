@@ -18,7 +18,7 @@ bool Value::asLogical() const {
   case Logical:
     return logical;
   case Number:
-    return number != 0;
+    return number != 0 && number==number;
   case String:
     return !(sref.getText().empty() || sref.getText() == "false");
   case RegEx:

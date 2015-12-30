@@ -377,10 +377,11 @@ public:
 };
 inline Expression *AST::number(double value) { return new Number(value); }
 
-class Logical: public Expression {
+class Logical : public Expression {
   bool value;
+
 public:
-  Logical(bool value) : value(value) { }
+  Logical(bool value) : value(value) {}
   ExprKind kind() const override { return LogicalN; }
   bool getValue() const { return value; }
 };
@@ -563,13 +564,10 @@ public:
 // TODO  split ... into var1, ..., vk
 //    or (v1,...vk) = split ...
 // TODO why aren't we processing regex escapes?
-// TODO add true/false as boolean literals
-// TODO NaN should coerce to false
 // TODO add number(), string(), logical() explicit coerion functions
 // TODO is it a good idea for not e to be implicitly not match e?
 //       maybe a string-boolean converstion should be via match?
-// TODO add a mechanism to print a string without a newline (WRITE, PRINT STRING, ...)
-// TODO symbols should have Values not StringRefs
-
+// TODO add a mechanism to print a string without a newline (WRITE, PRINT
+// STRING, ...)
 
 #endif /* defined(__rsed__AST__) */

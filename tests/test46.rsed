@@ -1,0 +1,6 @@
+nan = 0.0 / 0.0
+print $nan
+print $nan == $nan
+if (not $nan) == true then
+   print "is false"
+end
