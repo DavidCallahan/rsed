@@ -237,10 +237,11 @@ HoistInfo Optimizer::checkHoist(Expression **exprHome) {
     if (invariant && BuiltinCalls::invariant(c->getCallId())) {
       return HOISTABLE;
     }
-    // TODO reuse args info....
     auto ap = args.begin();
     for (auto a = c->args; a; a = a->nextArg, ++ap) {
-      hoistInvariants(&a->value);
+      if (shouldHoist(*ap)) {
+        hoist(&a->value);
+      }
     }
     break;
   }
