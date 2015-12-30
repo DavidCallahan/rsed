@@ -563,12 +563,10 @@ public:
 //
 // TODO  split ... into var1, ..., vk
 //    or (v1,...vk) = split ...
-// TODO why aren't we processing regex escapes?
 // TODO is it a good idea for "not e" to be implicitly not match e?
 //       maybe a string-boolean converstion should be via match?
 // TODO add a mechanism to print a string without a newline (WRITE, PRINT
 // STRING, ...)
-// TODO test "  "i
 
 
 #endif /* defined(__rsed__AST__) */

@@ -16,7 +16,7 @@
 using std::unordered_set;
 using std::vector;
 
-DEFINE_bool(optimize, false, "enable optimizer");
+DEFINE_bool(no_optimize, false, "disable optimizer");
 namespace {
 
 const unsigned HOISTABLE_COST = 1;
@@ -57,7 +57,7 @@ public:
 
 namespace Optimize {
 Statement *optimize(Statement *input) {
-  if (!FLAGS_optimize) {
+  if (FLAGS_no_optimize) {
     return input;
   }
   Optimizer opt;
