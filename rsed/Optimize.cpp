@@ -6,13 +6,14 @@
 //
 //
 
+#include <unordered_set>
+#include <assert.h>
 #include <gflags/gflags.h>
 #include "rsed.h"
 #include "Optimize.h"
 #include "AST.h"
 #include "ASTWalk.h"
-#include <unordered_set>
-#include <assert.h>
+#include "BuiltinCalls.h"
 using std::unordered_set;
 using std::vector;
 
@@ -233,9 +234,10 @@ HoistInfo Optimizer::checkHoist(Expression **exprHome) {
         invariant = false;
       }
     }
-    if (invariant) {
+    if (invariant && BuiltinCalls::invariant(c->getCallId())) {
       return HOISTABLE;
     }
+    // TODO reuse args info....
     auto ap = args.begin();
     for (auto a = c->args; a; a = a->nextArg, ++ap) {
       hoistInvariants(&a->value);

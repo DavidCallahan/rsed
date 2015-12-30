@@ -64,6 +64,7 @@ const StringRef &Value::asString() {
       ss << number;
     }
     sref = StringRef(ss.str(), 0);
+    break ;
   }
   case String:
     break;

@@ -19,11 +19,8 @@ runTest () {
     ARG1=x ARG2=y $RSED $test $OPT $DEBUG a < $input > $base.test-out
 }
 
-
-for test in test*.rsed
-do
-    base=`basename $test .rsed`
-    echo $test 
+runPass () {
+    echo $test $OPT 
     runTest
     if [ $? != 0 ]
     then
@@ -42,6 +39,13 @@ do
 	exit 1
     fi
     rm $base.test-out
+}
+
+for test in test*.rsed
+do
+    base=`basename $test .rsed`
+    runPass
+    OPT=-optimize runPass
 done
 
 echo "test1 from stdin"

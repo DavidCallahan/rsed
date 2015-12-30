@@ -1,0 +1,9 @@
+skip past required "^\{$"
+common = '$run_id,"$REPO","$REVISION","$TARGET",'
+template = '"$benchmark",$instance,"success","$time","ns"'r
+foreach to required "^\}$"
+   required '"(.*)" : ([0-9]+\.[0-9]+)'
+   benchmark =$1
+   time = $2
+   print $common expand($template)
+end

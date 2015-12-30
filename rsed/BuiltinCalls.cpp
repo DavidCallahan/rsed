@@ -56,14 +56,25 @@ string doQuote(char quote, const string &text) {
 }
 
 Value::Kind callKind(unsigned id) {
-  switch(id) {
-    case LENGTH:
-    case NUMBERB:
-      return Value::Number;
-    case LOGICAL:
-      return Value::Logical;
-    default:
-      return Value::String;
+  switch (id) {
+  case LENGTH:
+  case NUMBERB:
+    return Value::Number;
+  case LOGICAL:
+    return Value::Logical;
+  default:
+    return Value::String;
+  }
+}
+
+bool invariant(unsigned id) {
+  switch (id) {
+  case EXPAND:
+  case SHELL:
+  case MKTEMP:
+    return false;
+  default:
+    return true;
   }
 }
 
