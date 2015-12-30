@@ -57,7 +57,12 @@ const StringRef &Value::asString() {
     break;
   case Number: {
     stringstream ss;
-    ss << number;
+    if (number != number) {
+      ss << "NaN";
+    }
+    else {
+      ss << number;
+    }
     sref = StringRef(ss.str(), 0);
   }
   case String:
