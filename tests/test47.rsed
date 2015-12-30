@@ -1,0 +1,7 @@
+x = "foo" 
+print <<EOF
+$x bar 
+EOF
+print <<"EOF"r
+$x bar 
+EOF
