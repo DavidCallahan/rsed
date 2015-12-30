@@ -80,6 +80,9 @@ with	    return WITH;
 "-"	    return '-';
 "*"	    return '*';
 "/"	    return '/';
+"{"	    return '{';
+"}"	    return '}';
+
 	    	   
 #.*         /* comment */
 [ \t]+          /* eat up whitespace */

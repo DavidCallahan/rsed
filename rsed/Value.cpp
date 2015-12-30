@@ -13,14 +13,40 @@
 using std::string;
 using std::stringstream;
 
+void Value::set(const Value *value) {
+  kind = value->kind;
+  switch (kind) {
+  case Logical:
+    logical = value->logical;
+    break;
+  case Number:
+    number = value->number;
+    break;
+  case RegEx:
+    regEx = value->regEx;
+    break;
+  case String:
+    sref = value->sref;
+    break;
+  case List:
+    list.clear();
+    for (auto &v : value->list) {
+      list.push_back(v);
+    }
+    break;
+  }
+}
+
 bool Value::asLogical() const {
   switch (kind) {
   case Logical:
     return logical;
   case Number:
-    return number != 0 && number==number;
+    return number != 0 && number == number;
   case String:
     return !(sref.getText().empty() || sref.getText() == "false");
+  case List:
+    return !list.empty();
   case RegEx:
     assert(0 && "can not convert regex to logical");
   }
@@ -41,6 +67,8 @@ double Value::asNumber() {
     }
     return result;
   }
+  case List: {
+  }
   case RegEx:
     assert(0 && "can not convert regex to number");
   }
@@ -59,12 +87,19 @@ const StringRef &Value::asString() {
     stringstream ss;
     if (number != number) {
       ss << "NaN";
-    }
-    else {
+    } else {
       ss << number;
     }
     sref = StringRef(ss.str(), 0);
-    break ;
+    break;
+  }
+  case List: {
+    stringstream ss;
+    for (auto &v : list) {
+      ss << v.asString().getText();
+    }
+    sref = StringRef(ss.str(), 0); // TODO propagate flags?
+    break;
   }
   case String:
     break;
@@ -77,6 +112,13 @@ const StringRef &Value::asString() {
 std::ostream &operator<<(std::ostream &OS, Value &value) {
   if (value.kind == value.RegEx) {
     OS << "regex[" << value.getRegEx() << "]";
+  } else if (value.kind == value.List) {
+    char sep = '[';
+    for (auto &v : value.list) {
+      OS << sep << v;
+      sep = ',';
+    }
+    OS << ']';
   } else {
     OS << value.asString();
   }
@@ -121,13 +163,18 @@ template <typename T> static int cmp(const T &left, const T &right) {
 }
 
 int compare(Value *left, Value *right) {
-  switch (std::min(left->kind, right->kind)) {
+  auto k = std::min(left->kind, right->kind);
+  if (k == left->List) {
+    k = left->String;
+  }
+  switch (k) {
   case Value::Logical:
     return cmp(left->asLogical(), right->asLogical());
   case Value::Number:
     return cmp(left->asNumber(), right->asNumber());
   case Value::String:
     return cmp(left->asString().getText(), right->asString().getText());
+  case Value::List:
   case Value::RegEx:
     assert(0 && "can not compare regex");
   }

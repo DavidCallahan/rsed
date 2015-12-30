@@ -23,16 +23,18 @@ public:
     Logical,
     Number,
     RegEx,
+    List,
   };
   Kind kind;
   StringRef sref;
   bool logical = false;
   double number = 0.0;
   unsigned regEx;
+  std::vector<Value> list;
   Value(StringRef string) : kind(String), sref{string} {}
   Value(bool logical = false) : kind(Logical), logical(logical) {}
   Value(double number) : kind(Number), number(number) {}
-  
+  Value(const Value &value) { set(&value); }
   bool isString() const { return kind == String; }
   const StringRef &asString();
   bool asLogical() const;
@@ -43,13 +45,7 @@ public:
   void set(double);
   void set(StringRef);
   void set(std::string);
-  void set(Value * value) {
-    kind = value->kind;
-    logical = value->logical;
-    number = value->number;
-    regEx = value->regEx;
-    sref = value->sref;
-  }
+  void set(const Value * value);
   void setRegEx(unsigned i);
   void append(ValueP &);
 };

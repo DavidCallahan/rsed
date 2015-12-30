@@ -557,9 +557,14 @@ public:
 //       append x to y [with sep]
 //       $? -- number of matches?
 // TODO -- think about adding lists [x,y,z]
-//      with iteration over lists, functions of lists,
-//      implicit concatenation when used like a string
-//      subscript operator  x[i]
+//       x = { a, b, c}
+//       x = append(x, ....)
+//          .. x[0] ...  # access
+//          x { a }      # append/concat (otherwise join to string)
+//       {a,b} = x       # destructure
+//       input x         # iterate over
+//          join(",", x) # join
+//       empty list is false
 //
 // TODO  split ... into var1, ..., vk
 //    or (v1,...vk) = split ...

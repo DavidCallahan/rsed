@@ -58,7 +58,7 @@ Expression * call(std::string * name, Arg * args, Scanner * scanner) {
 %token <token> FOREACH COPY SKIP TO PAST END NEWLINE REPLACE_TOK FOR SPLIT
 %token <token> THEN ELSE IF NOT_TOK PRINT MATCH_TOK STYLE MATCH_KW
 %token <token> COLUMNS IN LOOKUP_START REQUIRED INPUT OUTPUT INOUT
-%token <token>  CLOSE ERROR ALL WITH TRUE FALSE
+%token <token>  CLOSE ERROR ALL WITH TRUE FALSE 
 %type <token> EQ_TOK NE_TOK OR_TOK AND_TOK LE_TOK GE_TOK
 %token <integer> INTEGER  DYN_VARIABLE
 %token <number> NUMBER
@@ -71,7 +71,7 @@ Expression * call(std::string * name, Arg * args, Scanner * scanner) {
 %type <boole> optAll optRequired
 %type <expr> control toPast  
 %type <expr> optControl optExpr optIn
-%type <expr>  buffer optBuffer pattern
+%type <expr>  buffer optBuffer pattern list
 %type <arg> optarglist arglist 
 %type <expr> name expr term primitive variable call lookup replaceExpr stringTerm
 %start script
@@ -212,6 +212,7 @@ primitive: lookup
  	 | FALSE { $$ = new Logical(false); }
          | '(' expr ')' { $$ = $2; }
          | '(' error ')' { $$ = nullptr; }
+         | list
          ;
 
 variable: VARIABLE { $$ = AST::variable($1); };
@@ -223,6 +224,8 @@ optarglist: /*empty*/ { $$ = nullptr; }
 arglist: expr { $$ = new Arg($1, nullptr ,LINE); }
        | expr ',' arglist { $$ = new Arg($1, $3, LINE); }
        ;
+
+list: "{" optarglist "}" { } 
 
 replaceExpr: REPLACE_TOK optAll expr WITH expr optIn  %prec REPLACE_TOK
        { 
