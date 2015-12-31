@@ -98,7 +98,6 @@ public:
   PipeInBuffer(FILE *pipe, std::string name)
       : StreamInBuffer<std::istream>(&in, name), pipe(pipe),
         fileBuffer(pipe, 8 * 1024), in(&fileBuffer) {
-    enableCopy();
   }
   virtual void close() override {
     if (pipe) {
@@ -163,7 +162,7 @@ string inputFilename(const string &prefix) {
 
 std::shared_ptr<LineBuffer> openInBuffer(std::string fileName) {
   auto f = new std::ifstream(fileName);
-  if (!f || !f->is_open()) {
+  if (!f || !*f) {
     throw Exception("unable to open input file: " + fileName);
   }
   return std::make_shared<StreamInBuffer<std::ifstream>>(f, fileName);
@@ -213,6 +212,7 @@ bool LineBuffer::nextLine(std::string *s) {
   auto rc = getLine(*s);
   if (rc && copyStream.is_open()) {
     copyStream << *s << '\n';
+    assert(! copyStream.fail());
   }
   return rc;
 }
@@ -224,7 +224,7 @@ void LineBuffer::enableCopy() {
     }
     string saveName = inputFilename(FLAGS_save_prefix);
     copyStream.open(saveName);
-    if (!copyStream.is_open()) {
+    if (!copyStream) {
       throw Exception("unable to open copy output " + saveName);
     }
   }
@@ -261,7 +261,7 @@ LineBuffer::findOutputBuffer(const std::string &name) {
   }
   if (!b.output || b.output->closed) {
     auto f = new ofstream(name);
-    if (!f->is_open()) {
+    if (!*f) {
       string error("unable to open file: ");
       error += name;
       throw error;
@@ -310,6 +310,9 @@ std::shared_ptr<LineBuffer> LineBuffer::closeBuffer(const std::string &name) {
 }
 
 std::shared_ptr<LineBuffer> LineBuffer::makePipeBuffer(std::string command) {
+  if (!FLAGS_replay_prefix.empty()) {
+    return replayFile();
+  }
 
   FILE *pipe = nullptr;
   try {

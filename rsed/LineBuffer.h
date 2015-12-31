@@ -13,25 +13,33 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <iostream>
+
 class LineBuffer {
   std::ofstream copyStream;
   std::string name;
   virtual bool getLine(std::string &) = 0;
+
 protected:
   bool closed = false;
   std::string inputLine;
   int lineno = 0;
-  void enableCopy() ;
+  void enableCopy();
+
 public:
   LineBuffer(std::string name) : name(name) {}
   int getLineno() const { return lineno; }
   const std::string &getName() const { return name; }
- 
-  bool nextLine(std::string * s);
+
+  bool nextLine(std::string *s);
   virtual bool eof() = 0;
   virtual void append(const std::string &line) = 0;
   virtual void close() = 0;
-  virtual ~LineBuffer() { if(copyStream.is_open()) { copyStream.close(); } }
+  virtual ~LineBuffer() {
+    if (copyStream.is_open()) {
+      copyStream.close();
+    }
+  }
 
   const std::string &getInputLine() { return inputLine; }
 

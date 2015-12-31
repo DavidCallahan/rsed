@@ -63,16 +63,18 @@ then
 fi
 rm $base.test-out
 
-mkdir -p  save
-test=test25.rsed
-base=test25
-OPT=-save_prefix=save/save-test25- runPass
-cp test25.rsed test25.out save
-pushd save >& /dev/null
-OPT=-replay_prefix=save-test25- runPass
-popd  >&/dev/null
-rm -rf save
-echo done
+for test in test{25,38}.rsed
+do
+    base=`basename $test .rsed`
+    mkdir -p  save
+    OPT=-save_prefix=save/save-$base- runPass
+    cp $test $base.out save
+    pushd save >& /dev/null
+    OPT=-replay_prefix=save-$base- runPass
+    popd  >&/dev/null
+    rm -rf save
+done
+
 
 
 set +e
