@@ -543,9 +543,9 @@ void State::interpret(Split *split) {
 
 void Interpreter::initialize(int argc, char *argv[]) {
   state = new State;
-  state->stdinBuffer = LineBuffer::makeInBuffer(&std::cin, "<stdin>");
+  state->stdinBuffer = LineBuffer::getStdin();
   state->resetInput(state->stdinBuffer);
-  state->stdoutBuffer = LineBuffer::makeOutBuffer(&std::cout, "<stdout>");
+  state->stdoutBuffer = LineBuffer::getStdout();
   state->outputBuffer = state->stdoutBuffer;
   state->setRegEx(RegEx::regEx);
   Symbol::defineSymbol(makeSymbol("LINE", [this]() {

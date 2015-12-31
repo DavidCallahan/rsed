@@ -8,6 +8,7 @@
 
 #include "LineBuffer.h"
 #include <cstdio>
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -170,9 +171,15 @@ std::shared_ptr<LineBuffer> LineBuffer::makeInBuffer(Stream *stream,
 std::shared_ptr<LineBuffer> LineBuffer::makeInBuffer(std::string fileName) {
   auto f = new std::ifstream(fileName);
   if (!f || !f->is_open()) {
-    throw  Exception("unable to open input file: " + fileName);
+    throw Exception("unable to open input file: " + fileName);
   }
   return makeInBuffer(f, fileName);
+}
+std::shared_ptr<LineBuffer> LineBuffer::getStdin() {
+  return makeInBuffer(&std::cin, "<stdin>");
+}
+std::shared_ptr<LineBuffer> LineBuffer::getStdout() {
+  return makeOutBuffer(&std::cout, "<stdout>");
 }
 
 template std::shared_ptr<LineBuffer>

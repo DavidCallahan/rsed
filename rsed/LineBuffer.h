@@ -52,6 +52,8 @@ public:
   static std::shared_ptr<LineBuffer> makePipeBuffer(std::string command);
   static std::shared_ptr<LineBuffer>
   makeVectorInBuffer(std::vector<std::string> *data, std::string name);
+  static std::shared_ptr<LineBuffer> getStdin();
+  static std::shared_ptr<LineBuffer> getStdout();
   static void closeAll();
 };
 
