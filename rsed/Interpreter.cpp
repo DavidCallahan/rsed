@@ -140,6 +140,9 @@ public:
   Value *interpret(Expression *);
   void print(Expression *, LineBuffer *);
   void print(Value *, LineBuffer *);
+  Value *getPattern(Expression *);
+  string getRequiredMessage(Expression *pattern, Expression *errMsg);
+
   // string expandVariables(const string &text) override;
   stringstream &expandVariables(const string &text, stringstream &str) override;
 };
@@ -243,9 +246,9 @@ void State::interpret(Foreach *foreach) {
     string *line = nullptr;
     if (fc.needsInput()) {
       if (getInputEof()) {
-        if (c && c->getReuired()) {
-          throw Exception("end of input reached before required pattern seen",
-                          foreach, inputBuffer);
+        if (c && c->getRequired()) {
+          string msg = getRequiredMessage(c->pattern, c->errorMsg);
+          throw Exception("at end of input, " + msg, foreach, inputBuffer);
         }
         break;
       }
@@ -398,12 +401,20 @@ ResultCode State::interpretOne(Statement *stmt) {
       if (interprettPredicate(pred)) {
         return OK_S;
       }
-      const char *msg = "failed required pattern: ";
+      const char *msg = "failed required pattern";
       if (auto b = pred->isOp(Expression::NOT)) {
-        msg = "failed forbidden pattern: ";
+        msg = "failed forbidden pattern";
         pred = b->right;
       }
-      throw Exception(msg, stmt, inputBuffer);
+      string smsg(msg);
+      if (auto pattern = getPattern(pred)) {
+        smsg += ": \"" + pattern->asString().getText() + '"';
+      }
+      if (r->errMsg) {
+        auto e = interpret(r->errMsg);
+        smsg += ": " + e->asString().getText();
+      }
+      throw Exception(smsg, stmt, inputBuffer);
     } else {
       if (matchColumns && columns.size() >= r->getCount()) {
         return OK_S;
@@ -420,6 +431,36 @@ ResultCode State::interpretOne(Statement *stmt) {
   return OK_S;
 }
 
+string State::getRequiredMessage(Expression *e, Expression *errMsg) {
+  const char *msg = "failed required pattern";
+  if (auto b = e->isOp(Expression::NOT)) {
+    msg = "failed forbidden pattern";
+    e = b->right;
+  }
+  string smsg(msg);
+  if (auto pattern = getPattern(e)) {
+    smsg += ": \"" + pattern->asString().getText() + '"';
+  }
+  if (errMsg) {
+    auto e = interpret(errMsg);
+    smsg += ": " + e->asString().getText();
+  }
+  return smsg;
+}
+
+Value *State::getPattern(Expression *e) {
+  if (e->kind() == AST::RegExPatternN) {
+    return ((RegExPattern *)e)->pattern;
+  }
+  if (e->kind() == AST::HoistedValueRefN) {
+    return getPattern(((HoistedValueRef *)e)->value);
+  }
+  if (auto b = e->isOp(e->MATCH)) {
+    return getPattern(b->right);
+  }
+  return nullptr;
+}
+
 void State::print(Expression *e, LineBuffer *out) {
   while (auto b = e->isOp(e->CONCAT)) {
     print(b->left, out);
@@ -430,11 +471,10 @@ void State::print(Expression *e, LineBuffer *out) {
 
 void State::print(Value *v, LineBuffer *out) {
   if (v->kind == v->List) {
-    for (auto & lv : v->list) {
+    for (auto &lv : v->list) {
       print(&lv, out);
     }
-  }
-  else {
+  } else {
     out->append(v->asString().getText());
   }
 }

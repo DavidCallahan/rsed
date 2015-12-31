@@ -195,6 +195,10 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     } else {
       OS << r->getCount();
     }
+    if (r->errMsg) {
+      OS << "error ";
+      dumpExpr(r->errMsg);
+    }
     OS << '\n';
     break;
   }
@@ -318,6 +322,10 @@ void Dumper::dumpExpr(const Expression *node) {
     if (auto p = c->pattern) {
       OS << (c->getStopKind() == AST::StopAt ? "to " : "past ");
       dumpExpr(p);
+    }
+    if (c->errorMsg) {
+      OS << "error ";
+      dumpExpr(c->errorMsg);
     }
     break;
   }

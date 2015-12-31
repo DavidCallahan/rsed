@@ -69,7 +69,7 @@ Expression * call(std::string * name, Arg * args, Scanner * scanner) {
 %type <stmt> ifstmt elsestmt set input output close errorStmt 
 %type <list> stmtlistlist
 %type <boole> optAll optRequired
-%type <expr> control toPast  
+%type <expr> control toPast optError
 %type <expr> optControl optExpr optIn
 %type <expr>  buffer optBuffer pattern list
 %type <arg> optarglist arglist 
@@ -133,12 +133,15 @@ control: FOR INTEGER toPast  { $$ = AST::limit($2,$3); }
        | ALL { $$ = nullptr; }
        ;
 
-toPast: TO optRequired pattern  { $$ = new Control(AST::StopAt, $3, $2,  LINE); }
-      | PAST optRequired pattern { $$ = new Control(AST::StopAfter, $3,  $2, LINE); }
+toPast: TO optRequired pattern optError { $$ = new Control(AST::StopAt, $3, $4, $2,  LINE); }
+      | PAST optRequired pattern optError { $$ = new Control(AST::StopAfter, $3, $4, $2, LINE); }
       ;
 optRequired: /* empty */  { $$ = false; } 
            | REQUIRED  { $$ = true; }
 	   ;
+optError: /* empty */ { $$ = nullptr; }
+        | ERROR expr  { $$ = $2; }
+        ;
 
 replace: REPLACE_TOK optAll expr WITH expr control NEWLINE { $$ = AST::replace($6,$3,$5,$2,LINE); }
        | REPLACE_TOK optAll expr WITH expr NEWLINE { $$ = AST::replaceOne($3,$5,$2,LINE); }
@@ -172,7 +175,7 @@ optBuffer: /* empty */ { $$ = nullptr; }
          | TO buffer { $$ = $2; }
          ;
 
-required: REQUIRED lineno pattern NEWLINE { $$ = new Required(0, $3,$2); }
+required: REQUIRED lineno pattern optError NEWLINE { $$ = new Required(0, $3,$4, $2); }
 
 pattern: expr { $$ = AST::checkPattern($1); }
 expr: term ;

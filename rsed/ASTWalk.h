@@ -98,13 +98,17 @@ AST::WalkResult Statement::walkExprs(const ACTION &a) {
   case ColumnsInputN:
     rc = ((Columns *)this)->columns->walkDown(a);
     break;
-  case RequiredN:
-    if (auto p = ((Required *)this)->predicate) {
+  case RequiredN: {
+    auto r = (Required *)this;
+    if (auto p = r->predicate) {
       rc = p->walkDown(a);
+    }
+    if (rc == ContinueW && r->errMsg) {
+      rc = r->errMsg->walkDown(a);
     }
     break;
   }
-
+  }
   return rc;
 }
 
@@ -155,6 +159,9 @@ template <typename ACTION> void Statement::applyExprs(const ACTION &a) {
     break;
   case RequiredN:
     a(((Required *)this)->predicate);
+    if (((Required *)this)->errMsg) {
+      a(((Required *)this)->errMsg);
+    }
     break;
   case HoistedValueN:
     a(((HoistedValue *)this)->rhs);
@@ -169,9 +176,14 @@ template <typename ACTION> AST::WalkResult Expression::walkUp(const ACTION &a) {
   Expression *e = this;
   WalkResult rc = ContinueW;
   switch (e->kind()) {
-  case ControlN:
-    rc = ((Control *)e)->pattern->walkUp(a);
+  case ControlN: {
+    auto c = (Control *)e;
+    rc = c->pattern->walkUp(a);
+    if (rc == ContinueW && c->errorMsg) {
+      rc = c->errorMsg->walkUp(a);
+    }
     break;
+  }
   case BinaryN:
     if (BinaryP(e)->left) {
       rc = walkUp(BinaryP(e)->left);
@@ -219,11 +231,16 @@ AST::WalkResult Expression::walkDown(const ACTION &a) {
   }
 
   switch (e->kind()) {
-  case ControlN:
-    rc = ((Control *)e)->pattern->walkDown(a);
+  case ControlN: {
+    auto c = (Control *)e;
+    rc = c->pattern->walkDown(a);
     if (rc != ContinueW)
       return rc;
+    if (c->errorMsg) {
+      rc = c->errorMsg->walkDown(a);
+    }
     break;
+  }
   case BinaryN:
     if (auto left = BinaryP(e)->left) {
       rc = left->walkDown(a);

@@ -1,0 +1,4 @@
+#!./rsed
+print "Test 1"
+skip to required "more" error "missing section"
+copy all

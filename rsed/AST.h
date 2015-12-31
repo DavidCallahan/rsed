@@ -211,15 +211,16 @@ class Control : public Expression {
 
 public:
   Expression *pattern;
-
+  Expression *errorMsg;
   enum { NO_LIMIT = -1 };
-  Control(StopKind stopKind, Expression *pattern, bool required, int sourceLine)
+  Control(StopKind stopKind, Expression *pattern, Expression *errorMsg,
+          bool required, int sourceLine)
       : stopKind(stopKind), limit(NO_LIMIT), required(required),
-        pattern(pattern) {}
+        pattern(pattern), errorMsg(errorMsg) {}
   void setLimit(int num) { limit = num; }
   bool hasLimit() const { return limit > 0; }
   ExprKind kind() const override { return ControlN; }
-  bool getReuired() const { return required; }
+  bool getRequired() const { return required; }
   int getLimit() const { return limit; }
   StopKind getStopKind() const { return stopKind; }
 };
@@ -228,7 +229,7 @@ inline Expression *AST::limit(int number, Expression *control) {
   return control;
 }
 inline Expression *AST::limit(int number, int sourceLine) {
-  auto c = new Control(StopAfter, nullptr, false, sourceLine);
+  auto c = new Control(StopAfter, nullptr, nullptr, false, sourceLine);
   c->setLimit(number);
   return c;
 }
@@ -351,8 +352,10 @@ class Required : public Statement {
 
 public:
   Expression *predicate;
-  Required(int count, Expression *predicate, int sourceLine)
-      : Statement(sourceLine), count(count), predicate(predicate) {}
+  Expression *errMsg;
+  Required(int count, Expression *predicate, Expression *errMsg, int sourceLine)
+      : Statement(sourceLine), count(count), predicate(predicate),
+        errMsg(errMsg) {}
   static StmtKind typeKind() { return RequiredN; }
   StmtKind kind() const override { return typeKind(); }
   int getCount() const { return count; }
@@ -480,14 +483,13 @@ public:
   ExprKind kind() const override { return ArgN; }
 };
 
-
 class List : public Expression {
 public:
-  Arg *head;  // TODO - rename "Arg" to be "ListElt"
-  List(Arg * head) : head(head) { }
+  Arg *head; // TODO - rename "Arg" to be "ListElt"
+  List(Arg *head) : head(head) {}
   ExprKind kind() const override { return ListN; }
 };
-typedef List * ListP;
+typedef List *ListP;
 
 class Call : public List {
   std::string name;
@@ -495,7 +497,7 @@ class Call : public List {
 
 public:
   Call(std::string name, Arg *args, unsigned callId, int sourceLine)
-      : List(args), name(name), callId(callId)  {}
+      : List(args), name(name), callId(callId) {}
   ExprKind kind() const override { return CallN; }
 
   unsigned getCallId() const { return callId; }
@@ -503,7 +505,6 @@ public:
   void setCallId(unsigned callId) { this->callId = callId; }
 };
 typedef Call *CallP;
-
 
 // where we compiler a regular expression
 class RegExPattern : public Expression {
@@ -564,18 +565,7 @@ public:
   ExprKind kind() const override { return HoistedValueRefN; }
 };
 
-// TODO -- optimize join reductions
-//       append x to y [with sep]
-//       $? -- number of matches?
-// TODO -- think about adding lists [x,y,z]
-//       x = { a, b, c}
-//       x = append(x, ....)
-//          .. x[0] ...  # access
-//          x { a }      # append/concat (otherwise join to string)
-//       {a,b} = x       # destructure
-//       input x         # iterate over
-//          join(",", x) # join
-//       empty list is false
+// TODO   $? -- number of matches? or  $NUM_MATCHES
 //
 // TODO  split ... into var1, ..., vk
 //    or (v1,...vk) = split ...

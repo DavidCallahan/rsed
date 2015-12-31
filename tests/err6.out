@@ -1,2 +1,2 @@
 Test 1
-input 6: script 3: end of input reached before required pattern seen
+input 6: script 3: at end of input, failed required pattern: "more"

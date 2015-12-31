@@ -1,0 +1,5 @@
+processor	: 0
+vendor_id	: GenuineIntel
+cpu family	: 6
+model		: 45
+script 7: failed required pattern: "model": start of model section
