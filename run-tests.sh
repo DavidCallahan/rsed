@@ -16,29 +16,60 @@ runTest () {
     else
 	input=/dev/null
     fi
-    ARG1=x ARG2=y $RSED $test $OPT $DEBUG a < $input > $base.test-out
+    ARG1=x ARG2=y $RSED $test $OPT $DEBUG a < $input > $base.test-out 2> $base.test-err
 }
 
 runPass () {
     echo $test $OPT 
+    local keep=0
     if  [ -e "$base.env" ] 
     then
         (source "$base.env" ; runTest)
     else
        runTest
     fi
-    if [ $? != 0 ]
+    local rc=$?
+    local err=0
+    if [ -e "$base.err" ]
     then
-	echo "non zero exit" $test $OPT
-	failed=1
+        err=`stat --printf="%s" $base.err`
     fi
-    diff $base.test-out $base.out
+    if [ $err == 0 ] 
+    then
+        if [ $rc != 0 ]
+        then
+	    echo "non zero exit" $test $OPT
+	    failed=1
+            keep=1
+        fi
+    else
+        if [ $rc == 0 ]
+        then
+            echo "unexpected zero exit" $test $OPT
+            failed=1
+            keep=1
+        fi
+        diff $base.test-err $base.err > $base.err-diff
+        if [ $? != 0 ]
+        then
+	    failed=1
+            keep=1
+            head -n 5 < $base.err-diff
+	    echo "output error differences" $test $OPT
+        fi
+    fi
+    diff $base.test-out $base.out > $base.diff
     if [ $? != 0 ]
     then
-	failed=1
+        failed=1
+        keep=1
+        head -n 5 < $base.diff
 	echo "output differences" $test $OPT
     fi
-    rm $base.test-out
+    if [ $keep == 0 ]
+    then
+       rm -f $base.test-out $base.test-err $base.diff $base.err-diff
+    fi
 }
 
 for test in test*.rsed
@@ -102,8 +133,8 @@ cd ../captured
 for test in ctest*.rsed
 do
     base=`basename $test .rsed`
-    runPass
-    OPT=-optimize runPass
+    OPT="-replay_prefix=$base-save" runPass
+    OPT="-optimize -replay_prefix=$base-save" runPass
 done
 fi
 
