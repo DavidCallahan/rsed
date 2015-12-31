@@ -8,13 +8,14 @@
 
 #include <iostream>
 #include <assert.h>
+#include "gflags/gflags.h"
+#include "rsed.h"
 #include "AST.h"
 #include "Parser.h"
 #include "Scanner.h"
 #include "RegEx.h"
 #include "Exception.h"
 #include "Interpreter.h"
-#include "gflags/gflags.h"
 #include "Optimize.h"
 #include "LineBuffer.h"
 

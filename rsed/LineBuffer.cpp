@@ -7,18 +7,24 @@
 //
 
 #include "LineBuffer.h"
-#include "Exception.h"
-#include "file_buffer/file_buffer.hpp"
+#include <cstdio>
+#include <sstream>
 #include <string>
 #include <unordered_map>
-#include <cstdio>
 #include <vector>
+
+#include "file_buffer/file_buffer.hpp"
+#include <gflags/gflags.h>
+#include "rsed.h"
+#include "Exception.h"
 
 using std::string;
 using std::ifstream;
 using std::ofstream;
 using std::shared_ptr;
 using std::vector;
+
+DEFINE_string(save_prefix, "", "prefix ouf copied input data");
 
 namespace {
 
@@ -27,7 +33,7 @@ template <typename Stream> class StreamInBuffer : public LineBuffer {
 
 public:
   StreamInBuffer(Stream *stream, std::string name)
-      : LineBuffer(name), stream(stream) {}
+  : LineBuffer(name), stream(stream) { enableCopy(); }
   bool eof() override { return stream->eof(); }
   bool getLine(std::string &line) override {
     if (eof()) {
@@ -87,19 +93,20 @@ public:
   std::istream in;
   PipeInBuffer(FILE *pipe, std::string name)
       : StreamInBuffer<std::istream>(&in, name), pipe(pipe),
-        fileBuffer(pipe, 8 * 1024), in(&fileBuffer) {}
+        fileBuffer(pipe, 8 * 1024), in(&fileBuffer) {
+    enableCopy();
+  }
   virtual void close() override {
     if (pipe) {
       int rc = 0;
       try {
         rc = pclose(pipe);
-      }
-      catch (...) {
+      } catch (...) {
         rc = 1;
       }
-      pipe = nullptr;      
+      pipe = nullptr;
       if (rc) {
-        throw Exception("error in command: " + name);
+        throw Exception("error in command: " + getName());
       }
     }
     closed = true;
@@ -142,6 +149,7 @@ struct Buffer {
   std::shared_ptr<LineBuffer> output = nullptr;
 };
 std::unordered_map<std::string, Buffer> buffers;
+unsigned inputCount = 0;
 }
 
 template <typename Stream>
@@ -167,6 +175,29 @@ LineBuffer::makeOutBuffer<std::ostream>(std::ostream *, std::string name);
 
 std::vector<string> LineBuffer::tempFileNames;
 static std::vector<std::shared_ptr<LineBuffer>> pipeFiles;
+
+bool LineBuffer::nextLine(std::string *s) {
+  auto rc = getLine(*s);
+  if (rc && copyStream.is_open()) {
+    copyStream << *s << '\n';
+  }
+  return rc;
+}
+
+void LineBuffer::enableCopy() {
+  if (!FLAGS_save_prefix.empty()) {
+    std::stringstream ss;
+    ss << FLAGS_save_prefix << inputCount << ".in";
+    copyStream.open(ss.str());
+    if (!copyStream.is_open()) {
+      throw Exception("unable to open copy output " + ss.str());
+    }
+    if (RSED::env_save.is_open()) {
+      RSED::env_save << "#input " << inputCount << " " << name << "\n";
+    }
+    inputCount += 1;
+  }
+}
 
 void LineBuffer::closeAll() {
   for (auto &name : LineBuffer::tempFileNames) {

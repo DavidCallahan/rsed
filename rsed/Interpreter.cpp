@@ -79,7 +79,12 @@ public:
       outputStack.pop_back();
     }
   }
-
+  void releaseFiles() {
+    inputBuffer = nullptr;
+    outputBuffer = nullptr;
+    inputStack.clear();
+    outputStack.clear();
+  }
   string match(unsigned i) {
     if (matchColumns) {
       if (i >= columns.size()) {
@@ -105,7 +110,7 @@ public:
   }
   void nextLine() {
     if (!inputEof_) {
-      inputEof_ = !inputBuffer->getLine(currentLine_);
+      inputEof_ = !inputBuffer->nextLine(&currentLine_);
       if (debug) {
         std::cout << "input: " << currentLine_ << "\n";
       }
@@ -338,11 +343,6 @@ ResultCode State::interpretOne(Statement *stmt) {
       pushInput(LineBuffer::makeVectorInBuffer(&data, "from list"));
     } else {
       auto fileName = value->asString().getText();
-      static unsigned count = 0;
-      if (env_save.is_open()) {
-        env_save << (io->getShellCmd() ? "#shell " : "#file ") << count++
-                 << " \"" << fileName << "\"\n";  
-      }
       if (io->getShellCmd()) {
         // todo: how does "close" work here?
         pushInput(LineBuffer::makePipeBuffer(fileName));
@@ -590,7 +590,10 @@ bool State::interpretMatch(int pattern, const string &target) {
   return regEx->match(pattern, target);
 }
 
-void Interpreter::interpret(Statement *script) { state->interpret(script); }
+void Interpreter::interpret(Statement *script) {
+  state->interpret(script);
+  state->releaseFiles();
+}
 
 Value *State::interpret(Expression *e) {
   switch (e->kind()) {

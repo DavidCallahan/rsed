@@ -97,7 +97,7 @@ string shell(vector<Value *> &args) {
   std::string shellCmd = ss.str();
   auto pipe = LineBuffer::makePipeBuffer(shellCmd);
   string result;
-  pipe->getLine(result);
+  pipe->nextLine(&result);
   pipe->close();
   return result;
 }
