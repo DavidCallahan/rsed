@@ -341,6 +341,12 @@ ResultCode State::interpretOne(Statement *stmt) {
       pushInput(LineBuffer::makeVectorInBuffer(&data, "from list"));
     } else {
       auto fileName = value->asString().getText();
+      extern std::ofstream env_save;
+      static unsigned count = 0;
+      if (env_save.is_open()) {
+        env_save << (io->getShellCmd() ? "#shell " : "#file ") << count++
+                 << " \"" << fileName << "\"\n";
+      }
       if (io->getShellCmd()) {
         // todo: how does "close" work here?
         pushInput(LineBuffer::makePipeBuffer(fileName));
