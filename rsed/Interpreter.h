@@ -16,7 +16,7 @@ class Interpreter {
   State *state = nullptr; 
 public:
   Interpreter() {}
-  void initialize(int argc, char *argv[]);
+  void initialize(int argc, char *argv[], const std::string & input);
   bool setInput(const std::string &fileName);
   void interpret(class Statement *);
 };

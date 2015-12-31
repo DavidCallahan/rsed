@@ -541,9 +541,14 @@ void State::interpret(Split *split) {
   regEx->split(sep, target, &columns);
 }
 
-void Interpreter::initialize(int argc, char *argv[]) {
+void Interpreter::initialize(int argc, char *argv[], const string &input) {
   state = new State;
-  state->stdinBuffer = LineBuffer::getStdin();
+  if (input.empty()) {
+    state->stdinBuffer = LineBuffer::getStdin();
+  }
+  else {
+    state->stdinBuffer = LineBuffer::makeInBuffer(input);
+  }
   state->resetInput(state->stdinBuffer);
   state->stdoutBuffer = LineBuffer::getStdout();
   state->outputBuffer = state->stdoutBuffer;
