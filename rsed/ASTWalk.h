@@ -181,7 +181,8 @@ template <typename ACTION> AST::WalkResult Expression::walkUp(const ACTION &a) {
     rc = walkUp(BinaryP(e)->right);
     break;
   case CallN:
-    for (auto arg = CallP(e)->args; arg; arg = arg->nextArg) {
+  case ListN:
+    for (auto arg = CallP(e)->head; arg; arg = arg->nextArg) {
       rc = arg->value->walkUp(a);
       if (rc != ContinueW)
         return rc;
@@ -234,7 +235,8 @@ AST::WalkResult Expression::walkDown(const ACTION &a) {
       return rc;
     break;
   case CallN:
-    for (auto arg = CallP(e)->args; arg; arg = arg->nextArg) {
+  case ListN:
+    for (auto arg = ListP(e)->head; arg; arg = arg->nextArg) {
       rc = arg->value->walkDown(a);
       if (rc != ContinueW)
         return rc;

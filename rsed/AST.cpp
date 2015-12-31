@@ -270,6 +270,8 @@ const char *Expression::opName(Operators op) {
     return "$(";
   case SET_GLOBAL:
     return "global";
+  case SUBSCRIPT:
+    return "]";
   }
 }
 
@@ -294,6 +296,10 @@ void Dumper::dumpExpr(const Expression *node) {
       if (r->kind() == r->BinaryN) {
         OS << ')';
       }
+    } else if (b->isOp(b->SUBSCRIPT)) {
+      OS << '[';
+      dumpExpr(b->right);
+      OS << ']';
     } else {
       OS << ' ' << b->opName(b->op) << ' ';
       dumpExpr(b->right);
@@ -340,7 +346,18 @@ void Dumper::dumpExpr(const Expression *node) {
   case AST::CallN: {
     auto c = static_cast<const Call *>(node);
     OS << c->getName() << '(';
-    for (auto a = c->args; a; a = a->nextArg) {
+    for (auto a = c->head; a; a = a->nextArg) {
+      dumpExpr(a->value);
+      if (a->nextArg) {
+        OS << ", ";
+      }
+    }
+    OS << ')';
+    break;
+  }
+  case AST::ListN: {
+    OS << '(';
+    for (auto a = ListP(node)->head; a; a = a->nextArg) {
       dumpExpr(a->value);
       if (a->nextArg) {
         OS << ", ";
@@ -402,6 +419,7 @@ Value::Kind Expression::valueKind() {
   case AST::ArgN:
   case AST::RegExPatternN:
   case AST::ControlN:
+  case AST::ListN:
     return Value::String;
   case AST::CallN:
     return BuiltinCalls::callKind(((Call *)this)->getCallId());
@@ -434,6 +452,7 @@ Value::Kind Expression::valueKind() {
     case Binary::CONCAT:
     case Binary::LOOKUP:
     case Binary::SET_GLOBAL:
+    case Binary::SUBSCRIPT:
       return Value::String;
     }
   }
@@ -457,17 +476,17 @@ public:
   void append(Expression *t) {
     term = (term ? new Binary(Binary::CONCAT, term, t, 0) : t);
   }
-  StringConst * makeString(std::string s, unsigned flags) {
+  StringConst *makeString(std::string s, unsigned flags) {
     if (flags & StringRef::ESCAPE_SPECIALS) {
       s = RegEx::regEx->escape(s);
     }
-    return new StringConst(StringRef(s,flags));
+    return new StringConst(StringRef(s, flags));
   }
   void single(const std::string &s, unsigned flags) override {
-    term = makeString(s,flags);
+    term = makeString(s, flags);
   }
   void string(stringstream &s, unsigned flags) override {
-    append(makeString(s.str(),flags));
+    append(makeString(s.str(), flags));
   }
   void varMatch(unsigned i) override { append(new VarMatch(i)); }
   void variable(std::string name) override {
@@ -492,9 +511,9 @@ Statement *AST::input(Expression *s, int sourceLine) {
   bool isShell = false;
   auto c = (Call *)s;
   if (c->kind() == c->CallN && c->getCallId() == BuiltinCalls::SHELL &&
-      c->args) {
+      c->head) {
     isShell = true;
-    auto args = c->args;
+    auto args = c->head;
     delete c;
     s = args->value;
     for (;;) {

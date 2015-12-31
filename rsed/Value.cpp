@@ -15,6 +15,7 @@ using std::stringstream;
 
 void Value::set(const Value *value) {
   kind = value->kind;
+  sref.clear();
   switch (kind) {
   case Logical:
     logical = value->logical;
@@ -109,18 +110,29 @@ const StringRef &Value::asString() {
   return sref;
 }
 
-std::ostream &operator<<(std::ostream &OS, Value &value) {
-  if (value.kind == value.RegEx) {
-    OS << "regex[" << value.getRegEx() << "]";
-  } else if (value.kind == value.List) {
+std::ostream &operator<<(std::ostream &OS, const Value &value) {
+  switch (value.kind) {
+  case Value::RegEx:
+    OS << "regex[" << value.regEx << "]";
+    break;
+  case Value::List: {
     char sep = '[';
     for (auto &v : value.list) {
       OS << sep << v;
       sep = ',';
     }
     OS << ']';
-  } else {
-    OS << value.asString();
+    break;
+  }
+  case Value::Logical:
+    OS << (value.logical ? "true" : "false");
+    break;
+  case Value::Number:
+    OS << value.number;
+    break;
+  case Value::String:
+    OS << value.sref;
+    break;
   }
   return OS;
 }
@@ -145,6 +157,7 @@ void Value::set(StringRef s) {
 void Value::setRegEx(unsigned int i) {
   kind = RegEx;
   regEx = i;
+  sref.clear();
 }
 
 void Value::set(std::string s) { set(StringRef(s)); }
@@ -178,4 +191,9 @@ int compare(Value *left, Value *right) {
   case Value::RegEx:
     assert(0 && "can not compare regex");
   }
+}
+
+void Value::append(const Value & v) {
+  assert(kind == List);
+  list.emplace_back(v);
 }

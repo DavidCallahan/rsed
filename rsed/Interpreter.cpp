@@ -330,12 +330,21 @@ ResultCode State::interpretOne(Statement *stmt) {
   }
   case AST::InputN: {
     auto io = (Input *)stmt;
-    auto fileName = interpret(io->buffer)->asString().getText();
-    if (io->getShellCmd()) {
-      // todo: how does "close" work here?
-      pushInput(LineBuffer::makePipeBuffer(fileName));
+    auto value = interpret(io->buffer);
+    if (value->kind == Value::List) {
+      vector<string> data;
+      for (auto & v : value->list) {
+        data.emplace_back(v.asString().getText());
+      }
+      pushInput(LineBuffer::makeVectorInBuffer(&data, "from list"));
     } else {
-      pushInput(LineBuffer::findInputBuffer(fileName));
+      auto fileName = value->asString().getText();
+      if (io->getShellCmd()) {
+        // todo: how does "close" work here?
+        pushInput(LineBuffer::makePipeBuffer(fileName));
+      } else {
+        pushInput(LineBuffer::findInputBuffer(fileName));
+      }
     }
     break;
   }
@@ -426,6 +435,9 @@ void State::interpret(Set *set) {
   auto lhs = set->lhs;
   if (lhs->kind() == AST::VariableN) {
     ((Variable *)lhs)->getSymbol().set(rhs);
+    if (RSED_Debug::debug) {
+      std::cout << "set to " << *rhs << '\n';
+    }
   } else if (lhs->isOp(lhs->LOOKUP)) {
     auto b = BinaryP(lhs);
     auto name = interpret(b->right);
@@ -560,10 +572,18 @@ Value *State::interpret(Expression *e) {
   case AST::CallN: {
     auto c = (Call *)e;
     vector<Value *> args;
-    for (auto a = c->args; a; a = a->nextArg) {
+    for (auto a = c->head; a; a = a->nextArg) {
       args.emplace_back(interpret(a->value));
     }
     BuiltinCalls::evalCall(c->getCallId(), args, this, e);
+    break;
+  }
+  case AST::ListN: {
+    auto l = ListP(e);
+    l->clearList();
+    for (auto a = l->head; a; a = a->nextArg) {
+      l->append(*interpret(a->value));
+    }
     break;
   }
   case AST::RegExPatternN: {
@@ -594,10 +614,31 @@ Value *State::interpret(Expression *e) {
       break;
     }
     case Binary::CONCAT: {
-      stringstream str;
-      unsigned flags = 0;
-      interpret(e, str, &flags);
-      e->set(StringRef(str.str(), flags));
+      bool isList = true;
+      vector<Value *> leaves;
+      e->walkConcat([this, &isList, &leaves](Expression *e) {
+        leaves.push_back(interpret(e));
+        if (leaves.back()->kind != Value::List) {
+          isList = false;
+        }
+      });
+      if (isList) {
+        e->clearList();
+        for (auto leaf : leaves) {
+          for (auto &v : leaf->list) {
+            e->append(v);
+          }
+        }
+      } else {
+        stringstream str;
+        unsigned flags = 0;
+        for (auto leaf : leaves) {
+          auto &s = leaf->asString();
+          str << s.getText();
+          flags |= s.getFlags();
+        }
+        e->set(StringRef(str.str(), flags));
+      }
       break;
     }
     case Binary::MATCH: {
@@ -662,12 +703,37 @@ Value *State::interpret(Expression *e) {
       b->set(interpret(b->left)->asLogical() ||
              interpret(b->right)->asLogical());
       break;
+    case Binary::SUBSCRIPT: {
+      auto list = interpret(b->left);
+      auto index = (int)interpret(b->right)->asNumber();
+      if (index < 0) {
+        throw Exception("negative index in subscript");
+      }
+      if (list->kind == list->List) {
+        if (index >= list->list.size()) {
+          b->set(StringRef("", 0));
+        } else {
+          b->set(&list->list[index]);
+        }
+      } else {
+        auto &str = list->asString().getText();
+        if (index >= str.length()) {
+          b->set(StringRef("", 0));
+        } else {
+          string temp;
+          temp.append(1, str[index]);
+          b->set(StringRef(temp, 0));
+        }
+      }
+      break;
+    }
     }
   } break;
   }
   return e;
 }
 
+#if 0
 void State::interpret(Expression *e, stringstream &str, unsigned *flags) {
   while (auto b = e->isOp(e->CONCAT)) {
     interpret(b->left, str, flags);
@@ -700,3 +766,4 @@ void State::interpret(Expression *e, stringstream &str, unsigned *flags) {
   }
   }
 }
+#endif

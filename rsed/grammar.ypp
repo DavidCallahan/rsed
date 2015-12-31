@@ -204,6 +204,7 @@ stringTerm: primitive
 primitive: lookup
 	 | STRING   { $$ = AST::stringConst($1); }
 	 | variable
+         | variable '[' expr ']' { $$ = BINARY(SUBSCRIPT,$1,$3); }
 	 | DYN_VARIABLE { $$ = new VarMatch($1); }
          | call
 	 | INTEGER { $$ = AST::number($1); }	  
@@ -215,7 +216,7 @@ primitive: lookup
          | list
          ;
 
-variable: VARIABLE { $$ = AST::variable($1); };
+variable: VARIABLE { $$ = AST::variable($1); }; 
 lookup:  LOOKUP_START expr ')' { $$ = UNARY(LOOKUP, $2); }; 
 call: IDENTIFIER '(' optarglist ')' { $$ = call($1, $3, scanner); }  ;
 optarglist: /*empty*/ { $$ = nullptr; }
@@ -225,7 +226,7 @@ arglist: expr { $$ = new Arg($1, nullptr ,LINE); }
        | expr ',' arglist { $$ = new Arg($1, $3, LINE); }
        ;
 
-list: "{" optarglist "}" { } 
+list: '{' optarglist '}' { $$ = new List($2); } ; 
 
 replaceExpr: REPLACE_TOK optAll expr WITH expr optIn  %prec REPLACE_TOK
        { 

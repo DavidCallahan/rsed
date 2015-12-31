@@ -47,7 +47,12 @@ public:
   void set(std::string);
   void set(const Value * value);
   void setRegEx(unsigned i);
-  void append(ValueP &);
+  void append(const Value &);
+  void clearList() {
+    sref.clear();
+    list.clear();
+    kind = List;
+  }
 };
 std::ostream &operator<<(std::ostream &OS, const Value &value);
 int compare(Value * left, Value * right);

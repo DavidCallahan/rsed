@@ -28,6 +28,7 @@ enum Builtins {
   LOGICAL,
   NUMBERB,
   STRINGB,
+  APPEND,
 };
 bool getCallId(const std::string &name, unsigned *);
 void evalCall(unsigned id, std::vector<Value *> &args, EvalState *,

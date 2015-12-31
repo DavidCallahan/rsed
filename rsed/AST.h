@@ -82,6 +82,7 @@ public:
     VarMatchN,
     StringConstN,
     CallN,
+    ListN,
     ArgN,
     BinaryN,
     RegExPatternN,
@@ -153,6 +154,7 @@ public:
     OR,
     LOOKUP,
     SET_GLOBAL,
+    SUBSCRIPT,
   };
 
   bool isStatement() const override { return false; }
@@ -478,14 +480,22 @@ public:
   ExprKind kind() const override { return ArgN; }
 };
 
-class Call : public Expression {
+
+class List : public Expression {
+public:
+  Arg *head;  // TODO - rename "Arg" to be "ListElt"
+  List(Arg * head) : head(head) { }
+  ExprKind kind() const override { return ListN; }
+};
+typedef List * ListP;
+
+class Call : public List {
   std::string name;
   unsigned callId;
 
 public:
-  Arg *args;
   Call(std::string name, Arg *args, unsigned callId, int sourceLine)
-      : Expression(sourceLine), name(name), callId(callId), args(args) {}
+      : List(args), name(name), callId(callId)  {}
   ExprKind kind() const override { return CallN; }
 
   unsigned getCallId() const { return callId; }
@@ -493,6 +503,7 @@ public:
   void setCallId(unsigned callId) { this->callId = callId; }
 };
 typedef Call *CallP;
+
 
 // where we compiler a regular expression
 class RegExPattern : public Expression {
@@ -572,6 +583,6 @@ public:
 //       maybe a string-boolean converstion should be via match?
 // TODO add a mechanism to print a string without a newline (WRITE, PRINT
 // STRING, ...)
-
+// TODO add an "else msg" for required statements for better descriptive text
 
 #endif /* defined(__rsed__AST__) */

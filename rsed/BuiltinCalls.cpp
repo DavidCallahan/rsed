@@ -39,6 +39,7 @@ vector<BuiltinName> builtins{{LENGTH, "length"},
                              {LOGICAL, "logical"},
                              {NUMBERB, "number"},
                              {STRINGB, "string"},
+                             {APPEND, "append"},
                              {SHELL, "shell"}};
 
 string doQuote(char quote, const string &text) {
@@ -125,15 +126,22 @@ void evalCall(unsigned int id, vector<Value *> &args, EvalState *state,
       break;
     }
     auto sep = args[0]->asString().getText();
-    auto output = args[1]->asString().getText();
-    auto size = output.length();
-    ss << output;
-
-    for (auto i = 2; i < args.size(); i++) {
-      if (size > 0)
+    bool first = true;
+    auto append = [&first, &ss, sep](Value *v) {
+      if (!first) {
         ss << sep;
-      ss << args[i]->asString().getText();
-      size += args[i]->asString().getText().length();
+      } else
+        first = false;
+      ss << v->asString().getText();
+    };
+    for (auto i = 1; i < args.size(); i++) {
+      if (args[i]->kind == Value::List) {
+        for (auto &v : args[i]->list) {
+          append(&v);
+        }
+      } else {
+        append(args[i]);
+      }
     }
     break;
   }
@@ -229,6 +237,21 @@ void evalCall(unsigned int id, vector<Value *> &args, EvalState *state,
     for (auto v : args) {
       ss << v->asString().getText();
     }
+    break;
+  }
+  case APPEND: {
+    result->clearList();
+    for (auto v : args) {
+      if (v->kind == v->List) {
+        for (auto &lv : v->list) {
+          result->list.emplace_back(lv);
+          ;
+        }
+      } else {
+        result->list.emplace_back(*v);
+      }
+    }
+    return;
   }
   }
   result->set(ss.str());

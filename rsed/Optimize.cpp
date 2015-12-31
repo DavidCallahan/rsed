@@ -224,21 +224,22 @@ HoistInfo Optimizer::checkHoist(Expression **exprHome) {
   case AST::HoistedValueRefN:
     assert(0 && "unexpected hoistvalueref type");
     break;
+  case AST::ListN:
   case AST::CallN: {
-    auto *c = (Call *)expr;
     std::vector<HoistInfo> args;
     bool invariant = true;
-    for (auto a = c->args; a; a = a->nextArg) {
+    for (auto a = ListP(expr)->head; a; a = a->nextArg) {
       args.push_back(checkHoist(&((Arg *)a)->value));
       if (!::isInvariant(args.back())) {
         invariant = false;
       }
     }
-    if (invariant && BuiltinCalls::invariant(c->getCallId())) {
+    if (invariant && (expr->kind() != expr->CallN ||
+                      BuiltinCalls::invariant(CallP(expr)->getCallId()))) {
       return HOISTABLE;
     }
     auto ap = args.begin();
-    for (auto a = c->args; a; a = a->nextArg, ++ap) {
+    for (auto a = ListP(expr)->head; a; a = a->nextArg, ++ap) {
       if (shouldHoist(*ap)) {
         hoist(&a->value);
       }
@@ -289,6 +290,7 @@ HoistInfo Optimizer::checkHoist(Expression **exprHome) {
       }
       break;
     }
+    case Binary::SUBSCRIPT:
     case Binary::EQ:
     case Binary::NE:
     case Binary::LT:
