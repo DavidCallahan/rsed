@@ -138,9 +138,8 @@ public:
   bool interprettPredicate(Expression *predicate);
   bool interpretMatch(int pattern, const string &target);
   Value *interpret(Expression *);
-  void interpret(Expression *, stringstream &, unsigned *flags);
   void print(Expression *, LineBuffer *);
-
+  void print(Value *, LineBuffer *);
   // string expandVariables(const string &text) override;
   stringstream &expandVariables(const string &text, stringstream &str) override;
 };
@@ -333,7 +332,7 @@ ResultCode State::interpretOne(Statement *stmt) {
     auto value = interpret(io->buffer);
     if (value->kind == Value::List) {
       vector<string> data;
-      for (auto & v : value->list) {
+      for (auto &v : value->list) {
         data.emplace_back(v.asString().getText());
       }
       pushInput(LineBuffer::makeVectorInBuffer(&data, "from list"));
@@ -426,8 +425,18 @@ void State::print(Expression *e, LineBuffer *out) {
     print(b->left, out);
     e = b->right;
   }
-  auto v = interpret(e);
-  out->append(v->asString().getText());
+  print(interpret(e), out);
+}
+
+void State::print(Value *v, LineBuffer *out) {
+  if (v->kind == v->List) {
+    for (auto & lv : v->list) {
+      print(&lv, out);
+    }
+  }
+  else {
+    out->append(v->asString().getText());
+  }
 }
 
 void State::interpret(Set *set) {
@@ -732,38 +741,3 @@ Value *State::interpret(Expression *e) {
   }
   return e;
 }
-
-#if 0
-void State::interpret(Expression *e, stringstream &str, unsigned *flags) {
-  while (auto b = e->isOp(e->CONCAT)) {
-    interpret(b->left, str, flags);
-    e = b->right;
-  }
-  switch (e->kind()) {
-  case AST::VariableN: {
-    str << ((Variable *)e)->getSymbol().getValue()->asString().getText();
-    break;
-  }
-  case AST::NumberN: {
-    str << ((Number *)e)->getValue();
-    break;
-  }
-  case AST::StringConstN: {
-    const auto &sc = ((StringConst *)e)->getConstant();
-    if (sc.isRaw()) {
-      str << sc.getText();
-    } else {
-      expandVariables(sc.getText(), str);
-    }
-    *flags |= sc.getFlags();
-    break;
-  }
-  default: {
-    auto v = interpret(e);
-    str << v->asString().getText();
-    *flags |= v->asString().getFlags();
-    break;
-  }
-  }
-}
-#endif
