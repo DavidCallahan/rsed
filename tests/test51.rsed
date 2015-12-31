@@ -1,0 +1,11 @@
+TABLE="machine_info"
+where = {}
+foreach past required "^power management"
+   skip if "^processor"
+   required "^(.*\S)\s*:(.*)" 
+   name=replace " " with "_" in $1
+   value=quote(trim($2))
+   where = append($where, " $name = $value")
+end
+id = $TABLE "_id"
+print "SELECT $id from $TABLE WHERE" join ("\n\tAND", $where)
