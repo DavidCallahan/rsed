@@ -26,10 +26,7 @@
 using std::vector;
 using std::string;
 using std::stringstream;
-
-namespace RSED_Debug {
-extern int debug;
-}
+using namespace RSED;
 
 namespace {
 enum ResultCode {
@@ -109,7 +106,7 @@ public:
   void nextLine() {
     if (!inputEof_) {
       inputEof_ = !inputBuffer->getLine(currentLine_);
-      if (RSED_Debug::debug) {
+      if (debug) {
         std::cout << "input: " << currentLine_ << "\n";
       }
       needLine = false;
@@ -279,7 +276,7 @@ ResultCode State::interpret(IfStatement *ifstmt) {
 }
 
 ResultCode State::interpretOne(Statement *stmt) {
-  if (RSED_Debug::debug) {
+  if (debug) {
     std::cout << "trace " << inputBuffer->getLineno() << ":";
     stmt->dumpOne();
   }
@@ -341,7 +338,6 @@ ResultCode State::interpretOne(Statement *stmt) {
       pushInput(LineBuffer::makeVectorInBuffer(&data, "from list"));
     } else {
       auto fileName = value->asString().getText();
-      extern std::ofstream env_save;
       static unsigned count = 0;
       if (env_save.is_open()) {
         env_save << (io->getShellCmd() ? "#shell " : "#file ") << count++
@@ -490,7 +486,7 @@ void State::interpret(Set *set) {
   auto lhs = set->lhs;
   if (lhs->kind() == AST::VariableN) {
     ((Variable *)lhs)->getSymbol().set(rhs);
-    if (RSED_Debug::debug) {
+    if (debug) {
       std::cout << "set to " << *rhs << '\n';
     }
   } else if (lhs->isOp(lhs->LOOKUP)) {

@@ -12,13 +12,15 @@
 #include <sstream>
 #include <string>
 #include <fstream>
+#include "rsed.h" 
 
 using std::string;
+using namespace RSED;
+
 namespace {
 std::unordered_map<string, Symbol *> stringMap;
 unsigned nextTemp = 0;
 }
-extern std::ofstream env_save;
 
 Symbol *Symbol::findSymbol(const string &name) {
   auto p = stringMap.insert(std::make_pair(name, nullptr));

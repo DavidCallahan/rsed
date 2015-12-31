@@ -20,10 +20,12 @@
 
 using std::string;
 
-namespace RSED_Debug {
+namespace RSED {
   int debug = 0;
   int dump = 0;
+  std::ofstream env_save;
 }
+using namespace RSED;
 extern int yydebug;
 static bool scriptIn;
 string input("");
@@ -36,7 +38,6 @@ DEFINE_bool(script_in, false, "read script from stdin");
 DEFINE_string(env_save, "", "file to save referenced environment variables");
 string script;
 
-std::ofstream env_save;
 
 void parseOptions(int *argc, char **argv[]) {
 
@@ -44,9 +45,9 @@ void parseOptions(int *argc, char **argv[]) {
 
   // only command line arguments are preserved by gflags, so the 0th one is
   // the tool name and 1st is the input.
-  RSED_Debug::debug = FLAGS_debug;
+  debug = FLAGS_debug;
   yydebug = FLAGS_yydebug;
-  RSED_Debug::dump = FLAGS_dump;
+  dump = FLAGS_dump;
   input = FLAGS_input;
   scriptIn = FLAGS_script_in;
   const char * err = nullptr;
@@ -86,7 +87,7 @@ int main(int argc, char *argv[]) {
   if (!ast) {
     exit(1);
   }
-  if (RSED_Debug::dump) {
+  if (dump) {
     ast->dump();
   }
   ast = Optimize::optimize(ast);
