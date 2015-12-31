@@ -64,7 +64,7 @@ Statement *optimize(Statement *input) {
   }
   Optimizer opt;
   auto out = opt.optimize(input);
-  if (RSED_Debug::dump) {
+  if (RSED::dump) {
     out->dump();
   }
   return out;
@@ -325,7 +325,7 @@ HoistInfo Optimizer::checkHoist(Expression **exprHome) {
 
 void Optimizer::hoist(Expression **expr) {
   auto e = *expr;
-  if (RSED_Debug::debug) {
+  if (RSED::debug) {
     std::cout << "hoiosting: ";
     e->dump();
     std::cout << "\n";

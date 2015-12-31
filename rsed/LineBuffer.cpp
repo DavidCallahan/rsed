@@ -7,18 +7,26 @@
 //
 
 #include "LineBuffer.h"
-#include "Exception.h"
-#include "file_buffer/file_buffer.hpp"
+#include <cstdio>
+#include <iostream>
+#include <sstream>
 #include <string>
 #include <unordered_map>
-#include <cstdio>
 #include <vector>
+
+#include "file_buffer/file_buffer.hpp"
+#include <gflags/gflags.h>
+#include "rsed.h"
+#include "Exception.h"
 
 using std::string;
 using std::ifstream;
 using std::ofstream;
 using std::shared_ptr;
 using std::vector;
+
+DEFINE_string(save_prefix, "", "prefix ouf copied input data");
+DEFINE_string(replay_prefix, "", "prefix for saved input files");
 
 namespace {
 
@@ -27,7 +35,9 @@ template <typename Stream> class StreamInBuffer : public LineBuffer {
 
 public:
   StreamInBuffer(Stream *stream, std::string name)
-      : LineBuffer(name), stream(stream) {}
+      : LineBuffer(name), stream(stream) {
+    enableCopy();
+  }
   bool eof() override { return stream->eof(); }
   bool getLine(std::string &line) override {
     if (eof()) {
@@ -87,19 +97,19 @@ public:
   std::istream in;
   PipeInBuffer(FILE *pipe, std::string name)
       : StreamInBuffer<std::istream>(&in, name), pipe(pipe),
-        fileBuffer(pipe, 8 * 1024), in(&fileBuffer) {}
+        fileBuffer(pipe, 8 * 1024), in(&fileBuffer) {
+  }
   virtual void close() override {
     if (pipe) {
       int rc = 0;
       try {
         rc = pclose(pipe);
-      }
-      catch (...) {
+      } catch (...) {
         rc = 1;
       }
-      pipe = nullptr;      
+      pipe = nullptr;
       if (rc) {
-        throw Exception("error in command: " + name);
+        throw Exception("error in command: " + getName());
       }
     }
     closed = true;
@@ -142,31 +152,83 @@ struct Buffer {
   std::shared_ptr<LineBuffer> output = nullptr;
 };
 std::unordered_map<std::string, Buffer> buffers;
+unsigned inputCount = 0;
+string inputFilename(const string &prefix) {
+  std::stringstream ss;
+  ss << prefix << inputCount << ".in";
+  ++inputCount;
+  return ss.str();
 }
 
-template <typename Stream>
-std::shared_ptr<LineBuffer> LineBuffer::makeOutBuffer(Stream *stream,
-                                                      std::string name) {
-  return std::make_shared<StreamOutBuffer<Stream>>(stream, name);
+std::shared_ptr<LineBuffer> openInBuffer(std::string fileName) {
+  auto f = new std::ifstream(fileName);
+  if (!f || !*f) {
+    throw Exception("unable to open input file: " + fileName);
+  }
+  return std::make_shared<StreamInBuffer<std::ifstream>>(f, fileName);
 }
 
-template <typename Stream>
-std::shared_ptr<LineBuffer> LineBuffer::makeInBuffer(Stream *stream,
-                                                     std::string name) {
-  return std::make_shared<StreamInBuffer<Stream>>(stream, name);
+std::shared_ptr<LineBuffer> replayFile() {
+  auto c = inputCount;
+  auto p = openInBuffer(inputFilename(FLAGS_replay_prefix));
+  if (RSED::debug) {
+    std::cout << "replaying: " << c << ' ' << p->getName()
+              << '\n';
+  }
+  return p;
 }
 
-template std::shared_ptr<LineBuffer>
-LineBuffer::makeInBuffer<std::ifstream>(std::ifstream *, std::string name);
-template std::shared_ptr<LineBuffer>
-LineBuffer::makeInBuffer<std::istream>(std::istream *, std::string name);
-template std::shared_ptr<LineBuffer>
-LineBuffer::makeOutBuffer<std::ofstream>(std::ofstream *, std::string name);
-template std::shared_ptr<LineBuffer>
-LineBuffer::makeOutBuffer<std::ostream>(std::ostream *, std::string name);
+std::shared_ptr<LineBuffer> makeInBuffer(std::istream *stream,
+                                         std::string name) {
+  return std::make_shared<StreamInBuffer<std::istream>>(stream, name);
+}
+std::shared_ptr<LineBuffer> makeOutBuffer(std::ostream *stream,
+                                          std::string name) {
+  return std::make_shared<StreamOutBuffer<std::ostream>>(stream, name);
+}
+}
+
+std::shared_ptr<LineBuffer> LineBuffer::makeInBuffer(std::string fileName) {
+  if (!FLAGS_replay_prefix.empty()) {
+    return replayFile();
+  }
+  return openInBuffer(fileName);
+}
+std::shared_ptr<LineBuffer> LineBuffer::getStdin() {
+  if (!FLAGS_replay_prefix.empty()) {
+    assert(inputCount == 0);
+    return replayFile();
+  }
+  return ::makeInBuffer(&std::cin, "<stdin>");
+}
+std::shared_ptr<LineBuffer> LineBuffer::getStdout() {
+  return makeOutBuffer(&std::cout, "<stdout>");
+}
 
 std::vector<string> LineBuffer::tempFileNames;
 static std::vector<std::shared_ptr<LineBuffer>> pipeFiles;
+
+bool LineBuffer::nextLine(std::string *s) {
+  auto rc = getLine(*s);
+  if (rc && copyStream.is_open()) {
+    copyStream << *s << '\n';
+    assert(! copyStream.fail());
+  }
+  return rc;
+}
+
+void LineBuffer::enableCopy() {
+  if (!FLAGS_save_prefix.empty()) {
+    if (RSED::env_save.is_open()) {
+      RSED::env_save << "#input " << inputCount<< " " << name << "\n";
+    }
+    string saveName = inputFilename(FLAGS_save_prefix);
+    copyStream.open(saveName);
+    if (!copyStream) {
+      throw Exception("unable to open copy output " + saveName);
+    }
+  }
+}
 
 void LineBuffer::closeAll() {
   for (auto &name : LineBuffer::tempFileNames) {
@@ -199,7 +261,7 @@ LineBuffer::findOutputBuffer(const std::string &name) {
   }
   if (!b.output || b.output->closed) {
     auto f = new ofstream(name);
-    if (!f->is_open()) {
+    if (!*f) {
       string error("unable to open file: ");
       error += name;
       throw error;
@@ -220,13 +282,7 @@ LineBuffer::findInputBuffer(const std::string &name) {
     b.output = nullptr;
   }
   if (!b.input || b.input->closed) {
-    auto f = new ifstream(name);
-    if (!f->is_open()) {
-      string error = "unable to open file: ";
-      error += name;
-      throw Exception(error);
-    }
-    b.input.reset(new StreamInBuffer<ifstream>(f, name));
+    b.input = makeInBuffer(name);
   }
   return b.input;
 }
@@ -254,6 +310,9 @@ std::shared_ptr<LineBuffer> LineBuffer::closeBuffer(const std::string &name) {
 }
 
 std::shared_ptr<LineBuffer> LineBuffer::makePipeBuffer(std::string command) {
+  if (!FLAGS_replay_prefix.empty()) {
+    return replayFile();
+  }
 
   FILE *pipe = nullptr;
   try {

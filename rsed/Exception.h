@@ -10,6 +10,7 @@
 #define Exception_h
 #include <string>
 #include <memory>
+#include <iostream>
 
 class Statement;
 class LineBuffer;
@@ -22,8 +23,9 @@ public:
   Exception(std::string message) : message(message){};
   Exception(std::string message, const Statement *statement)
       : statement(statement), message(message) {}
-  Exception(std::string message, const Statement *statement, std::shared_ptr<LineBuffer> input)
-  : statement(statement), input(input), message(message) {}
+  Exception(std::string message, const Statement *statement,
+            std::shared_ptr<LineBuffer> input)
+      : statement(statement), input(input), message(message) {}
   void setStatement(Statement *s, std::shared_ptr<LineBuffer> i) {
     if (!statement)
       statement = s;

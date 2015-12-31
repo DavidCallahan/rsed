@@ -26,10 +26,7 @@
 using std::vector;
 using std::string;
 using std::stringstream;
-
-namespace RSED_Debug {
-extern int debug;
-}
+using namespace RSED;
 
 namespace {
 enum ResultCode {
@@ -82,7 +79,12 @@ public:
       outputStack.pop_back();
     }
   }
-
+  void releaseFiles() {
+    inputBuffer = nullptr;
+    outputBuffer = nullptr;
+    inputStack.clear();
+    outputStack.clear();
+  }
   string match(unsigned i) {
     if (matchColumns) {
       if (i >= columns.size()) {
@@ -108,8 +110,8 @@ public:
   }
   void nextLine() {
     if (!inputEof_) {
-      inputEof_ = !inputBuffer->getLine(currentLine_);
-      if (RSED_Debug::debug) {
+      inputEof_ = !inputBuffer->nextLine(&currentLine_);
+      if (debug) {
         std::cout << "input: " << currentLine_ << "\n";
       }
       needLine = false;
@@ -279,7 +281,7 @@ ResultCode State::interpret(IfStatement *ifstmt) {
 }
 
 ResultCode State::interpretOne(Statement *stmt) {
-  if (RSED_Debug::debug) {
+  if (debug) {
     std::cout << "trace " << inputBuffer->getLineno() << ":";
     stmt->dumpOne();
   }
@@ -341,12 +343,6 @@ ResultCode State::interpretOne(Statement *stmt) {
       pushInput(LineBuffer::makeVectorInBuffer(&data, "from list"));
     } else {
       auto fileName = value->asString().getText();
-      extern std::ofstream env_save;
-      static unsigned count = 0;
-      if (env_save.is_open()) {
-        env_save << (io->getShellCmd() ? "#shell " : "#file ") << count++
-                 << " \"" << fileName << "\"\n";
-      }
       if (io->getShellCmd()) {
         // todo: how does "close" work here?
         pushInput(LineBuffer::makePipeBuffer(fileName));
@@ -490,7 +486,7 @@ void State::interpret(Set *set) {
   auto lhs = set->lhs;
   if (lhs->kind() == AST::VariableN) {
     ((Variable *)lhs)->getSymbol().set(rhs);
-    if (RSED_Debug::debug) {
+    if (debug) {
       std::cout << "set to " << *rhs << '\n';
     }
   } else if (lhs->isOp(lhs->LOOKUP)) {
@@ -547,9 +543,9 @@ void State::interpret(Split *split) {
 
 void Interpreter::initialize(int argc, char *argv[]) {
   state = new State;
-  state->stdinBuffer = LineBuffer::makeInBuffer(&std::cin, "<stdin>");
+  state->stdinBuffer = LineBuffer::getStdin();
   state->resetInput(state->stdinBuffer);
-  state->stdoutBuffer = LineBuffer::makeOutBuffer(&std::cout, "<stdout>");
+  state->stdoutBuffer = LineBuffer::getStdout();
   state->outputBuffer = state->stdoutBuffer;
   state->setRegEx(RegEx::regEx);
   Symbol::defineSymbol(makeSymbol("LINE", [this]() {
@@ -575,12 +571,7 @@ void Interpreter::initialize(int argc, char *argv[]) {
 }
 
 bool Interpreter::setInput(const string &fileName) {
-  auto f = new std::ifstream(fileName);
-  if (!f || !f->is_open()) {
-    std::cerr << "unable to open: " << fileName << '\n';
-    return false;
-  }
-  state->resetInput(LineBuffer::makeInBuffer(f, fileName));
+  state->resetInput(LineBuffer::makeInBuffer(fileName));
   return true;
 }
 
@@ -594,7 +585,10 @@ bool State::interpretMatch(int pattern, const string &target) {
   return regEx->match(pattern, target);
 }
 
-void Interpreter::interpret(Statement *script) { state->interpret(script); }
+void Interpreter::interpret(Statement *script) {
+  state->interpret(script);
+  state->releaseFiles();
+}
 
 Value *State::interpret(Expression *e) {
   switch (e->kind()) {

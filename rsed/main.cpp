@@ -8,22 +8,25 @@
 
 #include <iostream>
 #include <assert.h>
+#include "gflags/gflags.h"
+#include "rsed.h"
 #include "AST.h"
 #include "Parser.h"
 #include "Scanner.h"
 #include "RegEx.h"
 #include "Exception.h"
 #include "Interpreter.h"
-#include "gflags/gflags.h"
 #include "Optimize.h"
 #include "LineBuffer.h"
 
 using std::string;
 
-namespace RSED_Debug {
+namespace RSED {
   int debug = 0;
   int dump = 0;
+  std::ofstream env_save;
 }
+using namespace RSED;
 extern int yydebug;
 static bool scriptIn;
 string input("");
@@ -36,7 +39,6 @@ DEFINE_bool(script_in, false, "read script from stdin");
 DEFINE_string(env_save, "", "file to save referenced environment variables");
 string script;
 
-std::ofstream env_save;
 
 void parseOptions(int *argc, char **argv[]) {
 
@@ -44,9 +46,9 @@ void parseOptions(int *argc, char **argv[]) {
 
   // only command line arguments are preserved by gflags, so the 0th one is
   // the tool name and 1st is the input.
-  RSED_Debug::debug = FLAGS_debug;
+  debug = FLAGS_debug;
   yydebug = FLAGS_yydebug;
-  RSED_Debug::dump = FLAGS_dump;
+  dump = FLAGS_dump;
   input = FLAGS_input;
   scriptIn = FLAGS_script_in;
   const char * err = nullptr;
@@ -74,19 +76,36 @@ void parseOptions(int *argc, char **argv[]) {
   }
 }
 
+std::ostream &operator<<(std::ostream &OS, const Exception &e) {
+  if (e.input && e.input->getLineno() > 0) {
+    OS << "input " << e.input->getLineno() << ": ";
+  }
+  if (e.statement) {
+    OS << "script " << e.statement->getSourceLine() << ": ";
+  }
+  return OS << e.message << '\n';
+}
+
+
 int main(int argc, char *argv[]) {
 
   parseOptions(&argc, &argv);
   RegEx::setDefaultRegEx();
   Interpreter interp;
-  interp.initialize(argc, argv);
+  try {
+    interp.initialize(argc, argv);
+  }
+  catch (Exception &e) {
+    std::cerr << e;
+    exit(1);
+  }
 
   Parser parser;
   Statement *ast = parser.parse(script);
   if (!ast) {
     exit(1);
   }
-  if (RSED_Debug::dump) {
+  if (dump) {
     ast->dump();
   }
   ast = Optimize::optimize(ast);
@@ -103,13 +122,7 @@ int main(int argc, char *argv[]) {
     LineBuffer::closeAll();
   }
   catch (Exception & e) {
-    if (e.input && e.input->getLineno() > 0) {
-      std::cerr << "input " << e.input->getLineno() << ": ";
-    }
-    if (e.statement) {
-      std::cerr << "script " << e.statement->getSourceLine() << ": ";
-    }
-    std::cerr << e.message << '\n';
+    std::cerr << e;
     rc = 1;
   }
   exit(rc);
