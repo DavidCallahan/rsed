@@ -16,7 +16,12 @@ runTest () {
     else
 	input=/dev/null
     fi
-    ARG1=x ARG2=y $RSED $test $OPT $DEBUG a < $input > $base.test-out 2> $base.test-err
+    if [ -z "INPUT_ARG" ]
+    then
+	ARG1=x ARG2=y $RSED $test $OPT $DEBUG a  < $input > $base.test-out 2> $base.test-err
+    else
+	ARG1=x ARG2=y $RSED $test $OPT $DEBUG a -input=$input > $base.test-out 2> $base.test-err
+    fi
 }
 
 runPass () {

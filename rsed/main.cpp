@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
   RegEx::setDefaultRegEx();
   Interpreter interp;
   try {
-    interp.initialize(argc, argv);
+    interp.initialize(argc, argv, input);
   }
   catch (Exception &e) {
     std::cerr << e;
@@ -109,12 +109,6 @@ int main(int argc, char *argv[]) {
     ast->dump();
   }
   ast = Optimize::optimize(ast);
-  if (input != "") {
-    bool ok = interp.setInput(input);
-    if (!ok) {
-      exit(1);
-    }
-  }
 
   int rc = 0;
   try {
