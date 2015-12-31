@@ -345,7 +345,7 @@ ResultCode State::interpretOne(Statement *stmt) {
       static unsigned count = 0;
       if (env_save.is_open()) {
         env_save << (io->getShellCmd() ? "#shell " : "#file ") << count++
-                 << " \"" << fileName << "\"\n";
+                 << " \"" << fileName << "\"\n";  
       }
       if (io->getShellCmd()) {
         // todo: how does "close" work here?
