@@ -21,22 +21,22 @@ runTest () {
 
 runPass () {
     echo $test $OPT 
-    runTest
+    if  [ -e "$base.env" ] 
+    then
+        (source "$base.env" ; runTest)
+    else
+       runTest
+    fi
     if [ $? != 0 ]
     then
-	echo "non zero exit"
+	echo "non zero exit" $test $OPT
 	failed=1
-	DEBUG="-dump -debug" runTest
-	cat $base.test-out
-	exit 1
     fi
     diff $base.test-out $base.out
     if [ $? != 0 ]
     then
 	failed=1
-	DEBUG="-dump -debug" runTest
-	cat $base.test-out
-	exit 1
+	echo "output differences" $test $OPT
     fi
     rm $base.test-out
 }
@@ -84,6 +84,16 @@ do
     rm $base.test-out
 done
 
+if [ -e ../captured ]
+then
+cd ../captured
+for test in ctest*.rsed
+do
+    base=`basename $test .rsed`
+    runPass
+    OPT=-optimize runPass
+done
+fi
 
 
 if [ $failed != 0 ]
