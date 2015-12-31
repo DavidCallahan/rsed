@@ -14,6 +14,7 @@ AST.h		Interpreter.h	Parser.h	StringRef.h
 BuiltinCalls.h	LineBuffer.h	RegEx.h		Symbol.h
 EvalState.h	Optimize.h	Scanner.h	rsed.h
 ASTWalk.h Value.h ExpandVariables.h file_buffer/file_buffer.hpp
+Exception.h
 )
 
 add_executable(rsed

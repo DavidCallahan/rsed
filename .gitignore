@@ -2,3 +2,4 @@ build
 xcode
 ninja
 temp
+tests/save

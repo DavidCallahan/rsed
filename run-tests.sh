@@ -4,7 +4,7 @@ set -e
 set +e
 
 cd tests
-RSED=../build/rsed
+RSED=`pwd`/../build/rsed
 failed=0
 export ENV1=1
 export ENV2="ENV2 value"
@@ -63,6 +63,16 @@ then
 fi
 rm $base.test-out
 
+mkdir -p  save
+test=test25.rsed
+base=test25
+OPT=-save_prefix=save/save-test25- runPass
+cp test25.rsed test25.out save
+pushd save >& /dev/null
+OPT=-replay_prefix=save-test25- runPass
+popd  >&/dev/null
+rm -rf save
+echo done
 
 
 set +e

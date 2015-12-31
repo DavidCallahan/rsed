@@ -41,14 +41,7 @@ public:
   static std::shared_ptr<LineBuffer> closeBuffer(const std::string &);
   static std::vector<std::string> tempFileNames;
 
-  template <typename Stream>
-  static std::shared_ptr<LineBuffer> makeInBuffer(Stream *, std::string);
-
   static std::shared_ptr<LineBuffer> makeInBuffer(std::string);
-  
-  template <typename Stream>
-  static std::shared_ptr<LineBuffer> makeOutBuffer(Stream *, std::string);
-
   static std::shared_ptr<LineBuffer> makePipeBuffer(std::string command);
   static std::shared_ptr<LineBuffer>
   makeVectorInBuffer(std::vector<std::string> *data, std::string name);

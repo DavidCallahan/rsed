@@ -26,7 +26,7 @@ using std::shared_ptr;
 using std::vector;
 
 DEFINE_string(save_prefix, "", "prefix ouf copied input data");
-DEFINE_string(replay_prefx, "", "prefix for saved input files");
+DEFINE_string(replay_prefix, "", "prefix for saved input files");
 
 namespace {
 
@@ -154,42 +154,57 @@ struct Buffer {
 };
 std::unordered_map<std::string, Buffer> buffers;
 unsigned inputCount = 0;
+string inputFilename(const string &prefix) {
+  std::stringstream ss;
+  ss << prefix << inputCount << ".in";
+  ++inputCount;
+  return ss.str();
 }
 
-template <typename Stream>
-std::shared_ptr<LineBuffer> LineBuffer::makeOutBuffer(Stream *stream,
-                                                      std::string name) {
-  return std::make_shared<StreamOutBuffer<Stream>>(stream, name);
-}
-
-template <typename Stream>
-std::shared_ptr<LineBuffer> LineBuffer::makeInBuffer(Stream *stream,
-                                                     std::string name) {
-  return std::make_shared<StreamInBuffer<Stream>>(stream, name);
-}
-
-std::shared_ptr<LineBuffer> LineBuffer::makeInBuffer(std::string fileName) {
+std::shared_ptr<LineBuffer> openInBuffer(std::string fileName) {
   auto f = new std::ifstream(fileName);
   if (!f || !f->is_open()) {
     throw Exception("unable to open input file: " + fileName);
   }
-  return makeInBuffer(f, fileName);
+  return std::make_shared<StreamInBuffer<std::ifstream>>(f, fileName);
+}
+
+std::shared_ptr<LineBuffer> replayFile() {
+  auto c = inputCount;
+  auto p = openInBuffer(inputFilename(FLAGS_replay_prefix));
+  if (RSED::debug) {
+    std::cout << "replaying: " << c << ' ' << p->getName()
+              << '\n';
+  }
+  return p;
+}
+
+std::shared_ptr<LineBuffer> makeInBuffer(std::istream *stream,
+                                         std::string name) {
+  return std::make_shared<StreamInBuffer<std::istream>>(stream, name);
+}
+std::shared_ptr<LineBuffer> makeOutBuffer(std::ostream *stream,
+                                          std::string name) {
+  return std::make_shared<StreamOutBuffer<std::ostream>>(stream, name);
+}
+}
+
+std::shared_ptr<LineBuffer> LineBuffer::makeInBuffer(std::string fileName) {
+  if (!FLAGS_replay_prefix.empty()) {
+    return replayFile();
+  }
+  return openInBuffer(fileName);
 }
 std::shared_ptr<LineBuffer> LineBuffer::getStdin() {
-  return makeInBuffer(&std::cin, "<stdin>");
+  if (!FLAGS_replay_prefix.empty()) {
+    assert(inputCount == 0);
+    return replayFile();
+  }
+  return ::makeInBuffer(&std::cin, "<stdin>");
 }
 std::shared_ptr<LineBuffer> LineBuffer::getStdout() {
   return makeOutBuffer(&std::cout, "<stdout>");
 }
-
-template std::shared_ptr<LineBuffer>
-LineBuffer::makeInBuffer<std::ifstream>(std::ifstream *, std::string name);
-template std::shared_ptr<LineBuffer>
-LineBuffer::makeInBuffer<std::istream>(std::istream *, std::string name);
-template std::shared_ptr<LineBuffer>
-LineBuffer::makeOutBuffer<std::ofstream>(std::ofstream *, std::string name);
-template std::shared_ptr<LineBuffer>
-LineBuffer::makeOutBuffer<std::ostream>(std::ostream *, std::string name);
 
 std::vector<string> LineBuffer::tempFileNames;
 static std::vector<std::shared_ptr<LineBuffer>> pipeFiles;
@@ -204,16 +219,14 @@ bool LineBuffer::nextLine(std::string *s) {
 
 void LineBuffer::enableCopy() {
   if (!FLAGS_save_prefix.empty()) {
-    std::stringstream ss;
-    ss << FLAGS_save_prefix << inputCount << ".in";
-    copyStream.open(ss.str());
-    if (!copyStream.is_open()) {
-      throw Exception("unable to open copy output " + ss.str());
-    }
     if (RSED::env_save.is_open()) {
-      RSED::env_save << "#input " << inputCount << " " << name << "\n";
+      RSED::env_save << "#input " << inputCount<< " " << name << "\n";
     }
-    inputCount += 1;
+    string saveName = inputFilename(FLAGS_save_prefix);
+    copyStream.open(saveName);
+    if (!copyStream.is_open()) {
+      throw Exception("unable to open copy output " + saveName);
+    }
   }
 }
 
@@ -269,13 +282,7 @@ LineBuffer::findInputBuffer(const std::string &name) {
     b.output = nullptr;
   }
   if (!b.input || b.input->closed) {
-    auto f = new ifstream(name);
-    if (!f->is_open()) {
-      string error = "unable to open file: ";
-      error += name;
-      throw Exception(error);
-    }
-    b.input.reset(new StreamInBuffer<ifstream>(f, name));
+    b.input = makeInBuffer(name);
   }
   return b.input;
 }

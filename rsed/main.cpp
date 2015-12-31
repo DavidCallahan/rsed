@@ -76,12 +76,29 @@ void parseOptions(int *argc, char **argv[]) {
   }
 }
 
+std::ostream &operator<<(std::ostream &OS, const Exception &e) {
+  if (e.input && e.input->getLineno() > 0) {
+    OS << "input " << e.input->getLineno() << ": ";
+  }
+  if (e.statement) {
+    OS << "script " << e.statement->getSourceLine() << ": ";
+  }
+  return OS << e.message << '\n';
+}
+
+
 int main(int argc, char *argv[]) {
 
   parseOptions(&argc, &argv);
   RegEx::setDefaultRegEx();
   Interpreter interp;
-  interp.initialize(argc, argv);
+  try {
+    interp.initialize(argc, argv);
+  }
+  catch (Exception &e) {
+    std::cerr << e;
+    exit(1);
+  }
 
   Parser parser;
   Statement *ast = parser.parse(script);
@@ -105,13 +122,7 @@ int main(int argc, char *argv[]) {
     LineBuffer::closeAll();
   }
   catch (Exception & e) {
-    if (e.input && e.input->getLineno() > 0) {
-      std::cerr << "input " << e.input->getLineno() << ": ";
-    }
-    if (e.statement) {
-      std::cerr << "script " << e.statement->getSourceLine() << ": ";
-    }
-    std::cerr << e.message << '\n';
+    std::cerr << e;
     rc = 1;
   }
   exit(rc);
