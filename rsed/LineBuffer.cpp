@@ -25,6 +25,7 @@ using std::shared_ptr;
 using std::vector;
 
 DEFINE_string(save_prefix, "", "prefix ouf copied input data");
+DEFINE_string(replay_prefx, "", "prefix for saved input files");
 
 namespace {
 
@@ -33,7 +34,9 @@ template <typename Stream> class StreamInBuffer : public LineBuffer {
 
 public:
   StreamInBuffer(Stream *stream, std::string name)
-  : LineBuffer(name), stream(stream) { enableCopy(); }
+      : LineBuffer(name), stream(stream) {
+    enableCopy();
+  }
   bool eof() override { return stream->eof(); }
   bool getLine(std::string &line) override {
     if (eof()) {
@@ -162,6 +165,14 @@ template <typename Stream>
 std::shared_ptr<LineBuffer> LineBuffer::makeInBuffer(Stream *stream,
                                                      std::string name) {
   return std::make_shared<StreamInBuffer<Stream>>(stream, name);
+}
+
+std::shared_ptr<LineBuffer> LineBuffer::makeInBuffer(std::string fileName) {
+  auto f = new std::ifstream(fileName);
+  if (!f || !f->is_open()) {
+    throw  Exception("unable to open input file: " + fileName);
+  }
+  return makeInBuffer(f, fileName);
 }
 
 template std::shared_ptr<LineBuffer>

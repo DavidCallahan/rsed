@@ -571,12 +571,7 @@ void Interpreter::initialize(int argc, char *argv[]) {
 }
 
 bool Interpreter::setInput(const string &fileName) {
-  auto f = new std::ifstream(fileName);
-  if (!f || !f->is_open()) {
-    std::cerr << "unable to open: " << fileName << '\n';
-    return false;
-  }
-  state->resetInput(LineBuffer::makeInBuffer(f, fileName));
+  state->resetInput(LineBuffer::makeInBuffer(fileName));
   return true;
 }
 
