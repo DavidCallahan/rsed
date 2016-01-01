@@ -1,6 +1,7 @@
 #!/bin/bash 
 C=~dcallahan/projects/rsed/captured
-RSED=~dcallahan/projects/rsed/install/rsed.bin
+RSED=${CAPTURE_RSED_BINARY-~dcallahan/projects/rsed/install/rsed.bin}
+
 SCRIPT_IN=0
 INPUT="<&0"
 for i in "$@"

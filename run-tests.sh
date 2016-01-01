@@ -4,7 +4,7 @@ if [ "$UNAME" == "Darwin" ]
 then 
     STAT='stat -f %z'
 else
-    STAT='stat -printf "%s"'
+    STAT='stat --printf=%s'
 fi
 set -e 
 (mkdir -p build && cd build && cmake ../rsed && make -j 8)
@@ -139,7 +139,7 @@ done
 
 set -e
 rm -rf ../samples
-./capture-sample.sh > /dev/null
+CAPTURE_RSED_BINARY="$RSED" ./capture-sample.sh > /dev/null
 cd ../samples
 for test in ctest*.rsed
 do
