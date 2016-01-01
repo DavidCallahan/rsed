@@ -82,8 +82,7 @@ Statement *Optimizer::optimize(Statement *input) {
     firstInvariant = lastInvariant = nullptr;
     hoistInvariants(&foreach->control);
     hoistInvariants(newBody);
-    foreach
-      ->body = newBody;
+    foreach->body = newBody;
     if (lastInvariant) {
       lastInvariant->setNext(foreach);
       return firstInvariant;
@@ -132,7 +131,8 @@ void Optimizer::noteSetVariables(Statement *body) {
 }
 
 void Optimizer::hoistInvariants(Statement *body) {
-  body->applyExprs([this](Expression *&expr) { hoistInvariants(&expr); });
+  body->applyExprs(/*recurseIntoForeach*/ false,
+                   [this](Expression *&expr) { hoistInvariants(&expr); });
 }
 
 void Optimizer::hoistInvariants(Expression **expr) {

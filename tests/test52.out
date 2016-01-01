@@ -1,0 +1,8 @@
+In file included from admarket/adsearch2/store/ShardStore.cpp:3:
+./admarket/adsearch2/store/ShardStore.h:54:16: error: private field 'family_' is not used [-Werror,-Wunused-private-field]
+    DataFamily family_;
+               ^
+./admarket/adsearch2/store/ShardStore.h:88:16: error: private field 'family_' is not used [-Werror,-Wunused-private-field]
+    DataFamily family_;
+               ^
+2 errors generated.

@@ -113,10 +113,15 @@ AST::WalkResult Statement::walkExprs(const ACTION &a) {
   return rc;
 }
 
-template <typename ACTION> void Statement::applyExprs(const ACTION &a) {
+template <typename ACTION>
+void Statement::applyExprs(bool recurseIntoForeach, const ACTION &a) {
   switch (kind()) {
   case ForeachN:
-    a(((Foreach *)this)->control);
+    if (recurseIntoForeach) {
+      auto f = (Foreach *)this;
+      a(f->control);
+      f->body->applyExprs(recurseIntoForeach, a);
+    }
     break;
   case InputN:
   case CloseN:
@@ -146,9 +151,9 @@ template <typename ACTION> void Statement::applyExprs(const ACTION &a) {
   case IfStmtN: {
     auto ifs = (IfStatement *)this;
     a(ifs->predicate);
-    ifs->thenStmts->applyExprs(a);
+    ifs->thenStmts->applyExprs(recurseIntoForeach, a);
     if (ifs->elseStmts) {
-      ifs->elseStmts->applyExprs(a);
+      ifs->elseStmts->applyExprs(recurseIntoForeach, a);
     }
     break;
   }
@@ -170,7 +175,7 @@ template <typename ACTION> void Statement::applyExprs(const ACTION &a) {
     break;
   }
   if (getNext()) {
-    getNext()->applyExprs(a);
+    getNext()->applyExprs(recurseIntoForeach, a);
   }
 }
 

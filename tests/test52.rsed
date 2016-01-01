@@ -1,0 +1,4 @@
+foreach all
+  skip to "^In file included from"
+  copy past "^[0-9]+ errors? generated"
+end

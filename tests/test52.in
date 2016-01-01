@@ -1,0 +1,16 @@
+mv -f '_build/opt/common/fbid/be3b022/libdbid.a'.tmp '_build/opt/common/fbid/be3b022/libdbid.a'
+END_TIME=`date +%s.%N`
+_msg ""
+ 0.01s _build/opt/common/fbid/be3b022/libdbid.a
+ 9.23s admarket/adsearch2/query/QueryEngineBenchmark.cpp
+In file included from admarket/adsearch2/store/ShardStore.cpp:3:
+./admarket/adsearch2/store/ShardStore.h:54:16: error: private field 'family_' is not used [-Werror,-Wunused-private-field]
+    DataFamily family_;
+               ^
+./admarket/adsearch2/store/ShardStore.h:88:16: error: private field 'family_' is not used [-Werror,-Wunused-private-field]
+    DataFamily family_;
+               ^
+2 errors generated.
+11.86s error: admarket/adsearch2/store/ShardStore.cpp
+fbmake: *** [_build/opt/admarket/adsearch2/store/ee1f113/ShardStore.o] Error 1
+Fbmake run id: D9YarmDzGOf

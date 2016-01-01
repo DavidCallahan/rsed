@@ -112,7 +112,7 @@ public:
 
   template <typename ACTION> WalkResult walk(const ACTION &a);
   template <typename ACTION> WalkResult walkExprs(const ACTION &a);
-  template <typename ACTION> void applyExprs(const ACTION &);
+  template <typename ACTION> void applyExprs(bool recurseIntoForeach, const ACTION &);
   template <typename T> static T *list(T *car, T *cdr) {
     if (!car)
       return cdr;
