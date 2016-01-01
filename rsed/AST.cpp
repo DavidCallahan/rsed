@@ -119,9 +119,13 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     OS << " then\n";
     break;
   }
+  case AST::SetAppendN:
   case AST::SetN: {
     auto s = static_cast<const Set *>(node);
     indent(depth);
+    if (s->kind() == s->SetAppendN) {
+      OS << "append " ;
+    }
     dumpExpr(s->lhs);
     OS << " = ";
     dumpExpr(s->rhs);

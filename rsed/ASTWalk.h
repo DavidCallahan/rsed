@@ -86,6 +86,7 @@ AST::WalkResult Statement::walkExprs(const ACTION &a) {
     rc = ((Split *)this)->separator->walkDown(a);
     break;
   case SetN:
+  case SetAppendN:
     rc = ((Set *)this)->rhs->walkDown(a);
     break;
   case IfStmtN:
@@ -139,6 +140,7 @@ template <typename ACTION> void Statement::applyExprs(const ACTION &a) {
     a(((Split *)this)->target);
     break;
   case SetN:
+  case SetAppendN:
     a(((Set *)this)->rhs);
     break;
   case IfStmtN: {

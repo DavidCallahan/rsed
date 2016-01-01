@@ -53,6 +53,15 @@ public:
     list.clear();
     kind = List;
   }
+  void listAppend(Value * v) {
+    if (v->kind == List) {
+      for (auto &lv : v->list) {
+        list.emplace_back(lv);
+      }
+    } else {
+      list.emplace_back(*v);
+    }
+  }
 };
 std::ostream &operator<<(std::ostream &OS, const Value &value);
 int compare(Value * left, Value * right);

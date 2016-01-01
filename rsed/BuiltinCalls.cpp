@@ -242,14 +242,7 @@ void evalCall(unsigned int id, vector<Value *> &args, EvalState *state,
   case APPEND: {
     result->clearList();
     for (auto v : args) {
-      if (v->kind == v->List) {
-        for (auto &lv : v->list) {
-          result->list.emplace_back(lv);
-          ;
-        }
-      } else {
-        result->list.emplace_back(*v);
-      }
+      result->listAppend(v);
     }
     return;
   }

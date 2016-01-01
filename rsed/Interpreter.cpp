@@ -134,6 +134,7 @@ public:
   void interpret(Foreach *foreach);
   ResultCode interpret(IfStatement *ifstmt);
   void interpret(Set *set);
+  void interpret(SetAppend *set);
   void interpret(Columns *cols, vector<string> *columns);
   void interpret(Split *split);
 
@@ -320,6 +321,9 @@ ResultCode State::interpretOne(Statement *stmt) {
   case AST::SetN:
     interpret((Set *)stmt);
     break;
+  case AST::SetAppendN:
+    interpret((SetAppend *)stmt);
+    break;
   case AST::ColumnsN:
     matchColumns = true;
     interpret((Columns *)stmt, &columns);
@@ -503,6 +507,24 @@ void State::interpret(Set *set) {
   }
 }
 
+void State::interpret(SetAppend *set) {
+  auto lhs = (Variable*) set->lhs;
+  assert(lhs->kind() == AST::VariableN);
+  auto value = lhs->getSymbol().getValue();
+  if (value->kind != value->List) {
+    interpret((Set*)set);
+    return ;
+  }
+  
+  auto append = (Call*) set->rhs;
+  assert(append->kind() == AST::CallN);
+  auto head = append->head;
+  assert(head && lhs->same(head->value));
+  for (auto a = head->nextArg; a; a = a->nextArg) {
+    value->listAppend(interpret(a->value));
+  }
+}
+
 void State::interpret(Columns *cols, vector<string> *columns) {
   columns->clear();
   vector<unsigned> nums;
@@ -545,8 +567,7 @@ void Interpreter::initialize(int argc, char *argv[], const string &input) {
   state = new State;
   if (input.empty()) {
     state->stdinBuffer = LineBuffer::getStdin();
-  }
-  else {
+  } else {
     state->stdinBuffer = LineBuffer::makeInBuffer(input);
   }
   state->resetInput(state->stdinBuffer);

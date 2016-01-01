@@ -63,6 +63,7 @@ public:
     SplitN,
     IfStmtN,
     SetN,
+    SetAppendN,
     ColumnsN,
     PrintN,
     ErrorN,
@@ -337,6 +338,9 @@ public:
   ExprKind kind() const override { return VariableN; }
   const std::string &getName() const { return symbol.getName(); }
   Symbol &getSymbol() const { return symbol; }
+  bool same(Expression *e) {
+    return e->kind() == VariableN && &((Variable *)e)->getSymbol() == &symbol;
+  }
 };
 inline Expression *AST::variable(std::string *var) {
   auto v = new Variable(*Symbol::findSymbol(*var));
@@ -408,6 +412,16 @@ public:
   static StmtKind typeKind() { return SetN; }
   StmtKind kind() const override { return typeKind(); }
 };
+typedef Set *SetP;
+
+// for x = append(x,....)
+class SetAppend : public Set {
+public:
+  SetAppend(Set *set) : Set(set->lhs, set->rhs, set->getSourceLine()) {}
+  static StmtKind typeKind() { return SetAppendN; }
+  StmtKind kind() const override { return typeKind(); }
+};
+typedef SetAppend *SetAppendP;
 
 class Print : public Statement {
 public:

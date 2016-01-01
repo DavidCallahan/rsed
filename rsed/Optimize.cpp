@@ -59,7 +59,7 @@ public:
 
 namespace Optimize {
 Statement *optimize(Statement *input) {
-  if (FLAGS_optimize) {
+  if (!FLAGS_optimize) {
     return input;
   }
   Optimizer opt;
@@ -94,6 +94,21 @@ Statement *Optimizer::optimize(Statement *input) {
     ifstmt->thenStmts = optimize(ifstmt->thenStmts);
     ifstmt->elseStmts = optimize(ifstmt->elseStmts);
     return ifstmt;
+  }
+  // x = append(x,, ....)
+  if (auto set = isa<Set>(input)) {
+    auto rhs = (CallP)set->rhs;
+    auto lhs = (Variable *)set->lhs;
+    if (lhs->kind() == AST::VariableN && rhs->kind() == rhs->CallN &&
+        rhs->getCallId() == BuiltinCalls::APPEND) {
+      auto head = rhs->head;
+      if (head && lhs->same(head->value)) {
+        auto a = new SetAppend(set);
+        a->setNext(set->getNext());
+        delete set;
+        return a;
+      }
+    }
   }
   return input;
 }
