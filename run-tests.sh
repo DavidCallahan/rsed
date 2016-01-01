@@ -137,9 +137,10 @@ do
     rm $base.test-out
 done
 
-set -e
 rm -rf ../samples
-CAPTURE_RSED_BINARY="$RSED" ./capture-sample.sh > /dev/null
+mkdir -p ../samples
+set -e
+./capture-sample.sh > /dev/null
 cd ../samples
 for test in ctest*.rsed
 do
