@@ -240,6 +240,8 @@ void evalCall(unsigned int id, vector<Value *> &args, EvalState *state,
     break;
   }
   case APPEND: {
+    // TODO does APPEND flatten? or only sort-of flatten?
+    //   if it changes, also change printListElt in interpret.cpp
     result->clearList();
     for (auto v : args) {
       result->listAppend(v);

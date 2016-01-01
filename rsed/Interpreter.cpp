@@ -141,8 +141,10 @@ public:
   bool interprettPredicate(Expression *predicate);
   bool interpretMatch(int pattern, const string &target);
   Value *interpret(Expression *);
-  void print(Expression *, LineBuffer *);
-  void print(Value *, LineBuffer *);
+  void print(Expression *, LineBuffer &);
+  void print(Value *, LineBuffer &);
+  void printListElt(Expression *e, const string &sep, LineBuffer &out,
+                    bool first);
   Value *getPattern(Expression *);
   string getRequiredMessage(Expression *pattern, Expression *errMsg);
 
@@ -290,12 +292,11 @@ ResultCode State::interpretOne(Statement *stmt) {
   case AST::SkipN:
     return NEXT_S;
   case AST::CopyN:
-    outputBuffer->append(getCurrentLine());
+    outputBuffer->appendLine(getCurrentLine());
     return NEXT_S;
   case AST::PrintN: {
     auto p = (Print *)stmt;
     auto out = outputBuffer;
-    string value = interpret(p->text)->asString().getText();
     if (auto b = p->buffer) {
       auto v = interpret(b);
       if (!v->isString()) {
@@ -303,7 +304,8 @@ ResultCode State::interpretOne(Statement *stmt) {
       }
       out = LineBuffer::findOutputBuffer(v->asString().getText());
     }
-    out->append(value);
+    print(p->text, *out);
+    out->appendString("\n");
     break;
   }
   case AST::ReplaceN: {
@@ -467,22 +469,60 @@ Value *State::getPattern(Expression *e) {
   return nullptr;
 }
 
-void State::print(Expression *e, LineBuffer *out) {
+void State::print(Expression *e, LineBuffer &out) {
   while (auto b = e->isOp(e->CONCAT)) {
     print(b->left, out);
     e = b->right;
   }
+  if (auto c = e->isCall(BuiltinCalls::APPEND)) {
+    for (auto a = c->head; a; a = a->nextArg) {
+      print(a->value, out);
+    }
+    return;
+  }
+  if (auto c = e->isCall(BuiltinCalls::JOIN)) {
+    auto head = c->head;
+    if (!head)
+      return;
+    auto sep = interpret(head->value)->asString().getText();
+    bool first = true;
+    for (auto a = head->nextArg; a; a = a->nextArg) {
+      printListElt(a->value, sep, out, first);
+      first = false;
+    }
+    return;
+  }
   print(interpret(e), out);
 }
 
-void State::print(Value *v, LineBuffer *out) {
+void State::print(Value *v, LineBuffer &out) {
   if (v->kind == v->List) {
     for (auto &lv : v->list) {
       print(&lv, out);
     }
   } else {
-    out->append(v->asString().getText());
+    out.appendString(v->asString().getText());
   }
+}
+
+void State::printListElt(Expression *e, const string &sep, LineBuffer &out,
+                         bool first) {
+  if (auto c = e->isOp(e->CONCAT)) {
+    if(!first) out.appendString(sep);
+    print(c, out);
+    return;
+  }
+  auto v = interpret(e);
+  if (v->kind == v->List) {
+    for(auto & lv : v->list) {
+      if(!first) out.appendString(sep);
+      print(&lv,out);
+      first = false;
+    }
+    return ;
+  }
+  if(!first) out.appendString(sep);
+  print(v,out);
 }
 
 void State::interpret(Set *set) {
@@ -508,15 +548,15 @@ void State::interpret(Set *set) {
 }
 
 void State::interpret(SetAppend *set) {
-  auto lhs = (Variable*) set->lhs;
+  auto lhs = (Variable *)set->lhs;
   assert(lhs->kind() == AST::VariableN);
   auto value = lhs->getSymbol().getValue();
   if (value->kind != value->List) {
-    interpret((Set*)set);
-    return ;
+    interpret((Set *)set);
+    return;
   }
-  
-  auto append = (Call*) set->rhs;
+
+  auto append = (Call *)set->rhs;
   assert(append->kind() == AST::CallN);
   auto head = append->head;
   assert(head && lhs->same(head->value));

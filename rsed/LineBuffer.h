@@ -33,7 +33,8 @@ public:
 
   bool nextLine(std::string *s);
   virtual bool eof() = 0;
-  virtual void append(const std::string &line) = 0;
+  virtual void appendLine(const std::string &line) = 0;
+  virtual void appendString(const std::string &word) = 0;
   virtual void close() = 0;
   virtual ~LineBuffer() {
     if (copyStream.is_open()) {

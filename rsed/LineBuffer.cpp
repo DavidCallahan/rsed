@@ -52,7 +52,10 @@ public:
     lineno += 1;
     return true;
   }
-  void append(const std::string &line) override {
+  void appendLine(const std::string &line) override {
+    assert(!"invalid append to input buffer");
+  }
+  void appendString(const std::string &line) override {
     assert(!"invalid append to input buffer");
   }
   void close() override;
@@ -77,7 +80,10 @@ public:
     assert(!"invalid append to output buffer");
     return false;
   }
-  void append(const std::string &line) override { *stream << line << '\n'; }
+  void appendLine(const std::string &line) override { *stream << line << '\n'; }
+  void appendString(const std::string &line) override {
+    *stream << line;
+  }
   void close() override;
 };
 template class StreamOutBuffer<std::ostream>;
@@ -97,8 +103,7 @@ public:
   std::istream in;
   PipeInBuffer(FILE *pipe, std::string name)
       : StreamInBuffer<std::istream>(&in, name), pipe(pipe),
-        fileBuffer(pipe, 8 * 1024), in(&fileBuffer) {
-  }
+        fileBuffer(pipe, 8 * 1024), in(&fileBuffer) {}
   virtual void close() override {
     if (pipe) {
       int rc = 0;
@@ -138,7 +143,10 @@ public:
       return false;
     }
   }
-  virtual void append(const std::string &line) override {
+  virtual void appendLine(const std::string &line) override {
+    throw Exception("invalid write to vector input file");
+  }
+  virtual void appendString(const std::string &line) override {
     throw Exception("invalid write to vector input file");
   }
   virtual void close() override {
@@ -172,8 +180,7 @@ std::shared_ptr<LineBuffer> replayFile() {
   auto c = inputCount;
   auto p = openInBuffer(inputFilename(FLAGS_replay_prefix));
   if (RSED::debug) {
-    std::cout << "replaying: " << c << ' ' << p->getName()
-              << '\n';
+    std::cout << "replaying: " << c << ' ' << p->getName() << '\n';
   }
   return p;
 }
@@ -212,7 +219,7 @@ bool LineBuffer::nextLine(std::string *s) {
   auto rc = getLine(*s);
   if (rc && copyStream.is_open()) {
     copyStream << *s << '\n';
-    assert(! copyStream.fail());
+    assert(!copyStream.fail());
   }
   return rc;
 }
@@ -220,7 +227,7 @@ bool LineBuffer::nextLine(std::string *s) {
 void LineBuffer::enableCopy() {
   if (!FLAGS_save_prefix.empty()) {
     if (RSED::env_save.is_open()) {
-      RSED::env_save << "#input " << inputCount<< " " << name << "\n";
+      RSED::env_save << "#input " << inputCount << " " << name << "\n";
     }
     string saveName = inputFilename(FLAGS_save_prefix);
     copyStream.open(saveName);

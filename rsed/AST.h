@@ -14,6 +14,7 @@
 #include "Symbol.h"
 #include "StringRef.h"
 #include "Value.h"
+#include "BuiltinCalls.h"
 
 class Statement;
 class Expression;
@@ -170,6 +171,7 @@ public:
   const BinaryP isOp(Operators op) const;
   static const char *opName(Operators op);
   Value::Kind valueKind();
+  class Call * isCall(BuiltinCalls::Builtins id) ;
 };
 
 class Binary : public Expression {
@@ -519,6 +521,10 @@ public:
   void setCallId(unsigned callId) { this->callId = callId; }
 };
 typedef Call *CallP;
+inline Call * Expression::isCall(BuiltinCalls::Builtins id) {
+  auto c = CallP(this);
+  return (kind() == CallN && c->getCallId() == id? c : nullptr);
+}
 
 // where we compiler a regular expression
 class RegExPattern : public Expression {
