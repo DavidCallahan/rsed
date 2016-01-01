@@ -37,7 +37,12 @@ DEFINE_bool(dump, false, "dump parsed script");
 DEFINE_string(input, "", "input file to be processed");
 DEFINE_bool(script_in, false, "read script from stdin");
 DEFINE_string(env_save, "", "file to save referenced environment variables");
+DEFINE_int32(test, 0, "test number");
 string script;
+
+static std::stringstream temp;
+#define MAKE_STRING(x) \
+    (temp.str(""), temp << x, temp.str())
 
 
 void parseOptions(int *argc, char **argv[]) {
@@ -52,7 +57,11 @@ void parseOptions(int *argc, char **argv[]) {
   input = FLAGS_input;
   scriptIn = FLAGS_script_in;
   const char * err = nullptr;
-  if (scriptIn) {
+  if (FLAGS_test > 0) {
+    script = MAKE_STRING("test" << FLAGS_test << ".rsed");
+//    input = MAKE_STRING("test" << FLAGS_test << ".in");
+  }
+  else if (scriptIn) {
     if (input == "") {
       err = "missing input file";
     }

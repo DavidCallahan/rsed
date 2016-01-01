@@ -15,7 +15,8 @@ using std::stringstream;
 
 void Value::set(const Value *value) {
   kind = value->kind;
-  sref.clear();
+  scache.clear();
+  cur = nullptr;
   switch (kind) {
   case Logical:
     logical = value->logical;
@@ -27,7 +28,12 @@ void Value::set(const Value *value) {
     regEx = value->regEx;
     break;
   case String:
-    sref = value->sref;
+    if (auto s = value->constString()) {
+      cur = s;
+    } else {
+      cur = &scache;
+      scache = value->scache;
+    }
     break;
   case List:
     list.clear();
@@ -44,8 +50,10 @@ bool Value::asLogical() const {
     return logical;
   case Number:
     return number != 0 && number == number;
-  case String:
-    return !(sref.getText().empty() || sref.getText() == "false");
+  case String: {
+    auto s = getString();
+    return !(s.getText().empty() || s.getText() == "false");
+  }
   case List:
     return !list.empty();
   case RegEx:
@@ -62,30 +70,34 @@ double Value::asNumber() {
     return number;
   case List:
     asString();
-    //fallthorugh
+  // fallthorugh
   case String: {
-    stringstream ss(sref.getText());
+    stringstream ss(getString().getText());
     double result;
     ss >> result;
     if (ss.fail()) {
-      throw Exception("unable to convert to number: " + sref);
+      throw Exception("unable to convert to number: " + getString().getText());
     }
     return result;
   }
   case RegEx:
     assert(0 && "can not convert regex to number");
-      throw;
+    throw;
   }
 }
+
+static const StringRef trueString("true",0);
+static const StringRef falseString("false",0);
+
 const StringRef &Value::asString() {
 
-  if (!sref.getText().empty()) {
-    return sref;
+  if (cur) {
+    return getString();
   }
 
   switch (kind) {
   case Logical:
-    sref = StringRef(logical ? "true" : "false", 0);
+    set(logical ? &trueString : &falseString);
     break;
   case Number: {
     stringstream ss;
@@ -94,7 +106,7 @@ const StringRef &Value::asString() {
     } else {
       ss << number;
     }
-    sref = StringRef(ss.str(), 0);
+    set(ss.str());
     break;
   }
   case List: {
@@ -102,15 +114,16 @@ const StringRef &Value::asString() {
     for (auto &v : list) {
       ss << v.asString().getText();
     }
-    sref = StringRef(ss.str(), 0); // TODO propagate flags?
+    set(ss.str()); // TODO propagate flags?
     break;
   }
   case String:
+    assert(0 && "String with null cur pointer");
     break;
   case RegEx:
     assert(0 && "can not convert regex to number");
   }
-  return sref;
+  return getString();
 }
 
 std::ostream &operator<<(std::ostream &OS, const Value &value) {
@@ -134,7 +147,7 @@ std::ostream &operator<<(std::ostream &OS, const Value &value) {
     OS << value.number;
     break;
   case Value::String:
-    OS << value.sref;
+    OS << value.getString();
     break;
   }
   return OS;
@@ -143,24 +156,33 @@ std::ostream &operator<<(std::ostream &OS, const Value &value) {
 void Value::set(bool boole) {
   logical = boole;
   kind = Logical;
-  sref.clear();
+  scache.clear();
+  cur = nullptr;
 }
 
 void Value::set(double n) {
   kind = Number;
   number = n;
-  sref.clear();
+  scache.clear();
+  cur = nullptr;
 }
 
 void Value::set(StringRef s) {
   kind = String;
-  sref = s;
+  scache = s;
+  cur = &scache;
+}
+void Value::set(const StringRef * s) {
+  kind = String;
+  scache.clear();
+  cur = s;
 }
 
 void Value::setRegEx(unsigned int i) {
   kind = RegEx;
   regEx = i;
-  sref.clear();
+  scache.clear();
+  cur = nullptr;
 }
 
 void Value::set(std::string s) { set(StringRef(s)); }
@@ -197,7 +219,7 @@ int compare(Value *left, Value *right) {
   }
 }
 
-void Value::append(const Value & v) {
+void Value::append(const Value &v) {
   assert(kind == List);
   list.emplace_back(v);
 }

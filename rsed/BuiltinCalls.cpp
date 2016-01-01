@@ -96,8 +96,8 @@ string shell(vector<Value *> &args) {
   }
   std::string shellCmd = ss.str();
   auto pipe = LineBuffer::makePipeBuffer(shellCmd);
-  string result;
-  pipe->nextLine(&result);
+  pipe->nextLine();
+  string result = pipe->getInputLine();
   pipe->close();
   return result;
 }
@@ -187,7 +187,7 @@ void evalCall(unsigned int id, vector<Value *> &args, EvalState *state,
     if (n == 0)
       break;
     if (n == 1) {
-      result->set(args[0]->asString());
+      result->setString(args[0]);
       return;
     }
     const auto &text = args[0]->asString().getText();
@@ -234,6 +234,10 @@ void evalCall(unsigned int id, vector<Value *> &args, EvalState *state,
     return;
   }
   case STRINGB: {
+    if (args.size() == 1) {
+      result->setString(args[0]);
+      return;
+    }
     for (auto v : args) {
       ss << v->asString().getText();
     }

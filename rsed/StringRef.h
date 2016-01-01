@@ -50,5 +50,9 @@ inline std::string operator+(std::string left, StringRef right) {
   return left + right.getText();
 }
 
+typedef std::shared_ptr<StringRef> StringPtr;
+inline StringPtr asShared(StringRef & s) {
+  return StringPtr(&s, [](StringRef *){});
+}
 
 #endif

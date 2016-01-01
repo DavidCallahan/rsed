@@ -39,16 +39,15 @@ public:
     enableCopy();
   }
   bool eof() override { return stream->eof(); }
-  bool getLine(std::string &line) override {
+  bool getLine() override {
+    inputLine.clear();
     if (eof()) {
-      line = "";
       return false;
     }
-    getline(*stream, line);
-    if (eof() && line == "") {
+    std::getline(*stream,inputLine);
+    if (eof() && inputLine.empty()) {
       return false;
     }
-    inputLine = line;
     lineno += 1;
     return true;
   }
@@ -76,7 +75,7 @@ public:
   StreamOutBuffer(Stream *stream, std::string name)
       : LineBuffer(name), stream(stream) {}
   bool eof() override { return false; }
-  bool getLine(std::string &line) override {
+  bool getLine() override {
     assert(!"invalid append to output buffer");
     return false;
   }
@@ -131,13 +130,11 @@ public:
   VectorInBuffer(vector<string> lines, string name)
       : LineBuffer(name), lines(std::move(lines)) {}
   virtual bool eof() override { return lineno >= lines.size(); }
-  virtual bool getLine(std::string &s) override {
+  virtual bool getLine() override {
     if (lineno < lines.size()) {
       inputLine = std::move(lines[lineno++]);
-      s = inputLine;
       return true;
     } else {
-      s = "";
       return false;
     }
   }
@@ -213,10 +210,10 @@ std::shared_ptr<LineBuffer> LineBuffer::getStdout() {
 std::vector<string> LineBuffer::tempFileNames;
 static std::vector<std::shared_ptr<LineBuffer>> pipeFiles;
 
-bool LineBuffer::nextLine(std::string *s) {
-  auto rc = getLine(*s);
+bool LineBuffer::nextLine() {
+  auto rc = getLine();
   if (rc && copyStream.is_open()) {
-    copyStream << *s << '\n';
+    copyStream << inputLine << '\n';
     assert(!copyStream.fail());
   }
   return rc;

@@ -18,7 +18,7 @@
 class LineBuffer {
   std::ofstream copyStream;
   std::string name;
-  virtual bool getLine(std::string &) = 0;
+  virtual bool getLine() = 0;
 
 protected:
   bool closed = false;
@@ -31,7 +31,7 @@ public:
   int getLineno() const { return lineno; }
   const std::string &getName() const { return name; }
 
-  bool nextLine(std::string *s);
+  bool nextLine();
   virtual bool eof() = 0;
   virtual void appendLine(const std::string &line) = 0;
   virtual void appendString(const std::string &word) = 0;

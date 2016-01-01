@@ -50,12 +50,13 @@ public:
   vector<string> columns;
 
   string currentLine_;
+  bool currentUnmodified;
   bool needLine = true;
-  string &getCurrentLine() {
+  const string &getCurrentLine() {
     if (needLine) {
       nextLine();
     }
-    return currentLine_;
+    return (currentUnmodified ? inputBuffer->getInputLine() : currentLine_) ;
   }
 
   std::shared_ptr<LineBuffer> getInputBuffer() const { return inputBuffer; }
@@ -110,11 +111,12 @@ public:
   }
   void nextLine() {
     if (!inputEof_) {
-      inputEof_ = !inputBuffer->nextLine(&currentLine_);
+      inputEof_ = !inputBuffer->nextLine();
       if (debug) {
         std::cout << "input: " << currentLine_ << "\n";
       }
       needLine = false;
+      currentUnmodified = true;
     }
   }
   unsigned getLineno() const override {
@@ -248,7 +250,7 @@ void State::interpret(Foreach *foreach) {
 
   auto b = foreach->body;
   for (;;) {
-    string *line = nullptr;
+    const string *line = nullptr;
     if (fc.needsInput()) {
       if (getInputEof()) {
         if (c && c->getRequired()) {
@@ -313,6 +315,7 @@ ResultCode State::interpretOne(Statement *stmt) {
     auto reg = interpret(r->pattern)->getRegEx();
     auto target = interpret(r->replacement)->asString().getText();
     currentLine_ = regEx->replace(reg, target, getCurrentLine());
+    currentUnmodified = false;
     break;
   }
   case AST::ForeachN:
@@ -682,7 +685,7 @@ Value *State::interpret(Expression *e) {
     break;
   }
   case AST::StringConstN: {
-    e->set(((StringConst *)e)->getConstant());
+    e->set(& ((StringConst *)e)->getConstant());
     break;
   }
   case AST::CallN: {
