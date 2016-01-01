@@ -18,32 +18,63 @@ runTest () {
     fi
     if [ -z "INPUT_ARG" ]
     then
-	ARG1=x ARG2=y $RSED $test $OPT $DEBUG a  < $input > $base.test-out
+	ARG1=x ARG2=y $RSED $test $OPT $DEBUG a  < $input > $base.test-out 2> $base.test-err
     else
-	ARG1=x ARG2=y $RSED $test $OPT $DEBUG a -input=$input > $base.test-out
+	ARG1=x ARG2=y $RSED $test $OPT $DEBUG a -input=$input > $base.test-out 2> $base.test-err
     fi
 }
 
 runPass () {
     echo $test $OPT 
-    runTest
+    local keep=0
+    if  [ -e "$base.env" ] 
+    then
+        (source "$base.env" ; runTest)
+    else
+       runTest
+    fi
+    local rc=$?
+    local err=0
+    if [ -e "$base.err" ]
+    then
+        err=`stat --printf="%s" $base.err`
+    fi
+    if [ $err == 0 ] 
+    then
+        if [ $rc != 0 ]
+        then
+	    echo "non zero exit" $test $OPT
+	    failed=1
+            keep=1
+        fi
+    else
+        if [ $rc == 0 ]
+        then
+            echo "unexpected zero exit" $test $OPT
+            failed=1
+            keep=1
+        fi
+        diff $base.test-err $base.err > $base.err-diff
+        if [ $? != 0 ]
+        then
+	    failed=1
+            keep=1
+            head -n 5 < $base.err-diff
+	    echo "output error differences" $test $OPT
+        fi
+    fi
+    diff $base.test-out $base.out > $base.diff
     if [ $? != 0 ]
     then
-	echo "non zero exit"
-	failed=1
-	DEBUG="-dump -debug" runTest
-	cat $base.test-out
-	exit 1
+        failed=1
+        keep=1
+        head -n 5 < $base.diff
+	echo "output differences" $test $OPT
     fi
-    diff $base.test-out $base.out
-    if [ $? != 0 ]
+    if [ $keep == 0 ]
     then
-	failed=1
-	DEBUG="-dump -debug" runTest
-	cat $base.test-out
-	exit 1
+       rm -f $base.test-out $base.test-err $base.diff $base.err-diff
     fi
-    rm $base.test-out
 }
 
 for test in test*.rsed
@@ -101,6 +132,16 @@ do
     rm $base.test-out
 done
 
+if [ -e ../captured ]
+then
+cd ../captured
+for test in ctest*.rsed
+do
+    base=`basename $test .rsed`
+    OPT="-replay_prefix=$base-save" runPass
+    OPT="-optimize -replay_prefix=$base-save" runPass
+done
+fi
 
 
 if [ $failed != 0 ]
