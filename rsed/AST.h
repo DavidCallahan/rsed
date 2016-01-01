@@ -594,5 +594,8 @@ public:
 // TODO add a mechanism to print a string without a newline (WRITE, PRINT
 // STRING, ...)
 // TODO add an "else msg" for required statements for better descriptive text
+// TODO make match success available in dynamic variable
+// TODO add "match all x for y" for all matches of x in y
+// TODO allow  spplit as an expression returning a list
 
 #endif /* defined(__rsed__AST__) */

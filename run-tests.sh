@@ -6,8 +6,9 @@ then
 else
     STAT='stat --printf=%s'
 fi
+# MSAN="-DCMAKE_CXX_FLAGS=-fsanitize=address -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address"
 set -e 
-(mkdir -p build && cd build && cmake ../rsed && make -j 8)
+(mkdir -p build && cd build && cmake $MSAN ../rsed && make -j 8)
 set +e
 
 cd tests

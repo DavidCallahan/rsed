@@ -50,6 +50,7 @@ bool Value::asLogical() const {
     return !list.empty();
   case RegEx:
     assert(0 && "can not convert regex to logical");
+    throw;
   }
 }
 
@@ -59,6 +60,9 @@ double Value::asNumber() {
     return double(logical);
   case Number:
     return number;
+  case List:
+    asString();
+    //fallthorugh
   case String: {
     stringstream ss(sref.getText());
     double result;
@@ -68,10 +72,9 @@ double Value::asNumber() {
     }
     return result;
   }
-  case List: {
-  }
   case RegEx:
     assert(0 && "can not convert regex to number");
+      throw;
   }
 }
 const StringRef &Value::asString() {
@@ -190,6 +193,7 @@ int compare(Value *left, Value *right) {
   case Value::List:
   case Value::RegEx:
     assert(0 && "can not compare regex");
+    throw;
   }
 }
 
