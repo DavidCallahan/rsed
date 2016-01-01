@@ -36,11 +36,7 @@ public:
   virtual void appendLine(const std::string &line) = 0;
   virtual void appendString(const std::string &word) = 0;
   virtual void close() = 0;
-  virtual ~LineBuffer() {
-    if (copyStream.is_open()) {
-      copyStream.close();
-    }
-  }
+  virtual ~LineBuffer();
 
   const std::string &getInputLine() { return inputLine; }
 

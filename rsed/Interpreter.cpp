@@ -611,6 +611,7 @@ void Interpreter::initialize(int argc, char *argv[], const string &input) {
     state->stdinBuffer = LineBuffer::makeInBuffer(input);
   }
   state->resetInput(state->stdinBuffer);
+  state->stdinBuffer =    nullptr;
   state->stdoutBuffer = LineBuffer::getStdout();
   state->outputBuffer = state->stdoutBuffer;
   state->setRegEx(RegEx::regEx);

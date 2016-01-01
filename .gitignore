@@ -3,3 +3,5 @@ xcode
 ninja
 temp
 tests/save
+samples
+install

@@ -1,0 +1,6 @@
+copy all
+input "sample.in"
+copy all
+input shell ( "cat sample.cat-in")
+copy all
+print "all done"

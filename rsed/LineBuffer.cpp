@@ -81,9 +81,7 @@ public:
     return false;
   }
   void appendLine(const std::string &line) override { *stream << line << '\n'; }
-  void appendString(const std::string &line) override {
-    *stream << line;
-  }
+  void appendString(const std::string &line) override { *stream << line; }
   void close() override;
 };
 template class StreamOutBuffer<std::ostream>;
@@ -339,4 +337,13 @@ std::shared_ptr<LineBuffer>
 LineBuffer::makeVectorInBuffer(std::vector<std::string> *data,
                                std::string name) {
   return std::make_shared<VectorInBuffer>(std::move(*data), name);
+}
+
+LineBuffer::~LineBuffer() {
+  if(RSED::debug) {
+    std::cout << "closing copy of " << name << '\n';
+  }  
+  if (copyStream.is_open()) {
+    copyStream.close();
+  }
 }

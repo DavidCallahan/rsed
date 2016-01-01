@@ -1,4 +1,11 @@
 #!/bin/bash
+UNAME=`uname`
+if [ "$UNAME" == "Darwin" ]
+then 
+    STAT='stat -f %z'
+else
+    STAT='stat -printf "%s"'
+fi
 set -e 
 (mkdir -p build && cd build && cmake ../rsed && make -j 8)
 set +e
@@ -37,7 +44,7 @@ runPass () {
     local err=0
     if [ -e "$base.err" ]
     then
-        err=`stat --printf="%s" $base.err`
+        err=`$STAT $base.err`
     fi
     if [ $err == 0 ] 
     then
@@ -111,8 +118,6 @@ do
     rm -rf save
 done
 
-
-
 set +e
 for test in err*.rsed
 do
@@ -131,6 +136,18 @@ do
     fi
     rm $base.test-out
 done
+
+set -e
+rm -rf ../samples
+./capture-sample.sh > /dev/null
+cd ../samples
+for test in ctest*.rsed
+do
+    base=`basename $test .rsed`
+    OPT="-replay_prefix=$base-save" runPass
+    OPT="-optimize -replay_prefix=$base-save" runPass
+done
+set +e
 
 if [ -e ../captured ]
 then
