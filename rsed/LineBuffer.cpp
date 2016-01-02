@@ -40,12 +40,13 @@ public:
   }
   bool eof() override { return stream->eof(); }
   bool getLine() override {
-    inputLine.clear();
     if (eof()) {
       return false;
     }
-    std::getline(*stream,inputLine);
-    if (eof() && inputLine.empty()) {
+    string line;
+    std::getline(*stream,line);
+    inputLine = std::make_shared<const StringRef>(std::move(line),0);
+    if (eof() && inputLine->getText().empty()){
       return false;
     }
     lineno += 1;
@@ -132,7 +133,7 @@ public:
   virtual bool eof() override { return lineno >= lines.size(); }
   virtual bool getLine() override {
     if (lineno < lines.size()) {
-      inputLine = std::move(lines[lineno++]);
+      inputLine = std::make_shared<const StringRef>(std::move(lines[lineno++]),0);
       return true;
     } else {
       return false;
@@ -213,7 +214,7 @@ static std::vector<std::shared_ptr<LineBuffer>> pipeFiles;
 bool LineBuffer::nextLine() {
   auto rc = getLine();
   if (rc && copyStream.is_open()) {
-    copyStream << inputLine << '\n';
+    copyStream << inputLine->getText() << '\n';
     assert(!copyStream.fail());
   }
   return rc;

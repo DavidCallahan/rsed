@@ -24,7 +24,7 @@ public:
   };
 
   StringRef() : flags(0) {}
-  StringRef(std::string text, unsigned flags=0) : text(text), flags(flags) {}
+  StringRef(std::string &&text, unsigned flags=0) : text(text), flags(flags) {}
   unsigned getFlags() const { return flags; }
   const std::string &getText() const { return text; }
   StringRef(std::string *asScanned);
@@ -50,9 +50,9 @@ inline std::string operator+(std::string left, StringRef right) {
   return left + right.getText();
 }
 
-typedef std::shared_ptr<StringRef> StringPtr;
-inline StringPtr asShared(StringRef & s) {
-  return StringPtr(&s, [](StringRef *){});
+typedef std::shared_ptr<const StringRef> StringPtr;
+inline StringPtr asShared(const StringRef & s) {
+  return StringPtr(&s, [](const StringRef *){});
 }
 
 #endif

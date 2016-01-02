@@ -49,14 +49,13 @@ public:
   bool matchColumns = true;
   vector<string> columns;
 
-  string currentLine_;
-  bool currentUnmodified;
+  StringPtr currentLine_;
   bool needLine = true;
-  const string &getCurrentLine() {
+  StringPtr getCurrentLine() {
     if (needLine) {
       nextLine();
     }
-    return (currentUnmodified ? inputBuffer->getInputLine() : currentLine_) ;
+    return currentLine_;
   }
 
   std::shared_ptr<LineBuffer> getInputBuffer() const { return inputBuffer; }
@@ -103,7 +102,7 @@ public:
     }
     return inputEof_;
   }
-  const string &getInputLine() {
+  StringPtr getInputLine() {
     if (needLine) {
       nextLine();
     }
@@ -112,11 +111,11 @@ public:
   void nextLine() {
     if (!inputEof_) {
       inputEof_ = !inputBuffer->nextLine();
+      currentLine_ = inputBuffer->getInputLine();
       if (debug) {
-        std::cout << "input: " << currentLine_ << "\n";
+        std::cout << "input: " << currentLine_->getText() << "\n";
       }
       needLine = false;
-      currentUnmodified = true;
     }
   }
   unsigned getLineno() const override {
@@ -124,7 +123,7 @@ public:
   }
   void resetInput(const std::shared_ptr<LineBuffer> &newBuffer) {
     needLine = true;
-    currentLine_ = "";
+    currentLine_ = nullptr;
     inputEof_ = false;
     inputBuffer = newBuffer;
   }
@@ -165,13 +164,13 @@ class ForeachControl {
 public:
   ForeachControl(State *state) : state(state) {}
   void initialize(Control *c);
-  MatchKind eval(const string *line);
+  MatchKind eval();
   void release() {}
   bool needsInput() const { return all || predicate; }
   ~ForeachControl() { release(); }
 };
 
-MatchKind ForeachControl::eval(const string *line) {
+MatchKind ForeachControl::eval() {
   if (all) {
     return NoMatchK;
   }
@@ -223,7 +222,7 @@ public:
 
 stringstream &State::expandVariables(const string &text, stringstream &str) {
   DynamicExpander expander(*this, str);
-  expander.expand(text);
+  expander.expand(StringRef(string(text),0)); // todo clean this op
   return str;
 }
 
@@ -250,7 +249,6 @@ void State::interpret(Foreach *foreach) {
 
   auto b = foreach->body;
   for (;;) {
-    const string *line = nullptr;
     if (fc.needsInput()) {
       if (getInputEof()) {
         if (c && c->getRequired()) {
@@ -259,9 +257,9 @@ void State::interpret(Foreach *foreach) {
         }
         break;
       }
-      line = &getCurrentLine();
+      getCurrentLine();
     }
-    auto mk = fc.eval(line);
+    auto mk = fc.eval();
     if (mk == StopAtK) {
       break;
     }
@@ -294,7 +292,7 @@ ResultCode State::interpretOne(Statement *stmt) {
   case AST::SkipN:
     return NEXT_S;
   case AST::CopyN:
-    outputBuffer->appendLine(getCurrentLine());
+    outputBuffer->appendLine(getCurrentLine()->getText());
     return NEXT_S;
   case AST::PrintN: {
     auto p = (Print *)stmt;
@@ -314,8 +312,8 @@ ResultCode State::interpretOne(Statement *stmt) {
     auto r = (Replace *)stmt;
     auto reg = interpret(r->pattern)->getRegEx();
     auto target = interpret(r->replacement)->asString().getText();
-    currentLine_ = regEx->replace(reg, target, getCurrentLine());
-    currentUnmodified = false;
+    auto str = regEx->replace(reg, target, getCurrentLine()->getText());
+    currentLine_ = std::make_shared<const StringRef>(std::move(str),0);
     break;
   }
   case AST::ForeachN:
@@ -684,10 +682,9 @@ Value *State::interpret(Expression *e) {
     e->set(match(((VarMatch *)e)->getValue()));
     break;
   }
-  case AST::StringConstN: {
-    e->set(& ((StringConst *)e)->getConstant());
+  case AST::StringConstN:
+    e->set(asShared(((StringConst *)e)->getConstant()));
     break;
-  }
   case AST::CallN: {
     auto c = (Call *)e;
     vector<Value *> args;
@@ -707,8 +704,8 @@ Value *State::interpret(Expression *e) {
   }
   case AST::RegExPatternN: {
     auto r = (RegExPattern *)e;
-    auto pattern = interpret(r->pattern)->asString();
-    regEx->setPattern(pattern, r->getIndex());
+    auto pattern = interpret(r->pattern);
+    regEx->setPattern(pattern->asStringPtr(), r->getIndex());
     r->setRegEx(r->getIndex());
     break;
   }
@@ -841,7 +838,7 @@ Value *State::interpret(Expression *e) {
         } else {
           string temp;
           temp.append(1, str[index]);
-          b->set(StringRef(temp, 0));
+          b->set(StringRef(std::move(temp), 0));
         }
       }
       break;

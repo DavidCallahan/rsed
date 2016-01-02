@@ -18,7 +18,6 @@ typedef class Value *ValueP;
 
 class Value {
   StringRef scache;
-
 public:
   enum Kind {
     String,
@@ -28,30 +27,32 @@ public:
     List,
   };
   Kind kind;
-  const StringRef *cur = nullptr; // may be null, may point to scache;
+  StringPtr cur = nullptr;
   bool logical = false;
   double number = 0.0;
   unsigned regEx;
   std::vector<Value> list;
-  Value(StringRef string) : scache{string}, kind(String), cur(&scache) {}
-  Value(const StringRef *string) : kind(String), cur(string) {}
+  Value(StringRef string) : scache{string}, kind(String)  {}
+  Value(StringPtr string) : kind(String), cur(string) {}
   Value(bool logical = false) : kind(Logical), logical(logical) {}
   Value(double number) : kind(Number), number(number) {}
   Value(const Value &value) { set(&value); }
   
-  const StringRef & getString() const { return *cur; }
-  
+  const StringRef & getString() const {
+    return (cur ? *cur : scache);
+  }
   bool isString() const { return kind == String; }
   const StringRef &asString();
   bool asLogical() const;
   double asNumber();
   unsigned getRegEx();
-  const StringRef * constString() const { return (cur && cur != &scache ? cur : nullptr); }
+  StringPtr asStringPtr();
+  StringPtr constString() const { return cur; }
 
   void set(bool);
   void set(double);
   void set(StringRef);
-  void set(const StringRef *);
+  void set(StringPtr);
   void set(std::string);
   void set(const Value *value);
   void setString(Value * v) {

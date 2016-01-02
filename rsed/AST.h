@@ -372,7 +372,7 @@ class StringConst : public Expression {
 
 public:
   StringConst(StringRef constant) : constant(constant) {}
-  StringConst(const char *constant) : constant(constant) {}
+  StringConst(const char *constant) : constant(std::string(constant),0) {}
   ExprKind kind() const override { return StringConstN; }
   const StringRef &getConstant() const { return constant; }
   void setConstant(StringRef constant) { this->constant = constant; }

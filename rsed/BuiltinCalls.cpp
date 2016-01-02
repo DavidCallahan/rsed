@@ -89,7 +89,7 @@ bool getCallId(const string &name, unsigned *u) {
   return false;
 }
 
-string shell(vector<Value *> &args) {
+StringPtr shell(vector<Value *> &args) {
   std::stringstream ss;
   for (auto v : args) {
     ss << v->asString().getText() << " ";
@@ -97,7 +97,7 @@ string shell(vector<Value *> &args) {
   std::string shellCmd = ss.str();
   auto pipe = LineBuffer::makePipeBuffer(shellCmd);
   pipe->nextLine();
-  string result = pipe->getInputLine();
+  auto result = pipe->getInputLine();
   pipe->close();
   return result;
 }
@@ -180,8 +180,8 @@ void evalCall(unsigned int id, vector<Value *> &args, EvalState *state,
     }
     break;
   case SHELL:
-    ss << shell(args);
-    break;
+    result->set(shell(args));
+    return;
   case SUBSTR: {
     auto n = args.size();
     if (n == 0)

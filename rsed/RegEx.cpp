@@ -28,13 +28,13 @@ namespace {
 class C14RegEx : public RegEx {
   static syntax_option_type regExOptions;
   static bool specials[];
-  std::vector<std::pair<std::regex, unsigned>> patterns;
+  std::vector<std::pair<std::regex, StringPtr>> patterns;
   std::smatch matches;
   std::string lastTarget;
 
 public:
   virtual int setStyle(const std::string &style) override;
-  virtual void setPattern(const StringRef &pattern, int index) override;
+  virtual void setPattern(StringPtr pattern, int index) override;
 
   virtual bool match(int pattern, const std::string &line) override;
   virtual void split(int pattern, const std::string &target,
@@ -73,16 +73,16 @@ std::string C14RegEx::getSubMatch(unsigned int i) {
   return matches[i];
 }
 
-void C14RegEx::setPattern(const StringRef &pattern, int index) {
+void C14RegEx::setPattern(StringPtr pattern, int index) {
   if (index >= patterns.size()) {
     patterns.resize(2 * index + 1);
   }
   syntax_option_type options = C14RegEx::regExOptions;
-  if (pattern.getFlags() & pattern.CASE_INSENSITIVE) {
+  if (pattern->getFlags() & pattern->CASE_INSENSITIVE) {
     options |= icase;
   }
-  auto regex = createRegex(pattern.getText(), options);
-  patterns[index] = std::make_pair(std::move(regex) ,pattern.getFlags());
+  auto regex = createRegex(pattern->getText(), options);
+  patterns[index] = std::make_pair(std::move(regex) , std::move(pattern));
 }
 
 std::string C14RegEx::escape(const std::string &text) {
@@ -134,7 +134,7 @@ int C14RegEx::setStyle(const std::string &style) {
 std::string C14RegEx::replace(int pattern, const std::string &replacement,
                               const std::string &line) {
   std::regex &re = patterns[pattern].first;
-  unsigned flags = patterns[pattern].second;
+  unsigned flags = patterns[pattern].second->getFlags();
   if (flags & StringRef::GLOBAL) {
     return std::regex_replace(line, re, replacement);
   }

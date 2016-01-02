@@ -10,7 +10,7 @@
 #define __rsed__RegEx__
 #include <string>
 #include <regex>
-class StringRef;
+#include "StringRef.h"
 
 class RegEx {
 protected:
@@ -21,7 +21,7 @@ public:
   virtual int setStyle(const std::string &style) = 0;
 
   // compile a pattern which is then referred to by index
-  virtual void setPattern(const StringRef &pattern, int index) = 0;
+  virtual void setPattern(StringPtr, int index) = 0;
 
   // perform a replacement operation
   virtual std::string replace(int pattern, const std::string &replacement,

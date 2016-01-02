@@ -14,6 +14,7 @@
 #include <vector>
 #include <memory>
 #include <iostream>
+#include "StringRef.h"
 
 class LineBuffer {
   std::ofstream copyStream;
@@ -22,7 +23,7 @@ class LineBuffer {
 
 protected:
   bool closed = false;
-  std::string inputLine;
+  StringPtr inputLine;
   int lineno = 0;
   void enableCopy();
 
@@ -38,7 +39,7 @@ public:
   virtual void close() = 0;
   virtual ~LineBuffer();
 
-  const std::string &getInputLine() { return inputLine; }
+  StringPtr getInputLine() { return inputLine; }
 
   static std::shared_ptr<LineBuffer> findOutputBuffer(const std::string &);
   static std::shared_ptr<LineBuffer> findInputBuffer(const std::string &);

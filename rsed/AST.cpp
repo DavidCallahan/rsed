@@ -492,7 +492,7 @@ public:
     if (flags & StringRef::ESCAPE_SPECIALS) {
       s = RegEx::regEx->escape(s);
     }
-    return new StringConst(StringRef(s, flags));
+    return new StringConst(StringRef(std::move(s), flags));
   }
   void single(const std::string &s, unsigned flags) override {
     term = makeString(s, flags);

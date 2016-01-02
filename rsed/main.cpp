@@ -59,7 +59,11 @@ void parseOptions(int *argc, char **argv[]) {
   const char * err = nullptr;
   if (FLAGS_test > 0) {
     script = MAKE_STRING("test" << FLAGS_test << ".rsed");
-//    input = MAKE_STRING("test" << FLAGS_test << ".in");
+    input = MAKE_STRING("test" << FLAGS_test << ".in");
+    std::ifstream temp(input);
+    if (temp.fail()) {
+      input = "";
+    }
   }
   else if (scriptIn) {
     if (input == "") {

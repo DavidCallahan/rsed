@@ -29,9 +29,9 @@ void Value::set(const Value *value) {
     break;
   case String:
     if (auto s = value->constString()) {
-      cur = s;
+      cur = std::move(s);
     } else {
-      cur = &scache;
+      cur = nullptr;
       scache = value->scache;
     }
     break;
@@ -86,19 +86,23 @@ double Value::asNumber() {
   }
 }
 
-static const StringRef trueString("true",0);
-static const StringRef falseString("false",0);
+static const StringRef trueString("true", 0);
+static const StringRef falseString("false", 0);
 
 const StringRef &Value::asString() {
 
   if (cur) {
-    return getString();
+    return *cur;
+  }
+  if (!scache.getText().empty()) {
+    return scache;
   }
 
   switch (kind) {
-  case Logical:
-    set(logical ? &trueString : &falseString);
+  case Logical: {
+    set(asShared(logical ? trueString : falseString));
     break;
+  }
   case Number: {
     stringstream ss;
     if (number != number) {
@@ -118,12 +122,18 @@ const StringRef &Value::asString() {
     break;
   }
   case String:
-    assert(0 && "String with null cur pointer");
-    break;
+    return scache;
   case RegEx:
     assert(0 && "can not convert regex to number");
   }
   return getString();
+}
+
+StringPtr Value::asStringPtr() {
+  if (!cur) {
+    cur = std::make_shared<const StringRef>(asString());
+  }
+  return cur;
 }
 
 std::ostream &operator<<(std::ostream &OS, const Value &value) {
@@ -169,13 +179,13 @@ void Value::set(double n) {
 
 void Value::set(StringRef s) {
   kind = String;
-  scache = s;
-  cur = &scache;
+  scache = std::move(s);
+  cur = nullptr;
 }
-void Value::set(const StringRef * s) {
+void Value::set(StringPtr s) {
   kind = String;
   scache.clear();
-  cur = s;
+  cur = std::move(s);
 }
 
 void Value::setRegEx(unsigned int i) {
@@ -185,7 +195,7 @@ void Value::setRegEx(unsigned int i) {
   cur = nullptr;
 }
 
-void Value::set(std::string s) { set(StringRef(s)); }
+void Value::set(std::string s) { set(StringRef(std::move(s))); }
 
 unsigned Value::getRegEx() {
   assert(kind == RegEx);
