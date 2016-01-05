@@ -8,6 +8,7 @@
 
 #ifndef rsed_StringRef_h
 #define rsed_StringRef_h
+#include <memory>
 #include <string>
 #include <sstream>
 
