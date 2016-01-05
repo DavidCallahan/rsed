@@ -82,7 +82,8 @@ Statement *Optimizer::optimize(Statement *input) {
     firstInvariant = lastInvariant = nullptr;
     hoistInvariants(&foreach->control);
     hoistInvariants(newBody);
-    foreach->body = newBody;
+    foreach
+      ->body = newBody;
     if (lastInvariant) {
       lastInvariant->setNext(foreach);
       return firstInvariant;
@@ -118,12 +119,14 @@ void Optimizer::noteSetVariables(Statement *body) {
   body->walk([this](Statement *stmt) {
     if (auto set = isa<Set>(stmt)) {
       auto lhs = set->lhs;
-      if (lhs->kind() == lhs->VariableN) {
-        auto sym = &((Variable *)lhs)->getSymbol();
-        setInLoop.insert(sym);
-      } else {
-        unknownSymbolSet = true;
-        return AST::StopW;
+      if (lhs) {
+        if (lhs->kind() == lhs->VariableN) {
+          auto sym = &((Variable *)lhs)->getSymbol();
+          setInLoop.insert(sym);
+        } else {
+          unknownSymbolSet = true;
+          return AST::StopW;
+        }
       }
     }
     return AST::ContinueW;
@@ -345,7 +348,7 @@ void Optimizer::hoist(Expression **expr) {
     e->dump();
     std::cout << "\n";
   }
-  auto h = new HoistedValue(e);
+  auto h = new Set(nullptr, e, 0);
   *expr = new HoistedValueRef(e);
   if (!firstInvariant) {
     firstInvariant = h;

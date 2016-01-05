@@ -75,7 +75,6 @@ public:
     OutputN,
     CloseN,
     RequiredN,
-    HoistedValueN,
   };
   enum ExprKind {
     ControlN,
@@ -573,14 +572,6 @@ inline Statement *AST::replaceOne(Expression *pattern, Expression *replacement,
   pattern = new RegExPattern(pattern);
   return new Replace(pattern, replacement, sourceLine);
 }
-
-class HoistedValue : public Statement {
-public:
-  Expression *rhs;
-  HoistedValue(Expression *rhs) : Statement(rhs->getSourceLine()), rhs(rhs) {}
-  static StmtKind typeKind() { return HoistedValueN; }
-  StmtKind kind() const override { return typeKind(); }
-};
 
 class HoistedValueRef : public Expression {
 public:

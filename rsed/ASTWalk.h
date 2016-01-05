@@ -55,8 +55,6 @@ AST::WalkResult Statement::walkExprs(const ACTION &a) {
   case CloseN:
   case OutputN:
     return ((IOStmt *)this)->buffer->walkDown(a);
-  case HoistedValueN:
-    return ((HoistedValue *)this)->rhs->walkDown(a);
   case ForeachN:
     return ((Foreach *)this)->control->walkDown(a);
   case PrintN:
@@ -175,9 +173,6 @@ void Statement::applyExprs(bool recurseIntoForeach, const ACTION &a) {
     if (((Required *)this)->errMsg) {
       a(((Required *)this)->errMsg);
     }
-    break;
-  case HoistedValueN:
-    a(((HoistedValue *)this)->rhs);
     break;
   }
   if (getNext()) {

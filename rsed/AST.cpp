@@ -123,11 +123,16 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
   case AST::SetN: {
     auto s = static_cast<const Set *>(node);
     indent(depth);
-    if (s->kind() == s->SetAppendN) {
-      OS << "append " ;
+    if (s->lhs) {
+      if (s->kind() == s->SetAppendN) {
+        OS << "append ";
+      }
+      dumpExpr(s->lhs);
+      OS << " = ";
     }
-    dumpExpr(s->lhs);
-    OS << " = ";
+    else {
+      OS << "eval ";
+    }
     dumpExpr(s->rhs);
     OS << '\n';
     break;
@@ -152,16 +157,16 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     OS << '\n';
     break;
   }
-    case AST::StopN: {
-      auto e = static_cast<const Stop *>(node);
-      indent(depth);
-      OS << "stop ";
-      if (e->text) {
-        dumpExpr(e->text);
-      }
-      OS << '\n';
-      break;
+  case AST::StopN: {
+    auto e = static_cast<const Stop *>(node);
+    indent(depth);
+    OS << "stop ";
+    if (e->text) {
+      dumpExpr(e->text);
     }
+    OS << '\n';
+    break;
+  }
   case AST::ColumnsInputN:
   case AST::ColumnsN: {
     auto c = static_cast<const Columns *>(node);
@@ -213,14 +218,6 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
       OS << "error ";
       dumpExpr(r->errMsg);
     }
-    OS << '\n';
-    break;
-  }
-  case AST::HoistedValueN: {
-    auto h = static_cast<const HoistedValue *>(node);
-    indent(depth);
-    OS << "hoisted " << h->rhs->getId() << ' ';
-    dumpExpr(h->rhs);
     OS << '\n';
     break;
   }

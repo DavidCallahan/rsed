@@ -443,11 +443,6 @@ ResultCode State::interpretOne(Statement *stmt) {
       throw Exception("failed required column count", stmt, inputBuffer);
     }
   }
-  case AST::HoistedValueN: {
-    auto h = (HoistedValue *)stmt;
-    interpret(h->rhs);
-    break;
-  }
   }
   return OK_S;
 }
@@ -544,22 +539,24 @@ void State::printListElt(Expression *e, const string &sep, LineBuffer &out,
 void State::interpret(Set *set) {
   auto rhs = interpret(set->rhs);
   auto lhs = set->lhs;
-  if (lhs->kind() == AST::VariableN) {
-    ((Variable *)lhs)->getSymbol().set(rhs);
-    if (debug) {
-      std::cout << "set to " << *rhs << '\n';
+  if (lhs) {
+    if (lhs->kind() == AST::VariableN) {
+      ((Variable *)lhs)->getSymbol().set(rhs);
+      if (debug) {
+        std::cout << "set to " << *rhs << '\n';
+      }
+    } else if (lhs->isOp(lhs->LOOKUP)) {
+      auto b = BinaryP(lhs);
+      auto name = interpret(b->right);
+      if (!name->isString()) {
+        throw Exception("invalid symbol name " + name->asString(), set,
+                        inputBuffer);
+      }
+      auto symbol = Symbol::findSymbol(name->asString().getText());
+      symbol->set(rhs);
+    } else {
+      assert("not yet implemented non variable lhs");
     }
-  } else if (lhs->isOp(lhs->LOOKUP)) {
-    auto b = BinaryP(lhs);
-    auto name = interpret(b->right);
-    if (!name->isString()) {
-      throw Exception("invalid symbol name " + name->asString(), set,
-                      inputBuffer);
-    }
-    auto symbol = Symbol::findSymbol(name->asString().getText());
-    symbol->set(rhs);
-  } else {
-    assert("not yet implemented non variable lhs");
   }
 }
 
