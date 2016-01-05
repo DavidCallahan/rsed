@@ -117,8 +117,17 @@ void evalCall(unsigned int id, vector<Value *> &args, EvalState *state,
     break;
   }
   case LENGTH: {
-    result->set(double(
-        args.size() > 0 ? args.front()->asString().getText().length() : 0));
+    double len = 0;
+    if (!args.empty()) {
+      auto first = args.front();
+      if (first->isList()) {
+        len = first->listLength();
+      }
+      else {
+        len = first->asString().getText().length();
+      }
+    }
+    result->set(len);
     return;
   }
   case JOIN: {

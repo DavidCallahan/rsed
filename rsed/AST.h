@@ -590,10 +590,9 @@ public:
   ExprKind kind() const override { return HoistedValueRefN; }
 };
 
-// TODO   $? -- number of matches? or  $NUM_MATCHES
-//
 // TODO  split ... into var1, ..., vk
 //    or (v1,...vk) = split ...
+//    -- generalize to RHS being a list
 // TODO is it a good idea for "not e" to be implicitly not match e?
 //       maybe a string-boolean converstion should be via match?
 // TODO add a mechanism to print a string without a newline (WRITE, PRINT

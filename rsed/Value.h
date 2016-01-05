@@ -42,6 +42,8 @@ public:
     return (cur ? *cur : scache);
   }
   bool isString() const { return kind == String; }
+  bool isList() const { return kind == List; }
+  unsigned listLength() const { return list.size(); }
   const StringRef &asString();
   bool asLogical() const;
   double asNumber();
