@@ -1,0 +1,7 @@
+foreach all
+   if match "more" then
+       stop
+   end
+   print
+end
+print "not reached"

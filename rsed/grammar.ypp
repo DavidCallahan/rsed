@@ -58,14 +58,14 @@ Expression * call(std::string * name, Arg * args, Scanner * scanner) {
 %token <token> FOREACH COPY SKIP TO PAST END NEWLINE REPLACE_TOK FOR SPLIT
 %token <token> THEN ELSE IF NOT_TOK PRINT MATCH_TOK STYLE MATCH_KW
 %token <token> COLUMNS IN LOOKUP_START REQUIRED INPUT OUTPUT INOUT
-%token <token>  CLOSE ERROR ALL WITH TRUE FALSE 
+%token <token>  CLOSE ERROR ALL WITH TRUE FALSE STOP
 %type <token> EQ_TOK NE_TOK OR_TOK AND_TOK LE_TOK GE_TOK
 %token <integer> INTEGER  DYN_VARIABLE
 %token <number> NUMBER
 %type <integer> lineno
 %type <boole> inout
 %type <stmt> stmtlist stmt foreach copy skip replace 
-%type <stmt> split print columns required
+%type <stmt> split print columns required stop
 %type <stmt> ifstmt elsestmt set input output close errorStmt 
 %type <list> stmtlistlist
 %type <boole> optAll optRequired
@@ -106,7 +106,7 @@ stmtlistlist: { $$ = StmtList::emptyList(); }
 	    | stmtlistlist  error NEWLINE optNewline { $$ = $1; }
             ;
 
-stmt: foreach | copy | skip | replace | ifstmt | split
+stmt: foreach | copy | skip | replace | ifstmt | split | stop
     | set | print | input | output | close | errorStmt | columns | required
     ;
 lineno:     /*empty*/  { $$ = LINE; };
@@ -169,11 +169,13 @@ elsestmt: /* empty */ { $$ = nullptr ; }
 	| ELSE NEWLINE stmtlist
 	  { $$ = $3; } ;
 
-print: PRINT lineno expr optBuffer NEWLINE { $$ = new Print($3,$4, $2); };
+print: PRINT lineno optExpr optBuffer NEWLINE 
+       { $$ = new Print($3 ? $3 : AST::current(),$4, $2); };
 errorStmt: ERROR lineno expr NEWLINE { $$ = new Error($3,$2); };
 optBuffer: /* empty */ { $$ = nullptr; }
          | TO buffer { $$ = $2; }
          ;
+stop:  STOP lineno optExpr NEWLINE { $$ = new Stop($3,$2); } ;
 
 required: REQUIRED lineno pattern optError NEWLINE { $$ = new Required(0, $3,$4, $2); }
 

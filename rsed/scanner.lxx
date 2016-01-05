@@ -48,6 +48,7 @@ replace     return REPLACE_TOK;
 required    return REQUIRED;
 skip        return SKIP;
 split	    return SPLIT;
+stop	    return STOP;
 style	    return STYLE;
 then	    return THEN;
 true	    return TRUE;

@@ -67,6 +67,7 @@ public:
     SetAppendN,
     ColumnsN,
     PrintN,
+    StopN,
     ErrorN,
     InputN,
     SplitInputN,
@@ -436,12 +437,16 @@ public:
   StmtKind kind() const override { return typeKind(); }
 };
 
-class Error : public Statement {
-
+class Stop : public Statement {
 public:
   Expression *text;
-
-  Error(Expression *text, int sourceLine) : Statement(sourceLine), text(text) {}
+  Stop(Expression *text, int sourceLine) : Statement(sourceLine), text(text) {}
+  static StmtKind typeKind() { return StopN; }
+  StmtKind kind() const override { return typeKind(); }
+};
+class Error : public Stop {
+public:
+  Error(Expression *text, int sourceLine) : Stop(text, sourceLine) {}
   static StmtKind typeKind() { return ErrorN; }
   StmtKind kind() const override { return typeKind(); }
 };

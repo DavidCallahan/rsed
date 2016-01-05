@@ -152,6 +152,16 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     OS << '\n';
     break;
   }
+    case AST::StopN: {
+      auto e = static_cast<const Stop *>(node);
+      indent(depth);
+      OS << "stop ";
+      if (e->text) {
+        dumpExpr(e->text);
+      }
+      OS << '\n';
+      break;
+    }
   case AST::ColumnsInputN:
   case AST::ColumnsN: {
     auto c = static_cast<const Columns *>(node);

@@ -92,8 +92,11 @@ AST::WalkResult Statement::walkExprs(const ACTION &a) {
   case IfStmtN:
     rc = ((IfStatement *)this)->predicate->walkDown(a);
     break;
+  case StopN:
   case ErrorN:
-    rc = ((Error *)this)->text->walkDown(a);
+    if ( ((Stop*)this)->text ) {
+      rc = ((Stop *)this)->text->walkDown(a);
+    }
     break;
   case ColumnsN:
   case ColumnsInputN:
@@ -158,7 +161,10 @@ void Statement::applyExprs(bool recurseIntoForeach, const ACTION &a) {
     break;
   }
   case ErrorN:
-    a(((Error *)this)->text);
+  case StopN:
+    if (((Stop *)this)->text) {
+      a(((Stop *)this)->text);
+    }
     break;
   case ColumnsN:
   case ColumnsInputN:

@@ -32,6 +32,7 @@ namespace {
 enum ResultCode {
   OK_S,   // continue
   NEXT_S, // skip to next line
+  STOP_S, // terminate script
 };
 enum MatchKind { NoMatchK, StopAtK, StopAfterK };
 }
@@ -132,7 +133,7 @@ public:
 
   ResultCode interpret(Statement *stmtList);
   ResultCode interpretOne(Statement *stmt);
-  void interpret(Foreach *foreach);
+  ResultCode interpret(Foreach *foreach);
   ResultCode interpret(IfStatement *ifstmt);
   void interpret(Set *set);
   void interpret(SetAppend *set);
@@ -222,7 +223,7 @@ public:
 
 stringstream &State::expandVariables(const string &text, stringstream &str) {
   DynamicExpander expander(*this, str);
-  expander.expand(StringRef(string(text),0)); // todo clean this op
+  expander.expand(StringRef(string(text), 0)); // todo clean this op
   return str;
 }
 
@@ -242,7 +243,7 @@ ResultCode State::interpret(Statement *stmtList) {
   return rc;
 }
 
-void State::interpret(Foreach *foreach) {
+ResultCode State::interpret(Foreach *foreach) {
   auto c = (Control *)foreach->control;
   ForeachControl fc(this);
   fc.initialize(c);
@@ -263,13 +264,17 @@ void State::interpret(Foreach *foreach) {
     if (mk == StopAtK) {
       break;
     }
-    interpret(b);
+    auto rc = interpret(b);
+    if (rc == STOP_S) {
+      return rc;
+    }
     if (mk == StopAfterK) {
       needLine = true;
       break;
     }
     nextLine();
   }
+  return OK_S;
 }
 
 ResultCode State::interpret(IfStatement *ifstmt) {
@@ -313,12 +318,11 @@ ResultCode State::interpretOne(Statement *stmt) {
     auto reg = interpret(r->pattern)->getRegEx();
     auto target = interpret(r->replacement)->asString().getText();
     auto str = regEx->replace(reg, target, getCurrentLine()->getText());
-    currentLine_ = std::make_shared<const StringRef>(std::move(str),0);
+    currentLine_ = std::make_shared<const StringRef>(std::move(str), 0);
     break;
   }
   case AST::ForeachN:
-    interpret((Foreach *)stmt);
-    break;
+    return interpret((Foreach *)stmt);
   case AST::IfStmtN:
     return interpret((IfStatement *)stmt);
   case AST::SetN:
@@ -338,6 +342,14 @@ ResultCode State::interpretOne(Statement *stmt) {
     auto e = (Error *)stmt;
     auto msg = interpret(e->text)->asString().getText();
     throw Exception(msg, stmt, inputBuffer);
+  }
+  case AST::StopN: {
+    auto e = (Stop *)stmt;
+    if (e->text) {
+      print(e->text, *outputBuffer);
+      outputBuffer->appendString("\n");
+    }
+    return STOP_S;
   }
   case AST::InputN: {
     auto io = (Input *)stmt;
@@ -509,21 +521,24 @@ void State::print(Value *v, LineBuffer &out) {
 void State::printListElt(Expression *e, const string &sep, LineBuffer &out,
                          bool first) {
   if (auto c = e->isOp(e->CONCAT)) {
-    if(!first) out.appendString(sep);
+    if (!first)
+      out.appendString(sep);
     print(c, out);
     return;
   }
   auto v = interpret(e);
   if (v->kind == v->List) {
-    for(auto & lv : v->list) {
-      if(!first) out.appendString(sep);
-      print(&lv,out);
+    for (auto &lv : v->list) {
+      if (!first)
+        out.appendString(sep);
+      print(&lv, out);
       first = false;
     }
-    return ;
+    return;
   }
-  if(!first) out.appendString(sep);
-  print(v,out);
+  if (!first)
+    out.appendString(sep);
+  print(v, out);
 }
 
 void State::interpret(Set *set) {
@@ -612,7 +627,7 @@ void Interpreter::initialize(int argc, char *argv[], const string &input) {
     state->stdinBuffer = LineBuffer::makeInBuffer(input);
   }
   state->resetInput(state->stdinBuffer);
-  state->stdinBuffer =    nullptr;
+  state->stdinBuffer = nullptr;
   state->stdoutBuffer = LineBuffer::getStdout();
   state->outputBuffer = state->stdoutBuffer;
   state->setRegEx(RegEx::regEx);
