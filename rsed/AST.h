@@ -53,7 +53,6 @@ public:
   static Expression *match(Expression *lhs, Expression *rhs, int sourceLine);
   static Expression *split(Expression *lhs, Expression *rhs, int sourceLine);
   static Statement *input(Expression *source, int sourceLine);
-  static Statement *input(Statement *);
 
   virtual bool isStatement() const = 0;
 
@@ -71,8 +70,6 @@ public:
     StopN,
     ErrorN,
     InputN,
-    SplitInputN,
-    ColumnsInputN,
     OutputN,
     CloseN,
     RequiredN,
@@ -282,13 +279,6 @@ public:
   static StmtKind typeKind() { return SplitN; }
   StmtKind kind() const override { return typeKind(); }
 };
-class SplitInput : public Split {
-public:
-  SplitInput(Expression *columns, Expression *inExpr, int sourceLine)
-      : Split(columns, inExpr, sourceLine) {}
-  static StmtKind typeKind() { return SplitInputN; }
-  StmtKind kind() const override { return typeKind(); }
-};
 
 class IfStatement : public Statement {
 public:
@@ -316,24 +306,6 @@ public:
   static StmtKind typeKind() { return ColumnsN; }
   StmtKind kind() const override { return typeKind(); }
 };
-class ColumnsInput : public Columns {
-public:
-  ColumnsInput(Expression *columns, Expression *inExpr, int sourceLine)
-      : Columns(columns, inExpr, sourceLine) {}
-  static StmtKind typeKind() { return ColumnsInputN; }
-  StmtKind kind() const override { return typeKind(); }
-};
-inline Statement *AST::input(Statement *s) {
-  Statement *result;
-  if (auto c = isa<Columns>(s)) {
-    result = new ColumnsInput(c->columns, c->inExpr, c->getSourceLine());
-  } else {
-    auto sp = isa<Split>(s);
-    result = new SplitInput(sp->separator, sp->target, sp->getSourceLine());
-  }
-  delete s;
-  return result;
-}
 
 class Variable : public Expression {
   Symbol &symbol;

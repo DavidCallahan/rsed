@@ -75,7 +75,6 @@ AST::WalkResult Statement::walkExprs(const ACTION &a) {
     rc = ((Replace *)this)->replacement->walkDown(a);
     break;
   case SplitN:
-  case SplitInputN:
     if (auto sep = ((Split *)this)->separator) {
       rc = sep->walkDown(a);
       if (rc != ContinueW)
@@ -97,7 +96,6 @@ AST::WalkResult Statement::walkExprs(const ACTION &a) {
     }
     break;
   case ColumnsN:
-  case ColumnsInputN:
     rc = ((Columns *)this)->columns->walkDown(a);
     break;
   case RequiredN: {
@@ -141,7 +139,6 @@ void Statement::applyExprs(bool recurseIntoForeach, const ACTION &a) {
     a(((Replace *)this)->replacement);
     break;
   case SplitN:
-  case SplitInputN:
     a(((Split *)this)->separator);
     a(((Split *)this)->target);
     break;
@@ -165,7 +162,6 @@ void Statement::applyExprs(bool recurseIntoForeach, const ACTION &a) {
     }
     break;
   case ColumnsN:
-  case ColumnsInputN:
     a(((Columns *)this)->columns);
     break;
   case RequiredN:

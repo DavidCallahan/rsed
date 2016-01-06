@@ -373,21 +373,6 @@ ResultCode State::interpretOne(Statement *stmt) {
     }
     break;
   }
-  case AST::SplitInputN: {
-    auto split = (SplitInput *)stmt;
-    auto sep = interpret(split->separator)->getRegEx();
-    const string &target = interpret(split->target)->asString().getText();
-    vector<string> data;
-    regEx->split(sep, target, &data);
-    pushInput(LineBuffer::makeVectorInBuffer(&data, target));
-    break;
-  }
-  case AST::ColumnsInputN: {
-    vector<string> data;
-    interpret((Columns *)stmt, &data);
-    pushInput(LineBuffer::makeVectorInBuffer(&data, "columns"));
-    break;
-  }
   case AST::OutputN: {
     auto io = (Output *)stmt;
     auto fileName = interpret(io->buffer)->asString().getText();

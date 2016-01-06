@@ -249,8 +249,6 @@ optIn: /*empty*/  { $$ = AST::current(); }
      ;
 
 input: INPUT lineno buffer NEWLINE { $$ = AST::input($3,$2); }
-     | INPUT split { $$ = AST::input($2); } 
-     | INPUT columns { $$ = AST::input($2); } 
      ;  
 output: OUTPUT lineno buffer NEWLINE { $$ = new Output($3,$2); } ;
 close: CLOSE lineno buffer NEWLINE { $$ = new Close($3,Close::ByName,$2); }

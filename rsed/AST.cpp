@@ -94,13 +94,9 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     OS << '\n';
     break;
   }
-  case AST::SplitInputN:
   case AST::SplitN: {
     auto s = static_cast<const Split *>(node);
     indent(depth);
-    if (node->kind() == AST::SplitInputN) {
-      OS << "input ";
-    }
     OS << "split ";
     if (s->target) {
       dumpExpr(s->target);
@@ -166,13 +162,9 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
     OS << '\n';
     break;
   }
-  case AST::ColumnsInputN:
   case AST::ColumnsN: {
     auto c = static_cast<const Columns *>(node);
     indent(depth);
-    if (node->kind() == AST::ColumnsInputN) {
-      OS << "input ";
-    }
     OS << "columns ";
     dumpExpr(c->columns);
     OS << '\n';
