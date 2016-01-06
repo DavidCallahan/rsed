@@ -233,3 +233,11 @@ void Value::append(const Value &v) {
   assert(kind == List);
   list.emplace_back(v);
 }
+
+void Value::set(std::vector<std::string> *values) {
+  clearList();
+  for (auto &w : *values) {
+    listAppend(std::move(w));
+  }
+  values->clear();
+}

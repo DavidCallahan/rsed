@@ -138,6 +138,8 @@ public:
   void interpret(Set *set);
   void interpret(SetAppend *set);
   void interpret(Columns *cols, vector<string> *columns);
+  void getColumns(Expression *inExpr, Expression *cols,
+                  vector<string> *columns);
   void interpret(Split *split);
 
   bool interprettPredicate(Expression *predicate);
@@ -579,10 +581,14 @@ void State::interpret(SetAppend *set) {
 }
 
 void State::interpret(Columns *cols, vector<string> *columns) {
+  getColumns(cols->inExpr, cols->columns, columns);
+}
+    
+void State::getColumns(Expression *inExprE, Expression *cols, vector<string> *columns) {
   columns->clear();
   vector<unsigned> nums;
 
-  string inExpr = interpret(cols->inExpr)->asString().getText();
+  string inExpr = interpret(inExprE)->asString().getText();
 
   int lastC = 0;
   int max = inExpr.length();
@@ -591,15 +597,14 @@ void State::interpret(Columns *cols, vector<string> *columns) {
     auto i = int(v->asNumber());
     if (i < lastC) {
       throw Exception("column numbers must be positive and non-decreasing: " +
-                          v->asString(),
-                      cols, inputBuffer);
+                          v->asString());
     }
     i = std::min(i, max);
     columns->push_back(inExpr.substr(lastC, (i - lastC)));
     lastC = i;
   };
 
-  cols->columns->walkConcat(addCol);
+  cols->walkConcat(addCol);
 
   if (lastC < inExpr.length()) {
     columns->push_back(inExpr.substr(lastC));
@@ -788,6 +793,20 @@ Value *State::interpret(Expression *e) {
       auto sc = interpret(b->right)->asString();
       sc.setIsGlobal();
       b->set(sc);
+      break;
+    }
+    case Binary::SPLIT_REG: {
+      auto text = interpret(b->left)->asString().getText();
+      auto sep = interpret(b->right)->getRegEx();
+      vector<string> words;
+      regEx->split(sep, text, &words);
+      b->set(&words);
+      break;
+    }
+    case Binary::SPLIT_COLS: {
+      vector<string> words;
+      getColumns(b->left, b->right, &words);
+      b->set(&words);
       break;
     }
     case Binary::EQ:

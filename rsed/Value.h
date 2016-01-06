@@ -82,6 +82,10 @@ public:
       list.emplace_back(*v);
     }
   }
+  void set(std::vector<std::string> * values);
+  void listAppend(std::string text) {
+    list.emplace_back(StringRef(std::move(text),0));
+  }
 };
 std::ostream &operator<<(std::ostream &OS, const Value &value);
 int compare(Value *left, Value *right);

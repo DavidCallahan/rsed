@@ -51,6 +51,7 @@ public:
   static Expression *current();
   static Expression *stringConst(std::string *constant);
   static Expression *match(Expression *lhs, Expression *rhs, int sourceLine);
+  static Expression *split(Expression *lhs, Expression *rhs, int sourceLine);
   static Statement *input(Expression *source, int sourceLine);
   static Statement *input(Statement *);
 
@@ -157,6 +158,8 @@ public:
     LOOKUP,
     SET_GLOBAL,
     SUBSCRIPT,
+    SPLIT_REG,
+    SPLIT_COLS,
   };
 
   bool isStatement() const override { return false; }
@@ -549,6 +552,11 @@ inline Expression *AST::match(Expression *lhs, Expression *rhs,
                               int sourceLine) {
   auto r = new RegExPattern(rhs);
   return new Binary(Binary::MATCH, lhs, r, sourceLine);
+}
+inline Expression *AST::split(Expression *lhs, Expression * rhs, int sourceLine) {
+  
+  auto r = new RegExPattern(rhs);
+  return new Binary(Binary::SPLIT_REG, lhs, r, sourceLine);
 }
 
 inline Statement *AST::replace(Expression *control, Expression *pattern,

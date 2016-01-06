@@ -1,0 +1,8 @@
+text="1,2,3,4"
+list=split $text with ","
+print $list[0]
+print $list[3]
+text="a.b.c.d"
+list= split $text columns 2 4 6
+print $list[0]
+print $list[3]

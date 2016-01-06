@@ -129,8 +129,7 @@ void Dumper::dumpOneStmt(int depth, const Statement *node, bool elseIf) {
       }
       dumpExpr(s->lhs);
       OS << " = ";
-    }
-    else {
+    } else {
       OS << "eval ";
     }
     dumpExpr(s->rhs);
@@ -287,6 +286,10 @@ const char *Expression::opName(Operators op) {
     return "global";
   case SUBSCRIPT:
     return "]";
+  case SPLIT_REG:
+    return "with";
+  case SPLIT_COLS:
+    return "columns";
   }
 }
 
@@ -301,7 +304,8 @@ void Dumper::dumpExpr(const Expression *node) {
     if (b->left) {
       dumpExpr(b->left);
     }
-    if (b->isOp(b->CONCAT)) {
+    switch (b->op) {
+    case Binary::CONCAT: {
       OS << ' ';
       auto r = b->right;
       if (r->kind() == r->BinaryN) {
@@ -311,16 +315,22 @@ void Dumper::dumpExpr(const Expression *node) {
       if (r->kind() == r->BinaryN) {
         OS << ')';
       }
-    } else if (b->isOp(b->SUBSCRIPT)) {
+      break;
+    }
+    case Binary::SUBSCRIPT: {
       OS << '[';
       dumpExpr(b->right);
       OS << ']';
-    } else {
+      break;
+    }
+    default: {
       OS << ' ' << b->opName(b->op) << ' ';
       dumpExpr(b->right);
       if (b->op == b->LOOKUP) {
         OS << ")";
       }
+      break;
+    }
     }
     break;
   }
@@ -472,6 +482,9 @@ Value::Kind Expression::valueKind() {
     case Binary::LOOKUP:
     case Binary::SET_GLOBAL:
     case Binary::SUBSCRIPT:
+      return Value::String;
+    case Binary::SPLIT_REG:
+    case Binary::SPLIT_COLS:
       return Value::String;
     }
   }

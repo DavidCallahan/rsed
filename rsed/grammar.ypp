@@ -69,8 +69,8 @@ Expression * call(std::string * name, Arg * args, Scanner * scanner) {
 %type <stmt> ifstmt elsestmt set input output close errorStmt 
 %type <list> stmtlistlist
 %type <boole> optAll optRequired
-%type <expr> control toPast optError
-%type <expr> optControl optExpr optIn
+%type <expr> control toPast optError 
+%type <expr> optControl exprOrCurrent optIn optExpr
 %type <expr>  buffer optBuffer pattern list
 %type <arg> optarglist arglist 
 %type <expr> name expr term primitive variable call lookup replaceExpr stringTerm
@@ -150,12 +150,11 @@ optAll: /* empty */ { $$ = false; }
       | ALL { $$ = true; }
       ;
 
-
-split: SPLIT optExpr WITH expr NEWLINE { $$ = new Split(new RegExPattern($4), $2, LINE); } ;
-columns: SPLIT optExpr COLUMNS expr NEWLINE { $$ = new Columns($4, $2, LINE); }
-optExpr: /* empty */ { $$ = AST::current(); }
-	  | expr     
-          ;
+split: SPLIT exprOrCurrent WITH expr NEWLINE { $$ = new Split(new RegExPattern($4), $2, LINE); } ;
+columns: SPLIT exprOrCurrent COLUMNS expr NEWLINE { $$ = new Columns($4, $2, LINE); }
+exprOrCurrent: /* empty */ { $$ = AST::current(); }
+       | expr     
+       ;
 
 // for use insode of foreach loops
 ifstmt: IF lineno pattern optThen NEWLINE stmtlist elsestmt END NEWLINE 
@@ -169,13 +168,16 @@ elsestmt: /* empty */ { $$ = nullptr ; }
 	| ELSE NEWLINE stmtlist
 	  { $$ = $3; } ;
 
-print: PRINT lineno optExpr optBuffer NEWLINE 
-       { $$ = new Print($3 ? $3 : AST::current(),$4, $2); };
+print: PRINT lineno exprOrCurrent optBuffer NEWLINE 
+       { $$ = new Print($3,$4, $2); };
 errorStmt: ERROR lineno expr NEWLINE { $$ = new Error($3,$2); };
 optBuffer: /* empty */ { $$ = nullptr; }
          | TO buffer { $$ = $2; }
          ;
 stop:  STOP lineno optExpr NEWLINE { $$ = new Stop($3,$2); } ;
+optExpr: /*empty*/ { $$ = nullptr; }
+       | expr 
+       ;
 
 required: REQUIRED lineno pattern optError NEWLINE { $$ = new Required(0, $3,$4, $2); }
 
@@ -200,6 +202,8 @@ term:  stringTerm
     |  term '*' term { $$ = BINARY(MUL, $1,$3);} 
     |  term '/' term { $$ = BINARY(DIV, $1,$3);} 
     |  '-' term %prec UMINUS { $$ = UNARY(NEG,$2); }
+    |  SPLIT lineno exprOrCurrent WITH term { $$ = AST::split($3,$5,$2); } %prec WITH
+    |  SPLIT lineno exprOrCurrent COLUMNS term { $$ = BINARY(SPLIT_COLS, $3,$5); }  %prec WITH
     ;
 
 // some code assumes this AST is right-leaning (right-associative)
