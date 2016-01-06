@@ -212,7 +212,7 @@ template <typename ACTION> AST::WalkResult Expression::walkUp(const ACTION &a) {
   case LogicalN:
   case VarMatchN:
   case StringConstN:
-  case ArgN:
+  case LiatEltN:
   case HoistedValueRefN:
     break;
   }
@@ -267,7 +267,7 @@ AST::WalkResult Expression::walkDown(const ACTION &a) {
     rc = ((RegExPattern *)e)->pattern->walkDown(a);
     break;
   case HoistedValueRefN:
-  case ArgN:
+  case LiatEltN:
   case NumberN:
   case LogicalN:
   case StringConstN:

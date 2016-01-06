@@ -394,8 +394,8 @@ void Dumper::dumpExpr(const Expression *node) {
     OS << "]";
     break;
   }
-  case AST::ArgN: {
-    assert("should not reach ArgN");
+  case AST::LiatEltN: {
+    assert("should not reach LiatEltN");
     break;
   }
   case AST::HoistedValueRefN: {
@@ -437,7 +437,7 @@ Value::Kind Expression::valueKind() {
   case AST::StringConstN:
   case AST::VariableN:
   case AST::VarMatchN:
-  case AST::ArgN:
+  case AST::LiatEltN:
   case AST::RegExPatternN:
   case AST::ControlN:
   case AST::ListN:

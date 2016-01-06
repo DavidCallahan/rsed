@@ -83,7 +83,7 @@ public:
     StringConstN,
     CallN,
     ListN,
-    ArgN,
+    LiatEltN,
     BinaryN,
     RegExPatternN,
     HoistedValueRefN,
@@ -469,19 +469,19 @@ private:
   enum Mode mode;
 };
 
-class Arg : public Expression {
+class ListElt : public Expression {
 public:
   Expression *value;
-  Arg *nextArg;
-  Arg(Expression *value, Arg *nextArg, int souceLine)
+  ListElt *nextArg;
+  ListElt(Expression *value, ListElt *nextArg, int souceLine)
       : Expression(sourceLine), value(value), nextArg(nextArg) {}
-  ExprKind kind() const override { return ArgN; }
+  ExprKind kind() const override { return LiatEltN; }
 };
 
 class List : public Expression {
 public:
-  Arg *head; // TODO - rename "Arg" to be "ListElt"
-  List(Arg *head) : head(head) {}
+  ListElt *head; // TODO - rename "ListElt" to be "ListElt"
+  List(ListElt *head) : head(head) {}
   ExprKind kind() const override { return ListN; }
 };
 typedef List *ListP;
@@ -491,7 +491,7 @@ class Call : public List {
   unsigned callId;
 
 public:
-  Call(std::string name, Arg *args, unsigned callId, int sourceLine)
+  Call(std::string name, ListElt *args, unsigned callId, int sourceLine)
       : List(args), name(name), callId(callId) {}
   ExprKind kind() const override { return CallN; }
 

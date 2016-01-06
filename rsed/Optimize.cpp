@@ -150,7 +150,7 @@ HoistInfo Optimizer::checkHoistConcat(Expression **exprHome) {
   assert(BinaryP(expr)->op == expr->CONCAT);
 
   // first of an implicit concatentation
-  assert(expr->kind() != Expression::ArgN);
+  assert(expr->kind() != Expression::LiatEltN);
 
   typedef std::pair<Expression *, HoistInfo> TermInfo;
   std::vector<TermInfo> terms;
@@ -229,8 +229,8 @@ HoistInfo Optimizer::checkHoist(Expression **exprHome) {
   case AST::ControlN:
     hoistInvariants(&((Control *)expr)->pattern);
     break;
-  case AST::ArgN:
-    return checkHoist(&((Arg *)expr)->value);
+  case AST::LiatEltN:
+    return checkHoist(&((ListElt *)expr)->value);
   case AST::VariableN: {
     auto sym = &((Variable *)expr)->getSymbol();
     return HoistInfo(isInvariant(sym), 0);
@@ -247,7 +247,7 @@ HoistInfo Optimizer::checkHoist(Expression **exprHome) {
     std::vector<HoistInfo> args;
     bool invariant = true;
     for (auto a = ListP(expr)->head; a; a = a->nextArg) {
-      args.push_back(checkHoist(&((Arg *)a)->value));
+      args.push_back(checkHoist(&((ListElt *)a)->value));
       if (!::isInvariant(args.back())) {
         invariant = false;
       }

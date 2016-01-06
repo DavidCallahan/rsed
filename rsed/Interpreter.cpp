@@ -662,7 +662,7 @@ void Interpreter::interpret(Statement *script) {
 
 Value *State::interpret(Expression *e) {
   switch (e->kind()) {
-  case AST::ArgN:
+  case AST::LiatEltN:
     assert("unexpected arg");
     break;
   case AST::ControlN:
