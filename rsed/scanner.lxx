@@ -39,6 +39,7 @@ if	    return IF;
 in	    return IN;
 input	    return INPUT;
 match	    return MATCH_KW;
+matches	    return MATCHES_TOK  ;
 not	    return NOT_TOK;
 or	    return OR_TOK;
 output	    return OUTPUT;

@@ -37,6 +37,8 @@ public:
   virtual void setPattern(StringPtr pattern, int index) override;
 
   virtual bool match(int pattern, const std::string &line) override;
+  virtual void match(int pattern, const std::string &line,
+                     std::vector<std::string> *list) override;
   virtual void split(int pattern, const std::string &target,
                      std::vector<std::string> *words) override;
   virtual std::string escape(const std::string &text) override;
@@ -72,6 +74,18 @@ std::string C14RegEx::getSubMatch(unsigned int i) {
   }
   return matches[i];
 }
+
+void C14RegEx::match(int pattern, const std::string &line,
+                     std::vector<std::string> *list) {
+
+  typedef std::regex_iterator<std::string::const_iterator> Iterator;
+  Iterator end;
+  Iterator next(line.begin(), line.end(), patterns[pattern].first);
+  for ( ; next != end; ++next) {
+    list->push_back(next->str());
+  }
+}
+
 
 void C14RegEx::setPattern(StringPtr pattern, int index) {
   if (index >= patterns.size()) {

@@ -1,0 +1,7 @@
+text = << END
+The quick brown fox jumps over the lazy dog
+END
+print $text
+input matches $text =~ "\w+"
+copy all
+

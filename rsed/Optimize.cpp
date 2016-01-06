@@ -311,6 +311,7 @@ HoistInfo Optimizer::checkHoist(Expression **exprHome) {
     case Binary::SUBSCRIPT:
     case Binary::SPLIT_REG:
     case Binary::SPLIT_COLS:
+    case Binary::MATCHES:
     case Binary::EQ:
     case Binary::NE:
     case Binary::LT:

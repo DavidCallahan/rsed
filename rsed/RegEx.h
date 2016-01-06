@@ -27,9 +27,10 @@ public:
   virtual std::string replace(int pattern, const std::string &replacement,
                               const std::string &line) = 0;
   virtual bool match(int pattern, const std::string &line) = 0;
-  virtual void split(int pattern,
-                     const std::string & target,
-                     std::vector<std::string> * words) = 0;
+  virtual void match(int pattern, const std::string &line,
+                     std::vector<std::string> *list) = 0;
+  virtual void split(int pattern, const std::string &target,
+                     std::vector<std::string> *words) = 0;
 
   virtual std::string escape(const std::string &text) = 0;
 

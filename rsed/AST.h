@@ -141,6 +141,7 @@ public:
     DIV,
     NEG,
     MATCH,
+    MATCHES, 
     REPLACE,
     CONCAT,
     LT,
@@ -480,7 +481,7 @@ public:
 
 class List : public Expression {
 public:
-  ListElt *head; // TODO - rename "ListElt" to be "ListElt"
+  ListElt *head;
   List(ListElt *head) : head(head) {}
   ExprKind kind() const override { return ListN; }
 };
@@ -568,9 +569,6 @@ public:
 //       maybe a string-boolean converstion should be via match?
 // TODO add a mechanism to print a string without a newline (WRITE, PRINT
 // STRING, ...)
-// TODO add an "else msg" for required statements for better descriptive text
-// TODO make match success available in dynamic variable
-// TODO add "match all x for y" for all matches of x in y
-// TODO allow  spplit as an expression returning a list
+// TODO add "match all x in y" for all matches of x in y
 
 #endif /* defined(__rsed__AST__) */

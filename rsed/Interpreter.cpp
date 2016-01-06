@@ -143,7 +143,6 @@ public:
   void interpret(Split *split);
 
   bool interprettPredicate(Expression *predicate);
-  bool interpretMatch(int pattern, const string &target);
   Value *interpret(Expression *);
   void print(Expression *, LineBuffer &);
   void print(Value *, LineBuffer &);
@@ -568,8 +567,9 @@ void State::interpret(SetAppend *set) {
 void State::interpret(Columns *cols, vector<string> *columns) {
   getColumns(cols->inExpr, cols->columns, columns);
 }
-    
-void State::getColumns(Expression *inExprE, Expression *cols, vector<string> *columns) {
+
+void State::getColumns(Expression *inExprE, Expression *cols,
+                       vector<string> *columns) {
   columns->clear();
   vector<unsigned> nums;
 
@@ -582,7 +582,7 @@ void State::getColumns(Expression *inExprE, Expression *cols, vector<string> *co
     auto i = int(v->asNumber());
     if (i < lastC) {
       throw Exception("column numbers must be positive and non-decreasing: " +
-                          v->asString());
+                      v->asString());
     }
     i = std::min(i, max);
     columns->push_back(inExpr.substr(lastC, (i - lastC)));
@@ -649,10 +649,6 @@ bool State::interprettPredicate(Expression *predicate) {
   auto v = interpret(predicate);
   assert(!v->isString());
   return v->asLogical();
-}
-bool State::interpretMatch(int pattern, const string &target) {
-  matchColumns = false;
-  return regEx->match(pattern, target);
 }
 
 void Interpreter::interpret(Statement *script) {
@@ -762,7 +758,16 @@ Value *State::interpret(Expression *e) {
     case Binary::MATCH: {
       auto r = interpret(b->right)->getRegEx();
       auto target = interpret(b->left)->asString().getText();
-      e->set(interpretMatch(r, target));
+      matchColumns = false;
+      e->set(regEx->match(r, target));
+      break;
+    }
+    case Binary::MATCHES: {
+      auto r = interpret(b->right)->getRegEx();
+      auto target = interpret(b->left)->asString().getText();
+      vector<string> words;
+      regEx->match(r, target, &words);
+      b->set(&words);
       break;
     }
     case Binary::REPLACE: {

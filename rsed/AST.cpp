@@ -250,6 +250,8 @@ const char *Expression::opName(Operators op) {
     return "/";
   case MATCH:
     return "=~";
+  case MATCHES:
+    return "all matches";
   case REPLACE:
     return "replace";
   case CONCAT:
@@ -477,6 +479,7 @@ Value::Kind Expression::valueKind() {
       return Value::String;
     case Binary::SPLIT_REG:
     case Binary::SPLIT_COLS:
+    case Binary::MATCHES:
       return Value::String;
     }
   }
